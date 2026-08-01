@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>DONE RITE Creator OS</title>
+<meta name="description" content="DONE RITE Creator OS — Real Reviews. Real Gadgets. Done Rite." />
+
+<!-- iPhone Home Screen support -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#05070d" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Creator OS" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="icon" href="icon-192.png" />
+
+<style>
+  html, body { margin:0; padding:0; background:#05070d; }
+  #boot { color:#e8edf7; font-family:-apple-system, system-ui, sans-serif;
+          padding:40px 24px; text-align:center; line-height:1.5; }
+  #boot h1 { color:#2ea8ff; font-size:20px; margin:0 0 10px; }
+</style>
+</head>
+<body>
+
+<div id="root">
+  <div id="boot">
+    <h1>DONE RITE Creator OS</h1>
+    <p>Loading…</p>
+    <p style="font-size:14px; color:#93a2bd;">If this message stays on screen, you are offline and the app has not been saved to this device yet. Connect to the internet once, then it will work offline.</p>
+  </div>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="app.js"></script>
+<script>
+  (function () {
+    var boot = document.getElementById('boot');
+    if (!window.React || !window.ReactDOM) {
+      boot.innerHTML = '<h1>DONE RITE Creator OS</h1><p>Could not load. Check your internet connection and reload this page.</p>';
+      return;
+    }
+    try {
+      ReactDOM.createRoot(document.getElementById('root'))
+        .render(React.createElement(DoneRiteCreatorOS));
+    } catch (e) {
+      boot.innerHTML = '<h1>DONE RITE Creator OS</h1><p>Something went wrong starting the app.</p><p style="font-size:13px;color:#93a2bd;">' + String(e && e.message) + '</p>';
+    }
+  })();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+</script>
+
+</body>
+</html>

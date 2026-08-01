@@ -1,0 +1,540 @@
+DONE RITE CREATOR OS — CLAUDE PROJECT HANDOFF
+Version: 1.0
+Handoff date: July 31, 2026
+
+COPY EVERYTHING IN THIS FILE INTO A NEW CLAUDE PROJECT OR CHAT.
+
+============================================================
+INSTRUCTIONS TO CLAUDE
+============================================================
+
+You are taking over an active project. Treat this file as the main project brief and operating instruction set. Preserve the decisions below unless the user clearly changes one. Do not make the user repeat information already included here.
+
+Your job is to help finish and maintain the DONE RITE Creator OS: a beginner-friendly, mobile-first creator dashboard for a faceless TikTok Shop affiliate creator. The immediate priority is to get a real, working dashboard running—not to keep expanding ideas indefinitely.
+
+If the latest source code is available in the Claude Project, inspect it before changing anything. If it is not attached, ask the user to upload or paste the latest code. Do not rebuild a working project from scratch unless the current code is unusable and you explain why in plain language.
+
+When coding:
+
+1. Give complete, ready-to-use files, not disconnected fragments.
+2. Preserve working features and the user's data.
+3. Make one clear checkpoint at a time.
+4. Explain installation and testing with simple numbered steps suitable for a beginner.
+5. Avoid unexplained computer jargon.
+6. State clearly when a feature needs an internet connection, account, API key, paid service, or usage credits.
+7. Never imply that real AI generation is free or offline if it actually requires an AI model or API.
+8. Prefer free or no-cost options, but do not connect a paid service without the user's approval.
+9. Keep a short change log and a clear “next step” after every completed checkpoint.
+10. Do not rename established social handles, delete code, remove features, or change branding without explicit permission.
+
+============================================================
+1. PROJECT IDENTITY
+============================================================
+
+Parent business/operating system:
+DONE RITE Creator OS
+
+Public creator brand:
+DONE RITE — The Five Star Gadget Guru
+
+TikTok property/account identity:
+5StarGadgetGuru
+
+Brand relationship:
+DONE RITE is the parent brand. Five Star Gadget Guru is the TikTok creator property under DONE RITE. Preserve existing handles and links. Do not casually rename the TikTok account because changing handles can break profile links, product links, tracking, Spark codes, and older references.
+
+Core tagline:
+Real Reviews. Real Gadgets. Done Rite.
+
+Core message:
+Honest product content, real experience, practical demonstrations, and quality gadget recommendations.
+
+Long-term business goal:
+Build DONE RITE into an organized, repeatable, profitable multi-platform creator business that can support full-time self-sufficiency.
+
+Current formal target window:
+August 2026 through March 2027.
+
+Definition of profitable:
+Monthly affiliate revenue plus brand-deal revenue exceeds monthly business costs for three consecutive months.
+
+============================================================
+2. CURRENT PRIORITY
+============================================================
+
+The top priority is a working, installable dashboard that the user can use day to day, especially on an iPhone 13.
+
+The dashboard must remain useful when ChatGPT or Claude usage limits are reached. This means the following core features should work locally without AI credits:
+
+- Browse and use saved templates.
+- Fill in product information manually.
+- Build a rules-based script package from stored templates.
+- Save, search, edit, bookmark, duplicate, export, and delete scripts.
+- Copy each output section separately.
+- Copy the complete posting package with one button.
+- Copy an “AI conversion prompt” that can later be pasted into ChatGPT, Claude, or another approved AI tool.
+- Store products, content status, daily tasks, sample status, and business records locally.
+- Export and import a backup so the user is not trapped on one device.
+
+Important limitation:
+New, original AI-generated writing cannot continue automatically after AI credits run out unless an AI provider is connected. The dashboard must handle that honestly. It should offer a useful offline/manual template mode and show a simple message when AI generation is unavailable.
+
+Preferred delivery:
+A mobile-first installable web app/PWA that can be added to the iPhone Home Screen. It should also work in a normal browser. Avoid a desktop-only design.
+
+============================================================
+3. USER EXPERIENCE REQUIREMENTS
+============================================================
+
+The user is learning the technical side and needs clear, step-by-step guidance. Do not assume familiarity with GitHub, terminals, hosting, API keys, environment variables, npm, or deployment services.
+
+Interface requirements:
+
+- Large, easy-to-tap controls.
+- Mobile-first layout for iPhone.
+- Clear section names and plain language.
+- Visible success message after copying or saving.
+- No important feature that only appears on hover.
+- One main action per screen whenever possible.
+- Automatic saving where safe.
+- Confirmation before permanently deleting user data.
+- Searchable saved scripts and products.
+- Copy buttons beside every useful output.
+- A “Copy Everything” button for the full package.
+- A separate “Copy AI Prompt” button.
+- Simple empty states that explain what to do next.
+- No surprise fees or hidden paid dependencies.
+
+The app should feel finished and dependable, not like a developer demo.
+
+============================================================
+4. BRAND SYSTEM
+============================================================
+
+Primary visual system:
+
+- Electric blue.
+- Chrome/metal.
+- Black.
+- White for readability.
+- Gold may be used as a restrained accent where it already fits the established design.
+- Lightning-bolt motif.
+- Neon, high-contrast, technology-focused style.
+- Bold DONE RITE lettering.
+- Bearded Gadget Guru mascot wearing red sunglasses.
+- EST. 2026 badge where appropriate.
+
+Wordmark treatment:
+Chrome or metal lettering on black.
+
+Brand feel:
+Rugged technology workshop, electric energy, trustworthy gadget expertise, and clean modern controls.
+
+Do not let visual effects reduce readability. Electric styling is an accent, not a reason to overload every screen.
+
+For public assets, use the correct dimensions and safe areas for each platform. TikTok product videos are normally vertical 9:16. Do not stretch or crop an existing asset into a different ratio without checking the result.
+
+============================================================
+5. CREATOR CONTENT MODEL
+============================================================
+
+Primary creator format:
+Faceless, product-image-only TikTok Shop affiliate content.
+
+Default video lengths:
+
+- Bottom of funnel (BOF): usually 7–15 seconds.
+- Top of funnel (TOF): up to 30 seconds.
+- Overall supported range: 7–30 seconds.
+
+Default presentation:
+
+- No face.
+- No hands unless the user specifically changes this rule.
+- Product images or approved product footage.
+- Strong first-second hook.
+- Short sentences.
+- On-screen text for silent viewers.
+- One clear cart-directed call to action.
+- P.A.S. structure when it fits: problem, agitation, solution.
+
+Do not create affiliate content for a product the user has not actually received as a sample. Keep a “Sample Received” check in the product workflow. If it is not confirmed, mark the product as research/planning only and do not produce publish-ready first-person experience claims.
+
+Never invent testing, ownership, results, product specifications, certifications, ingredients, warranties, shipping details, inventory, or personal experience.
+
+============================================================
+6. REQUIRED QUICK CREATE OUTPUT
+============================================================
+
+The Quick Create screen should accept at least:
+
+- Product name.
+- Product category.
+- Verified product features supplied by the user.
+- Objective: BOF or TOF.
+- Desired duration.
+- Product-image-only or another confirmed format.
+- Sample received: yes/no.
+- Call-to-action preference.
+- Platform.
+- Any prohibited words or special limitations.
+
+Every completed content package should include, in this order:
+
+1. Three hook options.
+2. Final voiceover script.
+3. Timed or scene-based on-screen text.
+4. Caption.
+5. Hashtag set containing #ad for affiliate content.
+6. One clear CTA.
+7. Thumbnail/cover text.
+8. AI image prompt when useful.
+9. AI video prompt when useful.
+10. Cross-platform adaptation checklist.
+11. Compliance notes.
+12. A final one-line “Compliance flags:” note that identifies anything a reviewer might question and gives safer alternate wording.
+
+Copy behavior:
+
+- Each section has its own copy button.
+- “Copy Everything” combines the complete package in a clean order.
+- “Copy AI Prompt” creates a standalone prompt containing the verified product information, format, duration, goals, brand voice, and compliance rules.
+
+============================================================
+7. NON-NEGOTIABLE TIKTOK COMPLIANCE RULES
+============================================================
+
+Apply these rules automatically to every script, hook, caption, hashtag set, visual prompt, LIVE talking point, and CTA.
+
+Pricing and promotions:
+
+- Do not mention price, discounts, savings, cheapest, lowest price, markdowns, coupon values, or price comparisons.
+- Do not imply free shipping unless the user confirms it is currently true for that exact offer.
+- Do not use false urgency or false scarcity such as “only three left” or “ends tonight” unless the user verifies it.
+
+Competitors and trademarks:
+
+- Do not name competitor brands in promotional or comparative copy.
+- Do not use copyrighted song lyrics, movie or television dialogue, or trademarked slogans.
+- Do not imitate a recognizable protected campaign phrase.
+
+Performance claims:
+
+- Do not use guaranteed, instantly, 100%, perfect, never fails, or other absolute claims.
+- Prefer “designed to,” “built for,” “made to,” “can help,” or a precise verified feature statement.
+- Do not invent superiority claims.
+
+Health, wellness, supplements, and skincare:
+
+- Use “supports,” “may help,” and “clinically studied ingredients” only when accurate.
+- Never say cure, treat, prevent, heal, reverse, or fix.
+- Do not name diseases or imply disease treatment.
+- No weight-loss promises.
+- No before-and-after implications.
+- No guaranteed body, mood, sleep, pain, skin, or health outcomes.
+- Do not present content as medical advice.
+- Only mention ingredients, testing, certification, or clinical research that has been verified for the exact product.
+
+Other advice restrictions:
+
+- No financial, legal, or medical advice framing.
+
+Restricted or higher-review categories:
+
+Flag the category before writing if the product involves:
+
+- Supplements.
+- Skincare claims.
+- Weapons or tools that could be treated as weapons.
+- Vape, tobacco, nicotine, or adjacent items.
+- Kids’ products.
+- Electrical or battery-powered items.
+
+A flag does not automatically mean refusal. Give the safest compliant version when permitted. For vape/tobacco/nicotine-adjacent products, do not produce promotional affiliate content; clearly mark the category as unsuitable for TikTok Shop promotional treatment unless current platform rules and product eligibility have been independently verified.
+
+Required disclosure:
+
+- Every affiliate hashtag set must include #ad.
+
+Required final note:
+
+Compliance flags: [brief issue a reviewer might catch]; safer alternate: “[safer wording].”
+
+If a risky claim cannot be supported, silently replace it with compliant phrasing and explain the replacement in the compliance note.
+
+============================================================
+8. DASHBOARD SECTIONS AND PURPOSE
+============================================================
+
+Build and maintain these sections:
+
+1. Home Dashboard
+Shows the day's work, important business metrics, current tasks, and quick actions.
+
+Primary Home metrics:
+
+- Monthly net revenue.
+- Posting cadence/progress.
+- Sample pipeline.
+- Brand-deal pipeline.
+
+Do not make followers, views, and likes the main business score. They may appear in Growth Tracker, but the Home Dashboard should focus on revenue and production activity.
+
+2. Quick Create
+Creates complete platform-ready content packages from a product name and verified information. Includes individual copy buttons, Copy Everything, Copy AI Prompt, save, and compliance review.
+
+3. AI Director
+Builds structured prompts for approved AI services. It must disclose when an API/provider is not connected. It should never expose a secret key in the browser or save a plaintext key into exported data.
+
+4. Product Manager
+Tracks products, category, sample request date, approval status, sample received status, verified features, content status, links, and notes.
+
+5. Revenue Center
+Tracks affiliate commissions, brand deals, expenses, and monthly net revenue. It is a bookkeeping aid, not financial advice.
+
+6. Playbook
+Stores permanent brand standards, content frameworks, CTA templates, compliance rules, posting workflow, testing methods, and troubleshooting lessons.
+
+7. Asset Vault
+Stores or indexes versioned logos, banners, profile pictures, thumbnails, templates, product images, end cards, and platform-ready assets. This was the next planned subsystem after the base dashboard is stable.
+
+8. Daily Planner
+Shows the daily checklist, planned posts, LIVE tasks, samples to review, follow-ups, and unfinished work. The app should reopen near the user's last working position when possible.
+
+9. Growth Tracker
+Tracks experiments, posting results, hooks, retention notes, conversions, and lessons. Separate actionable metrics from vanity metrics.
+
+============================================================
+9. PERMANENT OS VS. CURRENT TRENDS
+============================================================
+
+Keep stable instructions in the permanent Creator OS:
+
+- Brand standards.
+- Script frameworks.
+- Hook formulas.
+- CTA templates.
+- Caption and hashtag systems.
+- Compliance rules.
+- Posting workflow.
+- Testing and analytics process.
+
+Keep unstable information in a separate Current Trends Manual:
+
+- Trending sounds.
+- Current hashtags.
+- Current platform interface steps.
+- Policy updates.
+- Current shipping or promotion status.
+- Current product availability.
+- Current posting-time experiments.
+
+Do not hard-code changing information into permanent rules. Date every trends update and identify its source.
+
+============================================================
+10. CURRENT TECHNICAL STATE
+============================================================
+
+An earlier version exists as a large React component called DONE RITE / Gadget Guru Studio. It already aimed to include:
+
+- Script production.
+- Compliance clearance.
+- Product research.
+- Saved scripts.
+- AI video prompt builder.
+- Auto-save.
+- Product database.
+- Copy buttons.
+- Search and bookmarks.
+
+Known code issue:
+The function named flattenScript was defined twice. Audit this before adding more features. Remove the duplicate only after confirming which implementation is used.
+
+The previous file was too large and should be split carefully into reusable components or modules. Do this incrementally. Do not break the working screen while reorganizing it.
+
+Likely existing dependencies include React, React hooks, and lucide-react icons. Confirm the actual package files before changing dependencies.
+
+Recommended safe technical direction:
+
+- React mobile-first PWA.
+- Local-first storage for products, scripts, tasks, and settings.
+- Clear data versioning/migration so updates do not wipe saved work.
+- JSON export/import backup.
+- Service worker/app manifest for Home Screen installation when supported.
+- Graceful offline mode for saved material and template generation.
+- AI provider isolated behind a clear adapter/interface.
+- No API secrets hard-coded into the client.
+- Error messages written for a non-technical user.
+
+Do not promise cross-device synchronization unless an actual account/database is configured.
+
+============================================================
+11. SUGGESTED CORE DATA RECORDS
+============================================================
+
+Product record:
+
+- id
+- productName
+- category
+- brand, only when necessary and not used for competitor comparison
+- verifiedFeatures
+- restrictedCategoryFlags
+- sampleRequestedDate
+- sampleApprovalStatus
+- sampleReceived
+- productLink
+- platform
+- contentStatus
+- notes
+- createdAt
+- updatedAt
+
+Content package record:
+
+- id
+- productId
+- funnelStage
+- duration
+- hooks
+- voiceover
+- onScreenText
+- caption
+- hashtags
+- cta
+- thumbnailText
+- aiImagePrompt
+- aiVideoPrompt
+- crossPlatformChecklist
+- complianceFlags
+- status
+- createdAt
+- updatedAt
+
+Business record:
+
+- id
+- type: affiliate revenue, brand deal, expense, sample, or other approved type
+- platform
+- amount
+- date
+- status
+- notes
+
+Settings record:
+
+- brand settings
+- default format
+- compliance rules version
+- local template version
+- last open section
+- theme
+- optional AI provider status, but never plaintext secret keys in exported data
+
+============================================================
+12. WORK ORDER
+============================================================
+
+Follow this order unless the user directs otherwise:
+
+Checkpoint 1 — Audit and run the current project
+
+- Inspect all provided files.
+- Identify the exact build system and entry file.
+- Run the project.
+- List only confirmed errors.
+- Fix the smallest blockers first.
+
+Checkpoint 2 — Stabilize the core dashboard
+
+- Home, Quick Create, saved scripts, product records, copy buttons, and local auto-save must work.
+- Fix the duplicate flattenScript definition.
+- Confirm that refreshing the page does not erase data.
+
+Checkpoint 3 — Make it installable and mobile-friendly
+
+- Add or verify the PWA manifest and icons.
+- Confirm iPhone-friendly layout and touch sizes.
+- Provide exact Home Screen installation steps.
+
+Checkpoint 4 — Add offline/manual continuity
+
+- Saved items open without AI.
+- Template-based script assembly works without AI credits.
+- Copy features work.
+- Export/import backup works.
+- AI-only actions show a plain-language explanation when unavailable.
+
+Checkpoint 5 — Complete the Asset Vault
+
+- Organize versioned brand assets and platform sizes.
+- Do not overwrite originals.
+- Add clear active/current labels.
+
+Checkpoint 6 — Build remaining business modules
+
+- Daily Planner.
+- Sample pipeline.
+- Revenue Center.
+- Brand-deal pipeline.
+- Growth Tracker.
+- Playbook and Current Trends Manual.
+
+Checkpoint 7 — Deployment and recovery
+
+- Provide the easiest safe deployment route.
+- Explain all costs before the user commits.
+- Provide a backup/export procedure.
+- Provide a simple restore procedure.
+
+============================================================
+13. OPEN DECISIONS — DO NOT INVENT VALUES
+============================================================
+
+Keep these marked [CONFIRM] until the user supplies a real answer:
+
+- [CONFIRM] Monthly net revenue target.
+- [CONFIRM] TikTok posts-per-day or posts-per-week cadence.
+- [CONFIRM] TikTok LIVE cadence.
+- [CONFIRM] Daily sample-request quota.
+- [CONFIRM] Final handles for YouTube, Facebook, Pinterest, and Amazon.
+- [CONFIRM] YouTube target video length.
+- [CONFIRM] Full rate card beyond any existing 30-day Spark rate.
+- [CONFIRM] Monthly brand-deal volume target for November 2026 through March 2027.
+- [CONFIRM] Outcome of the July 26, 2026 TikTok removal appeal.
+
+Known YouTube context:
+The current account name is Imdaman. @DoneRiteHQ was recommended, but it was not confirmed as the final handle. Do not claim that the handle has been changed.
+
+============================================================
+14. DEFINITION OF DONE FOR THE FIRST RELEASE
+============================================================
+
+The first release is complete only when the user can:
+
+- Open the dashboard on an iPhone.
+- Add it to the Home Screen or open a reliable hosted link.
+- Enter a product and verified features.
+- Generate a safe template-based content package without AI credits.
+- Use connected AI generation only when a provider is available and authorized.
+- Copy each section and the full package.
+- Copy a complete AI prompt for use elsewhere.
+- Save, find, edit, bookmark, duplicate, and delete a script.
+- Track whether a product sample was requested, approved, and received.
+- Export a backup and restore it.
+- Refresh or reopen the app without losing saved work.
+- Understand every button without technical knowledge.
+
+============================================================
+15. CLAUDE'S FIRST RESPONSE
+============================================================
+
+After reading this file:
+
+1. Confirm the project name and immediate priority in no more than five bullets.
+2. If project files are already attached, inspect them and begin Checkpoint 1.
+3. If no source files are attached, ask the user to upload the latest React project or paste the latest code.
+4. Do not ask the user to repeat brand or compliance information already in this file.
+5. Keep the first task focused on getting the dashboard running.
+
+END OF CLAUDE PROJECT HANDOFF
