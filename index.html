@@ -17298,6 +17298,9 @@ const CSS = `
   .dr-button { width:100%; background:linear-gradient(135deg, ${COLORS.blue}, #0f4fa8); color:white; }
   .dr-button:disabled { opacity:.45; cursor:not-allowed; }
   .dr-copy { background:${COLORS.panel2}; color:${COLORS.blueGlow}; }
+  .dr-copy.is-copied, .dr-button.is-copied {
+    background:${COLORS.green}; color:#04140a; border-color:${COLORS.green};
+  }
   .dr-danger { background:transparent; color:${COLORS.red}; }
   .dr-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
   .dr-card { background:rgba(17,21,28,.96); border:1px solid ${COLORS.line}; border-radius:18px; padding:16px; }
@@ -17538,11 +17541,12 @@ function Field({ label, children, help }) {
         children,
         help ? React.createElement("div", { className: "dr-help", style: { marginTop: 6 } }, help) : null));
 }
-function OutputCard({ title, text, onCopy }) {
+function OutputCard({ title, text, onCopy, copiedKey }) {
+    const copied = copiedKey === title;
     return (React.createElement(Card, null,
         React.createElement("div", { className: "dr-output-head" },
             React.createElement("h3", null, title),
-            React.createElement("button", { className: "dr-copy", type: "button", onClick: () => onCopy(text, title) }, "Copy")),
+            React.createElement("button", { className: `dr-copy ${copied ? "is-copied" : ""}`, type: "button", onClick: () => onCopy(text, title) }, copied ? "Copied ✓" : "Copy")),
         React.createElement("div", { className: "dr-output" }, text)));
 }
 function DoneRiteCreatorOS() {
@@ -17558,6 +17562,7 @@ function DoneRiteCreatorOS() {
     const [search, setSearch] = useState("");
     const [checkText, setCheckText] = useState("");
     const [copyStatus, setCopyStatus] = useState("");
+    const [copiedKey, setCopiedKey] = useState("");
     const [importStatus, setImportStatus] = useState("");
     const [saveBlocked, setSaveBlocked] = useState("");
     const importRef = useRef(null);
@@ -17601,6 +17606,18 @@ function DoneRiteCreatorOS() {
         const timer = window.setTimeout(() => setCopyStatus(""), 3500);
         return () => window.clearTimeout(timer);
     }, [copyStatus]);
+    useEffect(() => {
+        if (!copiedKey)
+            return undefined;
+        const timer = window.setTimeout(() => setCopiedKey(""), 1800);
+        return () => window.clearTimeout(timer);
+    }, [copiedKey]);
+    // Auto-save: every generated or edited package is kept without pressing Save.
+    useEffect(() => {
+        if (!ready || !pkg)
+            return;
+        setSaved((current) => [pkg, ...current.filter((item) => item.id !== pkg.id)]);
+    }, [ready, pkg]);
     const complianceResults = useMemo(() => scanCompliance(checkText), [checkText]);
     const filteredSaved = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -17616,6 +17633,8 @@ function DoneRiteCreatorOS() {
     const notifyCopy = async (text, label) => {
         const ok = await copyText(text);
         setCopyStatus(ok ? `${label} copied.` : "Copy was blocked. Press and hold the text, then choose Select All and Copy.");
+        if (ok)
+            setCopiedKey(label);
     };
     const generate = () => {
         if (!form.productName.trim()) {
@@ -17764,6 +17783,22 @@ function DoneRiteCreatorOS() {
                     React.createElement("h2", null, "Quick Create"),
                     React.createElement("p", { className: "dr-help" }, "One product in, a complete compliant content package out. Enter only verified product information."),
                     React.createElement("div", { style: { height: 14 } }),
+                    products.length > 0 && (React.createElement(Field, { label: "Load a previous product", help: "Pick one to fill in the name, category and features you saved before." },
+                        React.createElement("select", { className: "dr-select", value: "", onChange: (event) => {
+                                const found = products.find((item) => item.id === event.target.value);
+                                if (!found)
+                                    return;
+                                setForm((current) => ({
+                                    ...current,
+                                    productName: found.productName,
+                                    category: found.category || current.category,
+                                    verifiedFeatures: found.verifiedFeatures || "",
+                                    sampleReceived: !!found.sampleReceived,
+                                }));
+                                setCopyStatus(`Loaded ${found.productName}.`);
+                            } },
+                            React.createElement("option", { value: "" }, "\u2014 New product \u2014"),
+                            products.map((item) => (React.createElement("option", { key: item.id, value: item.id }, item.productName)))))),
                     React.createElement(Field, { label: "Product name" },
                         React.createElement("input", { className: "dr-input", value: form.productName, onChange: (event) => setValue("productName", event.target.value), placeholder: "Example: rechargeable work light" })),
                     React.createElement(Field, { label: "Category" },
@@ -17803,10 +17838,10 @@ function DoneRiteCreatorOS() {
                                 pkg.form.duration,
                                 "s")),
                         React.createElement("div", { className: "dr-row" },
-                            React.createElement("button", { className: "dr-button", type: "button", onClick: () => notifyCopy(flattenScript(pkg), "Everything") }, "Copy Everything"),
-                            React.createElement("button", { className: "dr-copy", type: "button", onClick: () => notifyCopy(pkg.aiVideoPrompt, "AI prompt") }, "Copy AI Prompt"),
-                            React.createElement("button", { className: "dr-copy", type: "button", onClick: savePackage }, "Save Package"))),
-                    sections.map(([title, text]) => React.createElement(OutputCard, { key: title, title: title, text: text, onCopy: notifyCopy })))))),
+                            React.createElement("button", { className: `dr-button ${copiedKey === "Everything" ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(flattenScript(pkg), "Everything") }, copiedKey === "Everything" ? "Copied ✓" : "Copy Everything"),
+                            React.createElement("button", { className: `dr-copy ${copiedKey === "AI prompt" ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(pkg.aiVideoPrompt, "AI prompt") }, copiedKey === "AI prompt" ? "Copied ✓" : "Copy AI Prompt"),
+                            React.createElement("span", { className: "dr-pill" }, "Saved automatically"))),
+                    sections.map(([title, text]) => React.createElement(OutputCard, { key: title, title: title, text: text, onCopy: notifyCopy, copiedKey: copiedKey })))))),
             tab === "check" && (React.createElement(React.Fragment, null,
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Compliance Center"),
@@ -17857,7 +17892,7 @@ function DoneRiteCreatorOS() {
                             React.createElement("div", { className: "dr-item-title" }, item.productName),
                             React.createElement("div", { className: "dr-help" }, new Date(item.createdAt).toLocaleString())),
                         React.createElement("div", { className: "dr-row", style: { flex: "0 1 290px" } },
-                            React.createElement("button", { className: "dr-copy", type: "button", onClick: () => notifyCopy(flattenScript(item), item.productName) }, "Copy"),
+                            React.createElement("button", { className: `dr-copy ${copiedKey === item.productName ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(flattenScript(item), item.productName) }, copiedKey === item.productName ? "Copied ✓" : "Copy"),
                             React.createElement("button", { className: "dr-copy", type: "button", onClick: () => duplicatePackage(item) }, "Duplicate"),
                             React.createElement("button", { className: "dr-danger", type: "button", onClick: () => deleteSaved(item.id) }, "Delete")))))))),
             tab === "money" && (React.createElement(React.Fragment, null,
