@@ -17256,6 +17256,7 @@ const EMPTY_FORM = {
     duration: "15",
     platform: "TikTok Shop",
     sampleReceived: false,
+    acquisition: "none",
     batteryPowered: false,
 };
 const EMPTY_MONEY = {
@@ -17308,6 +17309,13 @@ const CSS = `
     transition: background-color .08s ease, color .08s ease, border-color .08s ease, transform .08s ease;
   }
   .dr-pressed { transform: scale(.97); }
+  .dr-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .dr-chip {
+    min-height:36px; padding:8px 12px; border-radius:999px; font:inherit; font-size:13px; font-weight:800;
+    background:${COLORS.panel2}; color:${COLORS.chrome}; border:1px solid ${COLORS.line}; cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .dr-chip.dr-pressed { background:${COLORS.green}; color:#04140a; border-color:${COLORS.green}; }
   .dr-button.dr-pressed {
     background:${COLORS.amber}; color:#1a1000; border-color:#ffd166;
   }
@@ -17413,8 +17421,23 @@ function scanCompliance(text, form = {}) {
     if (/\b(only \d+ left|ends tonight|last chance)\b/i.test(source)) {
         add("scarcity", "block", "Scarcity or deadline language detected.", "Remove it unless the exact claim is verified as current.");
     }
-    if (form.sampleReceived === false) {
-        add("sample", "review", "Sample Received is not confirmed.", "Keep this as a planning draft and avoid first-person experience claims.");
+    if (/\b(life[- ]changing|miracle|magic|effortless|no effort|overnight|transform your life|works every time|will fix|solves everything|game changer)\b/i.test(source)) {
+        add("unrealistic", "block", "Unrealistic expectation language detected.", "Describe one verified thing the product is designed to do instead of promising a transformation.");
+    }
+    if (/\b(as seen on|official partner|endorsed by|certified by|FDA[- ]approved|patented|award[- ]winning)\b/i.test(source)) {
+        add("authority", "review", "Endorsement, certification, or award claim detected.", "Remove it unless you can verify the exact claim for this exact product.");
+    }
+    if (/\b(lyrics|song by|soundtrack|movie clip|trademark|™|®)\b/i.test(source)) {
+        add("ip", "review", "Possible third-party or trademarked content referenced.", "Use only sounds, footage, and wording you have the right to use.");
+    }
+    if (form.acquisition === "sample") {
+        add("sample-disclosure", "review", "Free seller sample — disclosure is required.", "Keep #ad in the hashtags and say the product was provided when the platform asks.");
+    }
+    else if (form.acquisition === "purchased") {
+        add("purchased-disclosure", "review", "Bought with your own money — you can speak from real use.", "Affiliate commission still requires #ad in the hashtags.");
+    }
+    else {
+        add("not-in-hand", "review", "Product is not in your hands yet.", "This stays a planning draft. Avoid first-person experience claims until you have the product.");
     }
     if (/Wellness|Supplement|Oral|Dental|Skincare|Body-Applied|Kids|Tools/i.test(form.category || "")) {
         add("category", "review", `${form.category} requires additional review.`, "Use only verified product facts and the safest category-specific wording.");
@@ -17468,7 +17491,8 @@ function makePackage(form) {
     const product = form.productName.trim();
     const cleaned = safeFeatureText(form.verifiedFeatures);
     const feature = cleaned.split(/[\n.;]/).map((part) => part.trim()).filter(Boolean)[0] || "support a simpler everyday routine";
-    const planning = !form.sampleReceived;
+    const inHand = form.acquisition === "sample" || form.acquisition === "purchased";
+    const planning = !inHand;
     const issues = scanCompliance(`${form.productName}\n${form.verifiedFeatures}`, form);
     const changed = safeFeatureText(form.verifiedFeatures) !== form.verifiedFeatures.trim();
     if (changed) {
@@ -17526,7 +17550,7 @@ function makePackage(form) {
         crossPlatform,
         complianceNote,
         issues,
-        publishReady: form.sampleReceived && !issues.some((item) => item.severity === "block"),
+        publishReady: inHand && !issues.some((item) => item.severity === "block"),
     };
 }
 function copyFallback(text) {
@@ -17602,6 +17626,121 @@ function makeClicker() {
         }
     };
 }
+/* Reads a video's shape on this device. The file is never uploaded anywhere. */
+function analyzeVideo(file) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.muted = true;
+        video.playsInline = true;
+        video.src = url;
+        const fail = (message) => { URL.revokeObjectURL(url); reject(new Error(message)); };
+        video.onerror = () => fail("This file could not be read as a video on this device.");
+        video.onloadedmetadata = async () => {
+            const width = video.videoWidth;
+            const height = video.videoHeight;
+            const duration = video.duration;
+            if (!width || !height || !isFinite(duration))
+                return fail("This video's details could not be read.");
+            // Sample frames across the clip and measure how much the picture changes.
+            const canvas = document.createElement("canvas");
+            canvas.width = 64;
+            canvas.height = Math.max(1, Math.round((64 * height) / width));
+            const ctx2d = canvas.getContext("2d", { willReadFrequently: true });
+            const seekTo = (time) => new Promise((done) => {
+                const handler = () => { video.removeEventListener("seeked", handler); done(); };
+                video.addEventListener("seeked", handler);
+                video.currentTime = Math.min(time, Math.max(0, duration - 0.05));
+            });
+            const samples = [];
+            const shots = 8;
+            try {
+                for (let i = 0; i < shots; i += 1) {
+                    await seekTo((duration * i) / (shots - 1 || 1));
+                    ctx2d.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    samples.push(ctx2d.getImageData(0, 0, canvas.width, canvas.height).data);
+                }
+            }
+            catch {
+                /* Some browsers refuse frame reads; fall back to shape-only results. */
+            }
+            let motion = 0;
+            let compared = 0;
+            for (let i = 1; i < samples.length; i += 1) {
+                const a = samples[i - 1];
+                const b = samples[i];
+                let total = 0;
+                for (let p = 0; p < a.length; p += 4) {
+                    total += Math.abs(a[p] - b[p]) + Math.abs(a[p + 1] - b[p + 1]) + Math.abs(a[p + 2] - b[p + 2]);
+                }
+                motion += total / (a.length / 4) / 3;
+                compared += 1;
+            }
+            const motionScore = compared ? motion / compared : null;
+            URL.revokeObjectURL(url);
+            resolve({
+                name: file.name,
+                sizeMb: file.size / (1024 * 1024),
+                width,
+                height,
+                duration,
+                ratio: width / height,
+                motionScore,
+                framesRead: samples.length,
+            });
+        };
+    });
+}
+/* Turns the measurements into plain-language flags. */
+function videoFlags(info, mode) {
+    const flags = [];
+    const add = (severity, label, safer) => flags.push({ severity, label, safer });
+    const limit = mode === "BOF" ? 15 : 30;
+    if (info.duration > limit) {
+        add("block", `${info.duration.toFixed(1)}s is longer than the ${limit}s ${mode} target.`, `Trim to ${limit} seconds or switch this to ${mode === "BOF" ? "TOF" : "BOF"}.`);
+    }
+    else if (info.duration < 5) {
+        add("review", `${info.duration.toFixed(1)}s is very short.`, "Under five seconds rarely leaves room for a hook and a call to action.");
+    }
+    const target = 9 / 16;
+    if (Math.abs(info.ratio - target) > 0.02) {
+        const shape = info.ratio > 1 ? "landscape" : "not 9:16";
+        add("block", `Frame is ${info.width}×${info.height} (${shape}).`, "Export at 1080×1920 so nothing is cropped on TikTok.");
+    }
+    if (info.width < 720) {
+        add("review", `Width is only ${info.width} pixels.`, "Export at 1080 wide or better.");
+    }
+    if (info.motionScore !== null) {
+        if (info.motionScore < 2.5) {
+            add("ok", "Still-image content confirmed — the picture barely changes.", "This matches your product-image-only, no-face, no-hands format.");
+        }
+        else if (info.motionScore < 8) {
+            add("review", "Slight movement detected between frames.", "Check whether a hand, reflection, or face appears anywhere in the clip.");
+        }
+        else {
+            add("review", "Substantial movement detected — this is not a still-image video.", "Your default format is product-image-only. Confirm this was intentional.");
+        }
+    }
+    return flags;
+}
+/* Common feature wordings, grouped by category. These are prompts, not facts —
+   nothing here is true of a product until you have looked at the product and
+   confirmed it. Deliberately plain: no performance, health, or quality claims. */
+const FEATURE_LIBRARY = {
+    "Electronics & Gadgets": ["USB-C charging", "Rechargeable battery", "Cordless", "Foldable design", "Built-in LED indicator", "Magnetic base", "Multiple brightness settings", "Carrying case included"],
+    Kitchen: ["Dishwasher safe", "Stainless steel body", "Non-stick surface", "Stackable", "Cordless", "Removable lid", "Measurement markings", "Fits standard cabinets"],
+    Home: ["Adhesive backing", "No tools needed to set up", "Foldable for storage", "Machine washable cover", "Non-slip base", "Comes in multiple sizes"],
+    Outdoor: ["Water-resistant housing", "Foldable", "Carrying strap included", "Stake or clip mount", "Rechargeable battery", "Packs into its own bag"],
+    Apparel: ["Machine washable", "Has pockets", "Adjustable strap", "Available in multiple sizes", "Zip closure", "Lined interior"],
+    "Wellness & Supplements": ["Capsule form", "Powder form", "Unflavored", "One scoop per serving", "Resealable container", "Travel size available"],
+    "Oral & Dental": ["Rechargeable handle", "Replaceable heads", "Travel case included", "Two-minute timer", "Soft bristles"],
+    Skincare: ["Unscented", "Pump dispenser", "Travel size", "Resealable jar", "Comes with an applicator"],
+    "Body-Applied Products": ["Adjustable strap", "Machine washable cover", "Rechargeable", "Multiple size options", "Carrying pouch included"],
+    "Kids' Products": ["Machine washable", "No small detachable parts", "Age range printed on the box", "Folds flat for storage", "Batteries included"],
+    Tools: ["Cordless", "Magnetic tip", "Carrying case included", "Belt clip", "Rechargeable battery", "Multiple bit sizes included"],
+    Lifestyle: ["Folds flat", "Carrying case included", "Rechargeable", "Adjustable strap", "Available in multiple colors"],
+};
 function Card({ children, className = "" }) {
     return React.createElement("section", { className: `dr-card ${className}` }, children);
 }
@@ -17634,6 +17773,18 @@ function DoneRiteCreatorOS() {
     const [copyStatus, setCopyStatus] = useState("");
     const [copiedKey, setCopiedKey] = useState("");
     const [clickSound, setClickSound] = useState(true);
+    const [videoInfo, setVideoInfo] = useState(null);
+    const [videoMode, setVideoMode] = useState("BOF");
+    const [videoBusy, setVideoBusy] = useState(false);
+    const [videoError, setVideoError] = useState("");
+    const [videoText, setVideoText] = useState("");
+    const [videoDecl, setVideoDecl] = useState({ ownFootage: false, ownAudio: false, noLogos: false, sampleInHand: false });
+    const videoRef = useRef(null);
+    const [aiDraft, setAiDraft] = useState("");
+    const [aiProduct, setAiProduct] = useState("");
+    const [needsName, setNeedsName] = useState(false);
+    const nameRef = useRef(null);
+    const resultsRef = useRef(null);
     const clickerRef = useRef(null);
     // One listener covers every button in the app, including any added later.
     useEffect(() => {
@@ -17708,7 +17859,108 @@ function DoneRiteCreatorOS() {
             return;
         setSaved((current) => [pkg, ...current.filter((item) => item.id !== pkg.id)]);
     }, [ready, pkg]);
+    // Anything you've ever typed a product name into counts as history —
+    // saved product records first, then every package generated in Quick Create.
+    const productHistory = useMemo(() => {
+        const list = [];
+        const seen = new Set();
+        const push = (name, source) => {
+            const clean = String(name || "").trim();
+            if (!clean)
+                return;
+            const key = clean.toLowerCase();
+            if (seen.has(key))
+                return;
+            seen.add(key);
+            list.push({ key, name: clean, source });
+        };
+        products.forEach((item) => push(item.productName, item));
+        saved.forEach((item) => push(item.productName, item));
+        return list;
+    }, [products, saved]);
+    const featureHistory = useMemo(() => {
+        const seen = new Set();
+        const out = [];
+        products.forEach((item) => String(item.verifiedFeatures || "").split(/\n/).forEach((line) => {
+            const clean = line.trim();
+            if (!clean || seen.has(clean.toLowerCase()))
+                return;
+            seen.add(clean.toLowerCase());
+            out.push(clean);
+        }));
+        return out.slice(0, 12);
+    }, [products]);
+    const addFeature = (text) => {
+        setForm((current) => {
+            const lines = String(current.verifiedFeatures || "").split(/\n/).map((l) => l.trim()).filter(Boolean);
+            if (lines.some((l) => l.toLowerCase() === text.toLowerCase()))
+                return current;
+            return { ...current, verifiedFeatures: [...lines, text].join("\n") };
+        });
+    };
     const complianceResults = useMemo(() => scanCompliance(checkText), [checkText]);
+    const videoTextResults = useMemo(() => scanCompliance(videoText), [videoText]);
+    const videoShapeFlags = useMemo(() => (videoInfo ? videoFlags(videoInfo, videoMode) : []), [videoInfo, videoMode]);
+    const aiResults = useMemo(() => scanCompliance(aiDraft), [aiDraft]);
+    const pickVideo = async (file) => {
+        if (!file)
+            return;
+        setVideoBusy(true);
+        setVideoError("");
+        setVideoInfo(null);
+        try {
+            setVideoInfo(await analyzeVideo(file));
+        }
+        catch (error) {
+            setVideoError(error.message || "This video could not be read.");
+        }
+        setVideoBusy(false);
+    };
+    const videoReport = () => {
+        if (!videoInfo)
+            return "";
+        const decl = [
+            `Footage is mine or licensed: ${videoDecl.ownFootage ? "yes" : "NOT CONFIRMED"}`,
+            `Audio/music is cleared: ${videoDecl.ownAudio ? "yes" : "NOT CONFIRMED"}`,
+            `No competitor logos or brands in frame: ${videoDecl.noLogos ? "yes" : "NOT CONFIRMED"}`,
+            `Product in hand (sample or purchased): ${videoDecl.sampleInHand ? "yes" : "NOT CONFIRMED"}`,
+        ];
+        const lines = [
+            `DONE RITE VIDEO CHECK — ${videoInfo.name}`,
+            "",
+            `Mode: ${videoMode} · ${videoInfo.duration.toFixed(1)}s · ${videoInfo.width}×${videoInfo.height} · ${videoInfo.sizeMb.toFixed(1)} MB`,
+            "",
+            "VIDEO FLAGS",
+            ...(videoShapeFlags.length ? videoShapeFlags.map((f) => `${f.severity.toUpperCase()}: ${f.label} → ${f.safer}`) : ["None."]),
+            "",
+            "TEXT FLAGS",
+            ...(videoTextResults.length ? videoTextResults.map((f) => `${f.severity.toUpperCase()}: ${f.label} → ${f.safer}`) : ["None."]),
+            "",
+            "DECLARATIONS",
+            ...decl,
+        ];
+        return lines.join("\n");
+    };
+    const aiPrompt = () => {
+        const product = aiProduct.trim() || "the product";
+        return [
+            `Write a TikTok Shop affiliate script for ${product}.`,
+            "",
+            "Rules that cannot be broken:",
+            "- No prices, discounts, savings, coupons, or price comparisons.",
+            "- No guaranteed, instantly, 100%, perfect, or never fails.",
+            "- No cure, treat, prevent, heal, reverse, or weight-loss claims.",
+            "- No competitor brand names, lyrics, or movie or TV dialogue.",
+            "- No before-and-after implications and no income claims.",
+            "- Use designed to, built for, made to, or can help.",
+            "- Include #ad in the hashtags.",
+            "",
+            "Format: 3 hooks, a 7-15 second voiceover, on-screen text, caption, hashtags, and one cart-directed call to action.",
+            "Product-image-only, no face, no hands, 9:16.",
+            "",
+            "Only use features I have verified. Do not invent specifications, ingredients, certifications, or test results.",
+        ].join("\n");
+    };
     const filteredSaved = useMemo(() => {
         const q = search.trim().toLowerCase();
         if (!q)
@@ -17718,7 +17970,7 @@ function DoneRiteCreatorOS() {
     const revenue = moneyRows.filter((row) => row.type !== "Expense").reduce((sum, row) => sum + Number(row.amount || 0), 0);
     const expenses = moneyRows.filter((row) => row.type === "Expense").reduce((sum, row) => sum + Number(row.amount || 0), 0);
     const completedTasks = tasks.filter((task) => task.done).length;
-    const sampleCount = products.filter((product) => product.sampleReceived).length;
+    const sampleCount = products.filter((product) => product.acquisition === "sample" || product.acquisition === "purchased" || product.sampleReceived).length;
     const setValue = (key, value) => setForm((current) => ({ ...current, [key]: value }));
     const notifyCopy = async (text, label) => {
         const ok = await copyText(text);
@@ -17728,11 +17980,15 @@ function DoneRiteCreatorOS() {
     };
     const generate = () => {
         if (!form.productName.trim()) {
+            setNeedsName(true);
             setCopyStatus("Enter the product name first.");
+            window.setTimeout(() => { var _a; return (_a = nameRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 0);
             return;
         }
+        setNeedsName(false);
         const next = makePackage(form);
         setPkg(next);
+        window.setTimeout(() => { var _a; return (_a = resultsRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60);
         setProducts((current) => {
             const existing = current.find((item) => item.productName.toLowerCase() === form.productName.trim().toLowerCase());
             const record = {
@@ -17740,8 +17996,9 @@ function DoneRiteCreatorOS() {
                 productName: form.productName.trim(),
                 category: form.category,
                 verifiedFeatures: safeFeatureText(form.verifiedFeatures),
-                sampleReceived: form.sampleReceived,
-                status: form.sampleReceived ? "Ready to create" : "Waiting for sample",
+                sampleReceived: form.acquisition === "sample",
+                acquisition: form.acquisition,
+                status: form.acquisition === "none" ? "Waiting for product" : "Ready to create",
                 updatedAt: new Date().toISOString(),
             };
             return [record, ...current.filter((item) => item.id !== (existing === null || existing === void 0 ? void 0 : existing.id))];
@@ -17821,6 +18078,8 @@ function DoneRiteCreatorOS() {
         ["home", "Home"],
         ["create", "Quick Create"],
         ["check", "Compliance"],
+        ["video", "Video Check"],
+        ["ai", "AI Studio"],
         ["products", "Products"],
         ["saved", "Saved"],
         ["money", "Money"],
@@ -17873,28 +18132,42 @@ function DoneRiteCreatorOS() {
                     React.createElement("h2", null, "Quick Create"),
                     React.createElement("p", { className: "dr-help" }, "One product in, a complete compliant content package out. Enter only verified product information."),
                     React.createElement("div", { style: { height: 14 } }),
-                    products.length > 0 && (React.createElement(Field, { label: "Load a previous product", help: "Pick one to fill in the name, category and features you saved before." },
+                    productHistory.length > 0 && (React.createElement(Field, { label: "Load a previous product", help: `${productHistory.length} product${productHistory.length === 1 ? "" : "s"} you have worked on before.` },
                         React.createElement("select", { className: "dr-select", value: "", onChange: (event) => {
-                                const found = products.find((item) => item.id === event.target.value);
-                                if (!found)
+                                const entry = productHistory.find((item) => item.key === event.target.value);
+                                if (!entry)
                                     return;
+                                const found = entry.source;
                                 setForm((current) => ({
                                     ...current,
-                                    productName: found.productName,
+                                    productName: entry.name,
                                     category: found.category || current.category,
-                                    verifiedFeatures: found.verifiedFeatures || "",
-                                    sampleReceived: !!found.sampleReceived,
+                                    verifiedFeatures: found.verifiedFeatures || current.verifiedFeatures,
+                                    acquisition: found.acquisition || (found.sampleReceived ? "sample" : current.acquisition),
                                 }));
-                                setCopyStatus(`Loaded ${found.productName}.`);
+                                setCopyStatus(`Loaded ${entry.name}.`);
                             } },
-                            React.createElement("option", { value: "" }, "\u2014 New product \u2014"),
-                            products.map((item) => (React.createElement("option", { key: item.id, value: item.id }, item.productName)))))),
+                            React.createElement("option", { value: "" }, "New product"),
+                            productHistory.map((item) => (React.createElement("option", { key: item.key, value: item.key }, item.name)))))),
                     React.createElement(Field, { label: "Product name" },
-                        React.createElement("input", { className: "dr-input", value: form.productName, onChange: (event) => setValue("productName", event.target.value), placeholder: "Example: rechargeable work light" })),
+                        React.createElement("input", { ref: nameRef, className: "dr-input", style: needsName ? { borderColor: COLORS.red } : undefined, value: form.productName, onChange: (event) => { setValue("productName", event.target.value); if (event.target.value.trim())
+                                setNeedsName(false); }, placeholder: "Example: rechargeable work light" })),
+                    needsName && (React.createElement("div", { className: "dr-savewarn", role: "alert" },
+                        React.createElement("strong", null, "Nothing was generated."),
+                        React.createElement("span", null, "Type the product name in the box above, then press Generate Content Package again."))),
                     React.createElement(Field, { label: "Category" },
                         React.createElement("select", { className: "dr-select", value: form.category, onChange: (event) => setValue("category", event.target.value) }, CATEGORIES.map((category) => React.createElement("option", { key: category }, category)))),
                     React.createElement(Field, { label: "Verified features", help: "Do not paste seller hype, prices, discounts, unsupported specifications, or medical claims." },
                         React.createElement("textarea", { className: "dr-textarea", value: form.verifiedFeatures, onChange: (event) => setValue("verifiedFeatures", event.target.value), placeholder: "One verified feature per line" })),
+                    React.createElement("p", { className: "dr-help", style: { marginTop: 4 } }, "Tap to add. Only add what you have actually confirmed on the product \u2014 these are wordings, not facts."),
+                    React.createElement("div", { className: "dr-chips" }, (FEATURE_LIBRARY[form.category] || []).map((text) => (React.createElement("button", { className: "dr-chip", type: "button", key: text, onClick: () => addFeature(text) },
+                        "+ ",
+                        text)))),
+                    featureHistory.length > 0 && (React.createElement(React.Fragment, null,
+                        React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "Features you have used before"),
+                        React.createElement("div", { className: "dr-chips" }, featureHistory.map((text) => (React.createElement("button", { className: "dr-chip", type: "button", key: text, onClick: () => addFeature(text) },
+                            "+ ",
+                            text)))))),
                     React.createElement("div", { className: "dr-row" },
                         React.createElement(Field, { label: "Funnel" },
                             React.createElement("select", { className: "dr-select", value: form.funnel, onChange: (event) => setValue("funnel", event.target.value) },
@@ -17908,15 +18181,18 @@ function DoneRiteCreatorOS() {
                                 React.createElement("option", null, "20"),
                                 React.createElement("option", null, "30")))),
                     React.createElement("div", { className: "dr-field" },
-                        React.createElement("label", { className: "dr-check" },
-                            React.createElement("input", { type: "checkbox", checked: form.sampleReceived, onChange: (event) => setValue("sampleReceived", event.target.checked) }),
-                            React.createElement("span", null, "I have received this sample. If unchecked, the output stays a planning draft."))),
+                        React.createElement(Field, { label: "How did you get this product?", help: "Anything other than \u201Cnot in hand yet\u201D lets the script speak from real use." },
+                            React.createElement("select", { className: "dr-select", value: form.acquisition, onChange: (event) => setValue("acquisition", event.target.value) },
+                                React.createElement("option", { value: "none" }, "Not in my hands yet \u2014 planning draft only"),
+                                React.createElement("option", { value: "sample" }, "Free sample from the seller"),
+                                React.createElement("option", { value: "purchased" }, "I bought it myself")))),
                     React.createElement("div", { className: "dr-field" },
                         React.createElement("label", { className: "dr-check" },
                             React.createElement("input", { type: "checkbox", checked: form.batteryPowered, onChange: (event) => setValue("batteryPowered", event.target.checked) }),
                             React.createElement("span", null, "This product is electrical or battery-powered."))),
                     React.createElement("button", { className: "dr-button", type: "button", onClick: generate }, "Generate Content Package")),
                 pkg && (React.createElement(React.Fragment, null,
+                    React.createElement("div", { ref: resultsRef }),
                     React.createElement(Card, { className: pkg.publishReady ? "dr-clear" : "dr-flag" },
                         React.createElement("div", { className: "dr-output-head" },
                             React.createElement("div", null,
@@ -17946,6 +18222,104 @@ function DoneRiteCreatorOS() {
                     React.createElement("p", { className: "dr-help" },
                         "Safer alternate: ",
                         issue.safer)))))),
+            tab === "video" && (React.createElement(React.Fragment, null,
+                React.createElement(Card, null,
+                    React.createElement("h2", null, "Video Check"),
+                    React.createElement("p", { className: "dr-help" }, "Your video stays on this phone. Nothing is uploaded and nothing leaves the device."),
+                    React.createElement(Field, { label: "Video type" },
+                        React.createElement("select", { className: "dr-select", value: videoMode, onChange: (event) => setVideoMode(event.target.value) },
+                            React.createElement("option", { value: "BOF" }, "BOF \u2014 7 to 15 seconds"),
+                            React.createElement("option", { value: "TOF" }, "TOF \u2014 up to 30 seconds"))),
+                    React.createElement("div", { className: "dr-row", style: { marginTop: 12 } },
+                        React.createElement("button", { className: "dr-button", type: "button", onClick: () => { var _a; return (_a = videoRef.current) === null || _a === void 0 ? void 0 : _a.click(); } }, videoBusy ? "Reading video…" : "Choose a video")),
+                    React.createElement("input", { ref: videoRef, type: "file", accept: "video/*", hidden: true, onChange: (event) => { var _a; return pickVideo((_a = event.target.files) === null || _a === void 0 ? void 0 : _a[0]); } }),
+                    videoError && React.createElement("p", { className: "dr-help", style: { color: COLORS.red } }, videoError)),
+                videoInfo && (React.createElement(Card, null,
+                    React.createElement("h3", null, videoInfo.name),
+                    React.createElement("div", { className: "dr-output", style: { marginTop: 10 } },
+                        videoInfo.duration.toFixed(1),
+                        " seconds \u00B7 ",
+                        videoInfo.width,
+                        "\u00D7",
+                        videoInfo.height,
+                        " \u00B7 ",
+                        videoInfo.sizeMb.toFixed(1),
+                        " MB"),
+                    React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
+                        videoShapeFlags.length === 0 && React.createElement("p", { className: "dr-help" }, "Nothing flagged on the video itself."),
+                        videoShapeFlags.map((flag, index) => (React.createElement("div", { className: "dr-item", key: index },
+                            React.createElement("div", { className: "dr-item-main" },
+                                React.createElement("div", { className: "dr-item-title", style: { color: flag.severity === "block" ? COLORS.red : flag.severity === "ok" ? COLORS.green : COLORS.amber } }, flag.label),
+                                React.createElement("div", { className: "dr-help" }, flag.safer)))))))),
+                React.createElement(Card, null,
+                    React.createElement("h3", null, "Words in and around the video"),
+                    React.createElement("p", { className: "dr-help" }, "Paste your caption, on-screen text, and voiceover. Most takedowns come from wording, not footage."),
+                    React.createElement("textarea", { className: "dr-textarea", rows: 5, value: videoText, onChange: (event) => setVideoText(event.target.value), placeholder: "Paste caption, on-screen text, and voiceover here" }),
+                    React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
+                        videoText.trim() === "" && React.createElement("p", { className: "dr-help" }, "Nothing to check yet."),
+                        videoText.trim() !== "" && videoTextResults.length === 0 && React.createElement("p", { className: "dr-help", style: { color: COLORS.green } }, "No banned wording found."),
+                        videoTextResults.map((issue) => (React.createElement("div", { className: "dr-item", key: issue.id },
+                            React.createElement("div", { className: "dr-item-main" },
+                                React.createElement("div", { className: "dr-item-title", style: { color: issue.severity === "block" ? COLORS.red : COLORS.amber } }, issue.label),
+                                React.createElement("div", { className: "dr-help" },
+                                    "Safer: ",
+                                    issue.safer))))))),
+                React.createElement(Card, null,
+                    React.createElement("h3", null, "Before you publish"),
+                    React.createElement("p", { className: "dr-help" }, "Copyright and ownership cannot be measured automatically. Confirm each one yourself."),
+                    [
+                        ["ownFootage", "The footage and product images are mine or licensed to me"],
+                        ["ownAudio", "Any music or audio is cleared, or I used TikTok's own library"],
+                        ["noLogos", "No competitor brands, logos, or packaging appear in frame"],
+                        ["sampleInHand", "I have this product in hand — sample or bought myself — so first-person claims are honest"],
+                    ].map(([key, label]) => (React.createElement("label", { className: "dr-check", key: key },
+                        React.createElement("input", { type: "checkbox", checked: videoDecl[key], onChange: (event) => setVideoDecl({ ...videoDecl, [key]: event.target.checked }) }),
+                        React.createElement("span", null, label)))),
+                    videoInfo && (React.createElement("div", { className: "dr-row", style: { marginTop: 14 } },
+                        React.createElement("button", { className: `dr-button ${copiedKey === "Video report" ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(videoReport(), "Video report") }, copiedKey === "Video report" ? "Copied ✓" : "Copy Full Report")))))),
+            tab === "ai" && (React.createElement(React.Fragment, null,
+                React.createElement(Card, null,
+                    React.createElement("h2", null, "AI Studio"),
+                    React.createElement("p", { className: "dr-help" }, "This dashboard writes rule-based packages on its own. Original AI writing needs a connected AI service, which this app does not have. Build a prompt here, run it in ChatGPT or Claude, then paste the result back for checking."),
+                    React.createElement(Field, { label: "Product name" },
+                        React.createElement("input", { className: "dr-input", value: aiProduct, onChange: (event) => setAiProduct(event.target.value), placeholder: "e.g. rechargeable work light" })),
+                    React.createElement("div", { className: "dr-row", style: { marginTop: 12 } },
+                        React.createElement("button", { className: `dr-button ${copiedKey === "AI Studio prompt" ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(aiPrompt(), "AI Studio prompt") }, copiedKey === "AI Studio prompt" ? "Copied ✓" : "Copy Prompt for ChatGPT or Claude")),
+                    React.createElement("div", { className: "dr-output", style: { marginTop: 12 } }, aiPrompt())),
+                React.createElement(Card, null,
+                    React.createElement("h3", null, "Paste the AI script back here"),
+                    React.createElement("p", { className: "dr-help" }, "Anything AI writes still has to pass your rules before it goes out."),
+                    React.createElement("textarea", { className: "dr-textarea", rows: 8, value: aiDraft, onChange: (event) => setAiDraft(event.target.value), placeholder: "Paste the script the AI wrote" }),
+                    React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
+                        aiDraft.trim() === "" && React.createElement("p", { className: "dr-help" }, "Nothing pasted yet."),
+                        aiDraft.trim() !== "" && aiResults.length === 0 && React.createElement("p", { className: "dr-help", style: { color: COLORS.green } }, "Clean. No banned wording found."),
+                        aiResults.map((issue) => (React.createElement("div", { className: "dr-item", key: issue.id },
+                            React.createElement("div", { className: "dr-item-main" },
+                                React.createElement("div", { className: "dr-item-title", style: { color: issue.severity === "block" ? COLORS.red : COLORS.amber } }, issue.label),
+                                React.createElement("div", { className: "dr-help" },
+                                    "Safer: ",
+                                    issue.safer)))))),
+                    aiDraft.trim() !== "" && (React.createElement("div", { className: "dr-row", style: { marginTop: 14 } },
+                        React.createElement("button", { className: "dr-copy", type: "button", onClick: () => {
+                                const now = new Date().toISOString();
+                                setSaved((current) => [{
+                                        id: `ai-${Date.now()}`,
+                                        productName: aiProduct.trim() || "AI script",
+                                        createdAt: now,
+                                        hooks: [],
+                                        voiceover: aiDraft,
+                                        onScreenText: "",
+                                        caption: "",
+                                        hashtags: "",
+                                        cta: "",
+                                        thumbnailText: "",
+                                        aiImagePrompt: "",
+                                        aiVideoPrompt: "",
+                                        checklist: "",
+                                        complianceNote: aiResults.map((issue) => `${issue.label} Safer: ${issue.safer}`).join(" "),
+                                    }, ...current]);
+                                setCopyStatus("AI script saved.");
+                            } }, "Save to Saved Creations")))))),
             tab === "products" && (React.createElement(Card, null,
                 React.createElement("div", { className: "dr-output-head" },
                     React.createElement("div", null,
@@ -17964,7 +18338,7 @@ function DoneRiteCreatorOS() {
                                 " \u00B7 ",
                                 product.status),
                             React.createElement("div", { style: { marginTop: 8 } },
-                                React.createElement("span", { className: "dr-pill" }, product.sampleReceived ? "Sample received" : "Waiting for sample"))),
+                                React.createElement("span", { className: "dr-pill" }, product.acquisition === "purchased" ? "Bought it myself" : product.acquisition === "sample" || product.sampleReceived ? "Seller sample received" : "Not in hand yet"))),
                         React.createElement("button", { className: "dr-danger", type: "button", onClick: () => deleteProduct(product.id) }, "Delete"))))))),
             tab === "saved" && (React.createElement(Card, null,
                 React.createElement("div", { className: "dr-output-head" },
