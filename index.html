@@ -18451,5 +18451,15 @@ function DoneRiteCreatorOS() {
     }
   })();
 </script>
+
+<script>
+  /* Saves the dashboard to this device so it opens with no signal.
+     Network first, so a new upload always wins over the saved copy. */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+</script>
 </body>
 </html>
