@@ -17388,9 +17388,12 @@ function safeFeatureText(text) {
     return String(text || "")
         .replace(/\$\s?\d+(?:\.\d{1,2})?/gi, "")
         .replace(/\b(discount|sale|cheapest|lowest price|coupon|save money)\b/gi, "")
-        .replace(/\b(guaranteed|instantly|instant|100%|perfect|never fails)\b/gi, "designed to")
-        .replace(/\b(cure|cures|treat|treats|prevent|prevents|heal|heals|reverse|reverses|fix|fixes)\b/gi, "support")
+        .replace(/\b(guaranteed|guarantee|instantly|instant|perfect|flawless|never fails)\b/gi, "")
+        .replace(/\b100\s?%|\b100 percent\b/gi, "")
+        .replace(/\b(cure|cures|cured|curing|treat|treats|treated|treating|prevent|prevents|prevented|preventing|heal|heals|healed|healing|reverse|reverses|reversed|reversing|fix|fixes|fixed|fixing|detox|detoxes|relieve|relieves|relieved|relieving|alleviate|alleviates|remedy|remedies)\b/gi, "")
         .replace(/\s{2,}/g, " ")
+        .replace(/\s+([,.;:])/g, "$1")
+        .replace(/^[\s,;:.\-]+/, "")
         .trim();
 }
 function scanCompliance(text, form = {}) {
@@ -17406,8 +17409,11 @@ function scanCompliance(text, form = {}) {
     if (/\b(guaranteed|instantly|100%|perfect|never fails)\b/i.test(source)) {
         add("absolute", "block", "Absolute performance claim detected.", "Use “designed to,” “built for,” or a verified feature statement.");
     }
-    if (/\b(cure|treat|prevent|heal|reverse|disease|weight loss|lose weight)\b/i.test(source)) {
-        add("health", "block", "Health or medical claim detected.", "Use accurate support language and remove disease, treatment, and outcome claims.");
+    if (/\b(cure|cures|cured|curing|treat|treats|treated|treating|prevent|prevents|prevented|preventing|heal|heals|healed|healing|remedy|remedies|reverse|reverses|reversed|reversing|relieve|relieves|relieved|relieving|alleviate|alleviates|diagnose|diagnoses|detox|detoxes|antibacterial|antiviral|antifungal|clinically proven|doctor recommended|medical grade|pharmaceutical grade|disease|diseases|weight loss|lose weight|burn fat|immune boosting)\b/i.test(source)) {
+        add("health", "block", "Health or medical claim detected.", "Remove the treatment, cure, or outcome wording and describe only verified product features.");
+    }
+    if (/\b(arthritis|anxiety|depression|diabetes|diabetic|cancer|tumor|tumour|asthma|eczema|psoriasis|acne|migraine|migraines|insomnia|adhd|autism|alzheimer'?s|dementia|blood pressure|hypertension|cholesterol|inflammation|inflammatory|infection|infections|fungal|joint pain|back pain|nerve pain|neuropathy|hair loss|erectile|menopause|acid reflux|vertigo|tinnitus|covid|influenza)\b/i.test(source)) {
+        add("condition", "block", "A medical condition is named.", "Naming a health condition implies a medical claim. Remove the condition and describe only what the product is designed to do.");
     }
     if (/\b(before and after|before\s*\/\s*after)\b/i.test(source)) {
         add("before-after", "block", "Before-and-after implication detected.", "Describe only verified product features without promising a personal outcome.");
@@ -17490,7 +17496,7 @@ function flattenScript(pkg) {
 function makePackage(form) {
     const product = form.productName.trim();
     const cleaned = safeFeatureText(form.verifiedFeatures);
-    const feature = cleaned.split(/[\n.;]/).map((part) => part.trim()).filter(Boolean)[0] || "support a simpler everyday routine";
+    const feature = cleaned.split(/[\n.;]/).map((part) => part.trim()).filter(Boolean)[0] || "a simpler everyday routine";
     const inHand = form.acquisition === "sample" || form.acquisition === "purchased";
     const planning = !inHand;
     const issues = scanCompliance(`${form.productName}\n${form.verifiedFeatures}`, form);
@@ -17505,15 +17511,15 @@ function makePackage(form) {
     }
     const prefix = planning ? "PLANNING DRAFT — SAMPLE NOT CONFIRMED\n\n" : "";
     const hooks = [
-        `A simpler way to ${feature}—without overcomplicating it.`,
+        `${product} — a closer look at ${feature}.`,
         `Before you add another gadget, look at what ${product} is designed to do.`,
         `${product}: built around ${feature}.`,
     ];
-    const voiceover = `${prefix}Looking for a simple way to ${feature}? ${product} is designed around that job, with a product-focused setup that is easy to show in a short demo. Check the product details in the cart.`;
+    const voiceover = `${prefix}Here is a closer look at ${product}, built around ${feature}. It is a product-focused setup that is easy to show in a short demo. Check the product details in the cart.`;
     const onScreenText = [
         "0–2s: WORTH A CLOSER LOOK?",
         `2–6s: ${product.toUpperCase()}`,
-        `6–11s: DESIGNED TO ${feature.toUpperCase()}`,
+        `6–11s: ${feature.toUpperCase()}`,
         `11–${form.duration}s: CHECK PRODUCT DETAILS`,
     ].join("\n");
     const caption = `${planning ? "Planning draft: " : ""}A closer look at ${product} and the verified features it was designed around. Product details are available in the cart.`;
