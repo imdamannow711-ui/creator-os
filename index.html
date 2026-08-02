@@ -17302,6 +17302,28 @@ const CSS = `
     background:${COLORS.green}; color:#04140a; border-color:${COLORS.green};
   }
   .dr-danger { background:transparent; color:${COLORS.red}; }
+
+  /* Every button flashes its own colour the moment it is pressed. */
+  .dr-tab, .dr-button, .dr-copy, .dr-danger, .dr-nav button {
+    transition: background-color .08s ease, color .08s ease, border-color .08s ease, transform .08s ease;
+  }
+  .dr-pressed { transform: scale(.97); }
+  .dr-button.dr-pressed {
+    background:${COLORS.amber}; color:#1a1000; border-color:#ffd166;
+  }
+  .dr-copy.dr-pressed {
+    background:${COLORS.green}; color:#04140a; border-color:${COLORS.green};
+  }
+  .dr-danger.dr-pressed {
+    background:${COLORS.red}; color:#200407; border-color:${COLORS.red};
+  }
+  .dr-tab.dr-pressed {
+    background:${COLORS.chrome}; color:#0b0f15; border-color:white;
+  }
+  .dr-nav button.dr-pressed { color:${COLORS.amber}; }
+  @media (prefers-reduced-motion: reduce) {
+    .dr-pressed { transform:none; }
+  }
   .dr-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
   .dr-card { background:rgba(17,21,28,.96); border:1px solid ${COLORS.line}; border-radius:18px; padding:16px; }
   .dr-card + .dr-card { margin-top:12px; }
@@ -17532,6 +17554,54 @@ async function copyText(text) {
         return copyFallback(text);
     }
 }
+/* A short mechanical click, built in the browser. No sound file to download. */
+function makeClicker() {
+    let ctx = null;
+    return function click(volume) {
+        try {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx)
+                return;
+            if (!ctx)
+                ctx = new Ctx();
+            if (ctx.state === "suspended")
+                ctx.resume();
+            const now = ctx.currentTime;
+            const out = ctx.createGain();
+            out.gain.value = volume;
+            out.connect(ctx.destination);
+            // Sharp top-end snap — the plastic "tick".
+            const frames = Math.floor(ctx.sampleRate * 0.03);
+            const noise = ctx.createBuffer(1, frames, ctx.sampleRate);
+            const data = noise.getChannelData(0);
+            for (let i = 0; i < frames; i += 1) {
+                data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / frames, 6);
+            }
+            const noiseSource = ctx.createBufferSource();
+            noiseSource.buffer = noise;
+            const bandpass = ctx.createBiquadFilter();
+            bandpass.type = "bandpass";
+            bandpass.frequency.value = 2600;
+            bandpass.Q.value = 1.1;
+            noiseSource.connect(bandpass).connect(out);
+            noiseSource.start(now);
+            // Low body — the "thock" underneath, so it reads mechanical rather than tinny.
+            const thock = ctx.createOscillator();
+            thock.type = "square";
+            thock.frequency.setValueAtTime(190, now);
+            thock.frequency.exponentialRampToValueAtTime(70, now + 0.045);
+            const thockGain = ctx.createGain();
+            thockGain.gain.setValueAtTime(0.7, now);
+            thockGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            thock.connect(thockGain).connect(out);
+            thock.start(now);
+            thock.stop(now + 0.06);
+        }
+        catch {
+            /* Audio is a nicety. If the browser blocks it, the app carries on. */
+        }
+    };
+}
 function Card({ children, className = "" }) {
     return React.createElement("section", { className: `dr-card ${className}` }, children);
 }
@@ -17563,6 +17633,24 @@ function DoneRiteCreatorOS() {
     const [checkText, setCheckText] = useState("");
     const [copyStatus, setCopyStatus] = useState("");
     const [copiedKey, setCopiedKey] = useState("");
+    const [clickSound, setClickSound] = useState(true);
+    const clickerRef = useRef(null);
+    // One listener covers every button in the app, including any added later.
+    useEffect(() => {
+        if (!clickerRef.current)
+            clickerRef.current = makeClicker();
+        const onPointerDown = (event) => {
+            const button = event.target.closest("button");
+            if (!button)
+                return;
+            if (clickSound)
+                clickerRef.current(0.9);
+            button.classList.add("dr-pressed");
+            window.setTimeout(() => button.classList.remove("dr-pressed"), 260);
+        };
+        document.addEventListener("pointerdown", onPointerDown, true);
+        return () => document.removeEventListener("pointerdown", onPointerDown, true);
+    }, [clickSound]);
     const [importStatus, setImportStatus] = useState("");
     const [saveBlocked, setSaveBlocked] = useState("");
     const importRef = useRef(null);
@@ -17577,6 +17665,8 @@ function DoneRiteCreatorOS() {
                 setMoneyRows(Array.isArray(data.moneyRows) ? data.moneyRows : []);
                 if (data.lastTab)
                     setTab(data.lastTab);
+                if (typeof data.clickSound === "boolean")
+                    setClickSound(data.clickSound);
             }
         }
         catch {
@@ -17590,7 +17680,7 @@ function DoneRiteCreatorOS() {
         if (!ready)
             return;
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, tasks, moneyRows, lastTab: tab, version: 1 }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, tasks, moneyRows, lastTab: tab, clickSound, version: 1 }));
             setSaveBlocked("");
         }
         catch (error) {
@@ -17599,7 +17689,7 @@ function DoneRiteCreatorOS() {
                 ? "This device is out of storage space, so new changes are not being saved. Go to Settings and download a backup now, then delete some saved packages."
                 : "This browser is not allowing anything to be saved on this device. Your work is still on screen, but it will disappear if you close this page. Go to Settings and download a backup now. Private browsing mode is the usual cause.");
         }
-    }, [ready, saved, products, tasks, moneyRows, tab]);
+    }, [ready, saved, products, tasks, moneyRows, tab, clickSound]);
     useEffect(() => {
         if (!copyStatus)
             return undefined;
@@ -17941,6 +18031,14 @@ function DoneRiteCreatorOS() {
                                 React.createElement("div", { className: "dr-help" }, row.date)),
                             React.createElement("strong", { style: { color: row.type === "Expense" ? COLORS.amber : COLORS.green } }, money(row.amount)))))))),
             tab === "settings" && (React.createElement(React.Fragment, null,
+                React.createElement(Card, null,
+                    React.createElement("h2", null, "Button Sound"),
+                    React.createElement("p", { className: "dr-help" }, "Buttons flash their colour and make a mechanical click when pressed."),
+                    React.createElement("div", { className: "dr-field", style: { marginTop: 12 } },
+                        React.createElement("label", { className: "dr-check" },
+                            React.createElement("input", { type: "checkbox", checked: clickSound, onChange: (event) => setClickSound(event.target.checked) }),
+                            React.createElement("span", null, "Click sound on"))),
+                    React.createElement("p", { className: "dr-help" }, "On iPhone the click follows the ring/silent switch. Flip the switch on the side of the phone to hear it.")),
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Backup & Restore"),
                     React.createElement("p", { className: "dr-help" }, "This component stores data on the current device. Export regular backups before clearing browser data or changing devices."),
