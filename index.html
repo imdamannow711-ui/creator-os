@@ -17532,11 +17532,7 @@ function makePackage(form) {
         });
     }
     const prefix = planning ? "PLANNING DRAFT — SAMPLE NOT CONFIRMED\n\n" : "";
-    const hooks = [
-        `${product} — a closer look at ${feature}.`,
-        `Before you add another gadget, look at what ${product} is designed to do.`,
-        `${product}: built around ${feature}.`,
-    ];
+    const hooks = pickHooks(product, feature, form.platform, form.hookWinners || [], form.hookSpin || 0);
     const voiceover = `${prefix}Here is a closer look at ${product}, built around ${feature}. It is a product-focused setup that is easy to show in a short demo. Check the product details in the cart.`;
     const onScreenText = [
         "0–2s: WORTH A CLOSER LOOK?",
@@ -17615,6 +17611,135 @@ function drAudio() {
   if (__drAudioCtx.state === "suspended") __drAudioCtx.resume();
   return __drAudioCtx;
 }
+
+/* HOOK LIBRARY
+   ------------------------------------------------------------------
+   Every hook here is claim-free on purpose: no prices, no superiority,
+   no "everyone is buying this", no results promises. Those are what get
+   videos pulled. The variety comes from the ANGLE, not from bigger claims.
+   Angles are tagged by platform because a Pinterest searcher and a TikTok
+   scroller are not in the same headspace. */
+const HOOK_LIBRARY = [
+  // --- Curiosity / pattern interrupt (TikTok, Reels)
+  { angle: "Curiosity", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `Nobody talks about this part of ${p}.` },
+  { angle: "Curiosity", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `I did not expect ${f} to be the part I use most.` },
+  { angle: "Curiosity", platforms: ["TikTok Shop"], make: (p, f) => `Three seconds on ${p} and you will see what I mean.` },
+  { angle: "Curiosity", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `Watch what ${f} actually looks like in use.` },
+  { angle: "Curiosity", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Here is the part of ${p} the photos do not show.` },
+
+  // --- Problem first
+  { angle: "Problem", platforms: ["TikTok Shop", "Facebook", "YouTube Shorts"], make: (p, f) => `Tired of dealing with this the hard way? ${p} was built for it.` },
+  { angle: "Problem", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `If this keeps happening to you, ${f} is the part to look at.` },
+  { angle: "Problem", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `The annoying part everyone puts up with — ${p} handles it differently.` },
+  { angle: "Problem", platforms: ["Facebook", "Instagram Reels"], make: (p, f) => `Small problem, constant problem. ${p} is designed around it.` },
+
+  // --- Objection / honest framing
+  { angle: "Honest", platforms: ["TikTok Shop", "YouTube Shorts", "Facebook"], make: (p, f) => `Not for everyone. Here is who ${p} is actually for.` },
+  { angle: "Honest", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `Before you buy ${p}, look at ${f} first.` },
+  { angle: "Honest", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `I will show you ${f} and you can decide for yourself.` },
+  { angle: "Honest", platforms: ["YouTube Shorts", "Facebook"], make: (p, f) => `Skip ${p} if you do not care about ${f}. That is the whole pitch.` },
+  { angle: "Honest", platforms: ["TikTok Shop"], make: (p, f) => `No hype. Just what ${p} does.` },
+
+  // --- Demonstration
+  { angle: "Demo", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `Watch ${f} work.` },
+  { angle: "Demo", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `${p}, start to finish, in one take.` },
+  { angle: "Demo", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `This is ${f} in real use, not a product photo.` },
+  { angle: "Demo", platforms: ["TikTok Shop"], make: (p, f) => `Ten seconds. ${p}. Go.` },
+
+  // --- Specific detail
+  { angle: "Detail", platforms: ["TikTok Shop", "YouTube Shorts", "Pinterest"], make: (p, f) => `${f}. That is the detail that made ${p} worth showing.` },
+  { angle: "Detail", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `One detail on ${p} does most of the work: ${f}.` },
+  { angle: "Detail", platforms: ["Pinterest", "Facebook"], make: (p, f) => `${p} — what ${f} looks like up close.` },
+
+  // --- Question
+  { angle: "Question", platforms: ["TikTok Shop", "Facebook", "Instagram Reels"], make: (p, f) => `Would you use ${p} for this?` },
+  { angle: "Question", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `Is ${f} something you would actually use?` },
+  { angle: "Question", platforms: ["YouTube Shorts", "Facebook"], make: (p, f) => `What would you check first on ${p}?` },
+
+  // --- Use case
+  { angle: "Use case", platforms: ["TikTok Shop", "Pinterest", "Facebook"], make: (p, f) => `If you deal with this daily, ${p} is worth two seconds.` },
+  { angle: "Use case", platforms: ["Pinterest", "YouTube Shorts"], make: (p, f) => `${p} for people who care about ${f}.` },
+  { angle: "Use case", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Keep this one where you actually need it. ${p}.` },
+
+  // --- Search-first (Pinterest and YouTube reward clarity, not mystery)
+  { angle: "Search", platforms: ["Pinterest", "YouTube Shorts"], make: (p, f) => `${p}: a closer look at ${f}.` },
+  { angle: "Search", platforms: ["Pinterest"], make: (p, f) => `${p} — features, close-ups, and what to check before buying.` },
+  { angle: "Search", platforms: ["Pinterest", "YouTube Shorts"], make: (p, f) => `What ${f} means on ${p}, explained simply.` },
+  { angle: "Search", platforms: ["YouTube Shorts"], make: (p, f) => `${p} walkthrough — the parts that matter.` },
+
+  // --- Contrast without naming competitors
+  { angle: "Contrast", platforms: ["TikTok Shop", "YouTube Shorts", "Facebook"], make: (p, f) => `Most of them skip this. ${p} does not.` },
+  { angle: "Contrast", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `The version with ${f} is a different experience.` },
+  { angle: "Contrast", platforms: ["TikTok Shop"], make: (p, f) => `Same idea, different execution. ${p}.` },
+
+  // --- Direct
+  { angle: "Direct", platforms: ["TikTok Shop", "Facebook", "Instagram Reels"], make: (p, f) => `${p}. ${f}. That is it.` },
+  { angle: "Direct", platforms: ["TikTok Shop"], make: (p, f) => `Here is ${p} and exactly what it does.` },
+  { angle: "Direct", platforms: ["Facebook", "YouTube Shorts"], make: (p, f) => `Short version: ${p} is built around ${f}.` },
+
+  // --- Researched patterns (Aug 2026). Documented as high-performing across
+  // TikTok, Shorts, Reels and Pinterest. Rewritten to fit DONE RITE rules:
+  // the specificity comes from counts, timeframes and part names, never from
+  // prices or dollar amounts, which the compliance rules forbid.
+  { angle: "Contrarian", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `Most people get this wrong about ${p}.` },
+  { angle: "Contrarian", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `Here is what nobody tells you about ${p}.` },
+  { angle: "Contrarian", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Stop checking the wrong thing when you look at ${p}.` },
+  { angle: "Contrarian", platforms: ["YouTube Shorts", "Facebook"], make: (p, f) => `Everyone looks at the wrong part of ${p} first.` },
+
+  // Result-first. Showing the finished product in the opening frame is the
+  // single strongest documented pattern, and it suits a no-face format.
+  { angle: "Result first", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `This is ${p} set up and ready. Now here is how it got there.` },
+  { angle: "Result first", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `Finished result first: ${p} with ${f}.` },
+  { angle: "Result first", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `Start at the end. This is what ${p} looks like in place.` },
+
+  // Numbered specificity — counts and timeframes only, never amounts.
+  { angle: "Specific", platforms: ["TikTok Shop", "YouTube Shorts", "Pinterest"], make: (p, f) => `Three things I check on ${p} before anything else.` },
+  { angle: "Specific", platforms: ["YouTube Shorts", "Pinterest"], make: (p, f) => `${p}: the two parts that actually matter.` },
+  { angle: "Specific", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `Seven seconds on ${f}, then you decide.` },
+  { angle: "Specific", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `One feature, five seconds: ${f}.` },
+
+  // Mid-action openers. Documented advice for Shorts is to skip the greeting
+  // entirely and begin inside the most interesting moment.
+  { angle: "Mid-action", platforms: ["YouTube Shorts", "TikTok Shop", "Instagram Reels"], make: (p, f) => `Already running. This is ${f} doing its job.` },
+  { angle: "Mid-action", platforms: ["YouTube Shorts", "Instagram Reels"], make: (p, f) => `No intro. ${p}, ${f}, watch.` },
+
+  // Search-intent openers for Pinterest, where people arrive already looking.
+  { angle: "Search", platforms: ["Pinterest", "YouTube Shorts"], make: (p, f) => `What to check before buying ${p}.` },
+  { angle: "Search", platforms: ["Pinterest"], make: (p, f) => `${p}: ${f} shown close up.` },
+  { angle: "Search", platforms: ["Pinterest", "Facebook"], make: (p, f) => `Looking at ${p}? Start with ${f}.` },
+];
+
+/* Picks three hooks from three DIFFERENT angles, rotating each time so the
+   same product does not produce the same three twice in a row. Anything the
+   user has marked as a proven winner is offered first — their own sales data
+   beats any generic list. */
+function pickHooks(product, feature, platform, winners, spin) {
+  const proven = (winners || [])
+    .filter((w) => !w.platform || w.platform === platform)
+    .slice(0, 2)
+    .map((w) => w.text);
+
+  const pool = HOOK_LIBRARY.filter((h) => h.platforms.indexOf(platform) !== -1);
+  const usable = pool.length ? pool : HOOK_LIBRARY;
+
+  const byAngle = {};
+  usable.forEach((h) => {
+    if (!byAngle[h.angle]) byAngle[h.angle] = [];
+    byAngle[h.angle].push(h);
+  });
+  const angles = Object.keys(byAngle);
+
+  const out = proven.slice();
+  for (let i = 0; out.length < 3 && i < angles.length; i += 1) {
+    const angle = angles[(spin + i) % angles.length];
+    const bucket = byAngle[angle];
+    const choice = bucket[(spin + i * 7) % bucket.length];
+    const text = choice.make(product, feature);
+    if (out.indexOf(text) === -1) out.push(text);
+  }
+  return out.slice(0, 3);
+}
+
 function makeMetalCheck() {
   let ctx = null;
   return function clank(volume) {
@@ -17962,6 +18087,9 @@ function DoneRiteCreatorOS() {
     const clickerRef = useRef(null);
     const boomerRef = useRef(null); // lightning strike for feature chips
     const metalRef = useRef(null); // metal latch for checkboxes
+    const [hookLog, setHookLog] = useState([]);
+    const [hookSpin, setHookSpin] = useState(0);
+    const [hookDraft, setHookDraft] = useState({ text: "", platform: "TikTok Shop", product: "", sales: "", views: "" });
     // One listener covers every button in the app, including any added later.
     useEffect(() => {
         if (!clickerRef.current)
@@ -18014,6 +18142,10 @@ function DoneRiteCreatorOS() {
                     setTab(data.lastTab);
                 if (typeof data.clickSound === "boolean")
                     setClickSound(data.clickSound);
+                if (Array.isArray(data.hookLog))
+                    setHookLog(data.hookLog);
+                if (typeof data.hookSpin === "number")
+                    setHookSpin(data.hookSpin);
             }
         }
         catch {
@@ -18027,7 +18159,7 @@ function DoneRiteCreatorOS() {
         if (!ready)
             return;
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, tasks, moneyRows, lastTab: tab, clickSound, version: 1 }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, tasks, moneyRows, lastTab: tab, clickSound, hookLog, hookSpin, version: 1 }));
             setSaveBlocked("");
         }
         catch (error) {
@@ -18036,7 +18168,7 @@ function DoneRiteCreatorOS() {
                 ? "This device is out of storage space, so new changes are not being saved. Go to Settings and download a backup now, then delete some saved packages."
                 : "This browser is not allowing anything to be saved on this device. Your work is still on screen, but it will disappear if you close this page. Go to Settings and download a backup now. Private browsing mode is the usual cause.");
         }
-    }, [ready, saved, products, tasks, moneyRows, tab, clickSound]);
+    }, [ready, saved, products, tasks, moneyRows, tab, clickSound, hookLog, hookSpin]);
     useEffect(() => {
         if (!copyStatus)
             return undefined;
@@ -18182,7 +18314,11 @@ function DoneRiteCreatorOS() {
             return;
         }
         setNeedsName(false);
-        const next = makePackage(form);
+        // Rotate the hook angles and hand the generator any proven winners.
+        const spin = hookSpin + 1;
+        setHookSpin(spin);
+        const winners = hookLog.filter((entry) => entry.winner);
+        const next = makePackage({ ...form, hookWinners: winners, hookSpin: spin });
         setPkg(next);
         window.setTimeout(() => { var _a; return (_a = resultsRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60);
         setProducts((current) => {
@@ -18275,6 +18411,7 @@ function DoneRiteCreatorOS() {
         ["create", "Quick Create"],
         ["check", "Compliance"],
         ["video", "Video Check"],
+        ["hooks", "Hook Lab"],
         ["ai", "AI Studio"],
         ["products", "Products"],
         ["saved", "Saved"],
@@ -18516,6 +18653,61 @@ function DoneRiteCreatorOS() {
                                     }, ...current]);
                                 setCopyStatus("AI script saved.");
                             } }, "Save to Saved Creations")))))),
+            tab === "hooks" && (React.createElement(React.Fragment, null,
+                React.createElement(Card, null,
+                    React.createElement("h2", null, "Hook Lab"),
+                    React.createElement("p", { className: "dr-help" }, "Log the hooks you actually post and what they earned. Anything you mark as a winner gets used first the next time you generate for that platform. Nobody can tell you which hooks are selling right now \u2014 your own numbers can."),
+                    React.createElement(Field, { label: "Hook text" },
+                        React.createElement("textarea", { className: "dr-textarea", rows: 2, value: hookDraft.text, onChange: (e) => setHookDraft({ ...hookDraft, text: e.target.value }), placeholder: "Paste the exact opening line you used" })),
+                    React.createElement(Field, { label: "Platform" },
+                        React.createElement("select", { className: "dr-select", value: hookDraft.platform, onChange: (e) => setHookDraft({ ...hookDraft, platform: e.target.value }) },
+                            ["TikTok Shop", "YouTube Shorts", "Facebook", "Instagram Reels", "Pinterest"].map((pf) => React.createElement("option", { key: pf, value: pf }, pf)))),
+                    React.createElement(Field, { label: "Product" },
+                        React.createElement("input", { className: "dr-input", value: hookDraft.product, onChange: (e) => setHookDraft({ ...hookDraft, product: e.target.value }), placeholder: "Which product this ran on" })),
+                    React.createElement("div", { className: "dr-grid2" },
+                        React.createElement(Field, { label: "Views" },
+                            React.createElement("input", { className: "dr-input", inputMode: "numeric", value: hookDraft.views, onChange: (e) => setHookDraft({ ...hookDraft, views: e.target.value }), placeholder: "0" })),
+                        React.createElement(Field, { label: "Sales" },
+                            React.createElement("input", { className: "dr-input", inputMode: "numeric", value: hookDraft.sales, onChange: (e) => setHookDraft({ ...hookDraft, sales: e.target.value }), placeholder: "0" }))),
+                    React.createElement("div", { className: "dr-row", style: { marginTop: 14 } },
+                        React.createElement("button", { className: "dr-button", type: "button", onClick: () => {
+                            if (!hookDraft.text.trim()) { setCopyStatus("Paste the hook text first."); return; }
+                            const sales = Number(hookDraft.sales) || 0;
+                            setHookLog((current) => [{
+                                id: `hook-${Date.now()}`,
+                                text: hookDraft.text.trim(),
+                                platform: hookDraft.platform,
+                                product: hookDraft.product.trim(),
+                                views: Number(hookDraft.views) || 0,
+                                sales,
+                                winner: sales > 0,
+                                createdAt: new Date().toISOString(),
+                            }, ...current]);
+                            setHookDraft({ text: "", platform: hookDraft.platform, product: "", sales: "", views: "" });
+                            setCopyStatus(sales > 0 ? "Logged and marked as a winner." : "Hook logged.");
+                        } }, "Log This Hook"))),
+
+                React.createElement(Card, null,
+                    React.createElement("h3", null, "Your winners"),
+                    React.createElement("p", { className: "dr-help" }, "Hooks that made at least one sale. These are pulled into Quick Create first."),
+                    React.createElement("div", { className: "dr-list" },
+                        hookLog.filter((h) => h.winner).length === 0 && React.createElement("p", { className: "dr-help" }, "No winners logged yet. Log a hook with at least one sale and it will appear here."),
+                        hookLog.filter((h) => h.winner).map((h) => React.createElement("div", { className: "dr-item", key: h.id },
+                            React.createElement("div", { className: "dr-item-main" },
+                                React.createElement("div", { className: "dr-item-title", style: { color: COLORS.green } }, h.text),
+                                React.createElement("div", { className: "dr-help" }, `${h.platform}${h.product ? " \u00b7 " + h.product : ""} \u00b7 ${h.sales} sale${h.sales === 1 ? "" : "s"} \u00b7 ${h.views} views`)),
+                            React.createElement("button", { className: "dr-danger", type: "button", onClick: () => setHookLog((c) => c.filter((x) => x.id !== h.id)) }, "Remove"))))),
+
+                React.createElement(Card, null,
+                    React.createElement("h3", null, "Everything logged"),
+                    React.createElement("div", { className: "dr-list" },
+                        hookLog.length === 0 && React.createElement("p", { className: "dr-help" }, "Nothing logged yet."),
+                        hookLog.map((h) => React.createElement("div", { className: "dr-item", key: h.id },
+                            React.createElement("div", { className: "dr-item-main" },
+                                React.createElement("div", { className: "dr-item-title" }, h.text),
+                                React.createElement("div", { className: "dr-help" }, `${h.platform} \u00b7 ${h.sales} sales \u00b7 ${h.views} views`)),
+                            React.createElement("button", { className: "dr-copy", type: "button", onClick: () => setHookLog((c) => c.map((x) => x.id === h.id ? { ...x, winner: !x.winner } : x)) }, h.winner ? "Unmark" : "Mark winner")))))
+            )),
             tab === "products" && (React.createElement(Card, null,
                 React.createElement("div", { className: "dr-output-head" },
                     React.createElement("div", null,
