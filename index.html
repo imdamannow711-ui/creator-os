@@ -17315,20 +17315,34 @@ const CSS = `
     background:${COLORS.panel2}; color:${COLORS.chrome}; border:1px solid ${COLORS.line}; cursor:pointer;
     -webkit-tap-highlight-color:transparent;
   }
-  .dr-chip.dr-pressed { background:${COLORS.red}; color:#ffffff; border-color:#ff8d9b; box-shadow:0 0 0 3px rgba(255,77,99,.35), 0 0 22px 4px rgba(255,77,99,.55); }
-  .dr-button.dr-pressed {
-    background:${COLORS.amber}; color:#1a1000; border-color:#ffd166;
+  .dr-chip.dr-pressed,
+  .dr-tab.dr-pressed,
+  .dr-button.dr-pressed,
+  .dr-copy.dr-pressed,
+  .dr-danger.dr-pressed,
+  .dr-nav button.dr-pressed {
+    background:#eaf6ff; color:#062240; border-color:#ffffff;
+    text-shadow:0 0 6px rgba(120,200,255,.9);
+    box-shadow:
+      0 0 0 2px #ffffff,
+      0 0 0 6px rgba(46,168,255,.55),
+      0 0 26px 8px rgba(46,168,255,.85),
+      0 0 54px 16px rgba(30,123,255,.45);
+    animation: dr-arc .42s steps(1) 1;
   }
-  .dr-copy.dr-pressed {
-    background:${COLORS.green}; color:#04140a; border-color:${COLORS.green};
+  @keyframes dr-arc {
+    0%   { background:#ffffff; box-shadow:0 0 0 3px #ffffff, 0 0 40px 14px rgba(160,220,255,.95); }
+    18%  { background:${COLORS.blueGlow}; box-shadow:0 0 0 2px #cfe8ff, 0 0 18px 5px rgba(46,168,255,.7); }
+    34%  { background:#ffffff; box-shadow:0 0 0 3px #ffffff, 0 0 34px 12px rgba(160,220,255,.9); }
+    55%  { background:${COLORS.blue}; box-shadow:0 0 0 2px #9ad2ff, 0 0 22px 7px rgba(46,168,255,.75); }
+    100% { background:#eaf6ff; box-shadow:0 0 0 2px #ffffff, 0 0 26px 8px rgba(46,168,255,.7); }
   }
-  .dr-danger.dr-pressed {
-    background:${COLORS.red}; color:#200407; border-color:${COLORS.red};
-  }
-  .dr-tab.dr-pressed {
-    background:${COLORS.chrome}; color:#0b0f15; border-color:white;
-  }
-  .dr-nav button.dr-pressed { color:${COLORS.amber}; }
+  @media (prefers-reduced-motion: reduce) { .dr-chip.dr-pressed { animation:none; } }
+  
+  
+  
+  
+  
   @media (prefers-reduced-motion: reduce) {
     .dr-pressed { transform:none; }
   }
@@ -17349,7 +17363,15 @@ const CSS = `
   .dr-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .dr-row > * { flex:1 1 150px; }
   .dr-check { display:flex; gap:10px; align-items:flex-start; color:${COLORS.chrome}; font-size:14px; line-height:1.4; }
-  .dr-check input { width:20px; height:20px; margin:0; accent-color:${COLORS.blue}; flex:0 0 auto; }
+  .dr-check input { width:22px; height:22px; margin:0; accent-color:${COLORS.blue}; flex:0 0 auto;
+    transition: box-shadow .12s ease, transform .12s ease; }
+  .dr-check input:checked {
+    accent-color:${COLORS.red};
+    box-shadow:0 0 0 3px rgba(255,77,99,.35), 0 0 14px 3px rgba(255,77,99,.55);
+    border-radius:4px;
+  }
+  .dr-check input:checked + span { color:${COLORS.red}; font-weight:800; }
+  .dr-check.dr-struck input:checked { transform:scale(1.12); }
   .dr-output { white-space:pre-wrap; line-height:1.55; font-size:14px; color:${COLORS.text}; }
   .dr-output-head { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:10px; }
   .dr-output-head .dr-copy { flex:0 0 auto; min-height:38px; padding:8px 12px; }
@@ -17585,49 +17607,151 @@ async function copyText(text) {
     }
 }
 /* A short mechanical click, built in the browser. No sound file to download. */
-function makeBoomer() {
+let __drAudioCtx = null;
+function drAudio() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  if (!__drAudioCtx) __drAudioCtx = new Ctx();
+  if (__drAudioCtx.state === "suspended") __drAudioCtx.resume();
+  return __drAudioCtx;
+}
+function makeMetalCheck() {
   let ctx = null;
-  return function boom(volume) {
+  return function clank(volume) {
     try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      if (!ctx) ctx = new Ctx();
-      if (ctx.state === "suspended") ctx.resume();
+      ctx = drAudio();
+      if (!ctx) return;
       const now = ctx.currentTime;
 
       const out = ctx.createGain();
-      out.gain.value = volume;
-      out.connect(ctx.destination);
+      out.gain.value = 3.4 * volume;
+      const guard = ctx.createDynamicsCompressor();
+      guard.threshold.value = -6;
+      guard.ratio.value = 12;
+      out.connect(guard).connect(ctx.destination);
 
-      // Low sine drop — the body of the boom.
-      const sub = ctx.createOscillator();
-      sub.type = "sine";
-      sub.frequency.setValueAtTime(150, now);
-      sub.frequency.exponentialRampToValueAtTime(34, now + 0.42);
-      const subGain = ctx.createGain();
-      subGain.gain.setValueAtTime(0.0001, now);
-      subGain.gain.exponentialRampToValueAtTime(1, now + 0.012);
-      subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
-      sub.connect(subGain).connect(out);
-      sub.start(now);
-      sub.stop(now + 0.6);
+      // Struck metal is inharmonic — these ratios are deliberately not
+      // whole multiples, which is what stops it sounding like a musical bell.
+      // 780Hz body added on purpose — a phone speaker is strongest here,
+      // and the old top-heavy version was inaudible on one.
+      const partials = [780, 1840, 2510, 3370, 4620];
+      const decays = [0.40, 0.34, 0.26, 0.19, 0.13];
+      partials.forEach((freq, index) => {
+        const osc = ctx.createOscillator();
+        osc.type = index < 2 ? "triangle" : "sine";
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.965, now + decays[index]);
+        const gain = ctx.createGain();
+        const level = 0.85 / (index * 0.55 + 1);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(level, now + 0.003);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + decays[index]);
+        osc.connect(gain).connect(out);
+        osc.start(now);
+        osc.stop(now + decays[index] + 0.05);
+      });
 
-      // Noise thump on the front so it lands hard on a phone speaker.
-      const frames = Math.floor(ctx.sampleRate * 0.16);
+      // The latch itself — the mechanical bite before the ring.
+      const frames = Math.floor(ctx.sampleRate * 0.045);
       const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < frames; i += 1) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / frames, 3);
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / frames, 4);
       }
       const noise = ctx.createBufferSource();
       noise.buffer = buffer;
-      const lowpass = ctx.createBiquadFilter();
-      lowpass.type = "lowpass";
-      lowpass.frequency.value = 320;
+      const band = ctx.createBiquadFilter();
+      band.type = "bandpass";
+      band.frequency.value = 2600;
+      band.Q.value = 0.6;
       const noiseGain = ctx.createGain();
-      noiseGain.gain.value = 0.85;
-      noise.connect(lowpass).connect(noiseGain).connect(out);
+      noiseGain.gain.value = 1.4;
+      noise.connect(band).connect(noiseGain).connect(out);
       noise.start(now);
+    } catch {
+      /* Audio is a nicety. If the browser blocks it, the app carries on. */
+    }
+  };
+}
+function makeZapper() {
+  let ctx = null;
+  return function zap(volume) {
+    try {
+      ctx = drAudio();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      // Driven hard, then limited — loud without crackling.
+      const out = ctx.createGain();
+      out.gain.value = 2.2 * volume;
+      const guard = ctx.createDynamicsCompressor();
+      guard.threshold.value = -6;
+      guard.ratio.value = 12;
+      out.connect(guard).connect(ctx.destination);
+
+      // 1. CRACK — the strike landing.
+      const crackFrames = Math.floor(ctx.sampleRate * 0.05);
+      const crackBuf = ctx.createBuffer(1, crackFrames, ctx.sampleRate);
+      const crackData = crackBuf.getChannelData(0);
+      for (let i = 0; i < crackFrames; i += 1) {
+        crackData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / crackFrames, 4);
+      }
+      const crack = ctx.createBufferSource();
+      crack.buffer = crackBuf;
+      const highpass = ctx.createBiquadFilter();
+      highpass.type = "highpass";
+      highpass.frequency.value = 1800;
+      const crackGain = ctx.createGain();
+      crackGain.gain.value = 1.3;
+      crack.connect(highpass).connect(crackGain).connect(out);
+      crack.start(now);
+
+      // 2. ZAP — the electric sweep down the bolt.
+      const bolt = ctx.createOscillator();
+      bolt.type = "sawtooth";
+      bolt.frequency.setValueAtTime(3200, now);
+      bolt.frequency.exponentialRampToValueAtTime(220, now + 0.09);
+      const boltGain = ctx.createGain();
+      boltGain.gain.setValueAtTime(0.0001, now);
+      boltGain.gain.exponentialRampToValueAtTime(0.85, now + 0.005);
+      boltGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      bolt.connect(boltGain).connect(out);
+      bolt.start(now);
+      bolt.stop(now + 0.14);
+
+      // 3. SIZZLE — the arc still crackling after the hit.
+      const sizFrames = Math.floor(ctx.sampleRate * 0.3);
+      const sizBuf = ctx.createBuffer(1, sizFrames, ctx.sampleRate);
+      const sizData = sizBuf.getChannelData(0);
+      for (let i = 0; i < sizFrames; i += 1) {
+        const envelope = Math.pow(1 - i / sizFrames, 2.2);
+        const flicker = Math.random() < 0.35 ? 1 : 0.15;
+        sizData[i] = (Math.random() * 2 - 1) * envelope * flicker;
+      }
+      const sizzle = ctx.createBufferSource();
+      sizzle.buffer = sizBuf;
+      const bandpass = ctx.createBiquadFilter();
+      bandpass.type = "bandpass";
+      bandpass.frequency.value = 3600;
+      bandpass.Q.value = 0.9;
+      const sizGain = ctx.createGain();
+      sizGain.gain.value = 0.75;
+      sizzle.connect(bandpass).connect(sizGain).connect(out);
+      sizzle.start(now + 0.01);
+
+      // 4. THUNDER — short low tail. Kept above 150Hz on purpose:
+      // a phone speaker cannot move enough air below that to be heard.
+      const thunder = ctx.createOscillator();
+      thunder.type = "triangle";
+      thunder.frequency.setValueAtTime(300, now);
+      thunder.frequency.exponentialRampToValueAtTime(150, now + 0.28);
+      const thunderGain = ctx.createGain();
+      thunderGain.gain.setValueAtTime(0.0001, now + 0.02);
+      thunderGain.gain.exponentialRampToValueAtTime(0.3, now + 0.05);
+      thunderGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+      thunder.connect(thunderGain).connect(out);
+      thunder.start(now);
+      thunder.stop(now + 0.45);
     } catch {
       /* Audio is a nicety. If the browser blocks it, the app carries on. */
     }
@@ -17637,13 +17761,9 @@ function makeClicker() {
     let ctx = null;
     return function click(volume) {
         try {
-            const Ctx = window.AudioContext || window.webkitAudioContext;
-            if (!Ctx)
-                return;
+            ctx = drAudio();
             if (!ctx)
-                ctx = new Ctx();
-            if (ctx.state === "suspended")
-                ctx.resume();
+                return;
             const now = ctx.currentTime;
             const out = ctx.createGain();
             out.gain.value = volume;
@@ -17840,26 +17960,40 @@ function DoneRiteCreatorOS() {
     const nameRef = useRef(null);
     const resultsRef = useRef(null);
     const clickerRef = useRef(null);
-    const boomerRef = useRef(null);
+    const boomerRef = useRef(null); // lightning strike for feature chips
+    const metalRef = useRef(null); // metal latch for checkboxes
     // One listener covers every button in the app, including any added later.
     useEffect(() => {
         if (!clickerRef.current)
             clickerRef.current = makeClicker();
         if (!boomerRef.current)
-            boomerRef.current = makeBoomer();
+            boomerRef.current = makeZapper();
+        if (!metalRef.current)
+            metalRef.current = makeMetalCheck();
         const onPointerDown = (event) => {
+            // Checkboxes get the metal latch instead of the lightning strike.
+            const box = event.target.closest('input[type="checkbox"]');
+            if (box) {
+                if (clickSound)
+                    metalRef.current(box.checked ? 0.75 : 1);
+                const holder = box.closest(".dr-check");
+                if (holder) {
+                    holder.classList.add("dr-struck");
+                    window.setTimeout(() => holder.classList.remove("dr-struck"), 260);
+                }
+                return;
+            }
             const button = event.target.closest("button");
             if (!button)
                 return;
             const isChip = button.classList.contains("dr-chip");
+            const isTab = button.classList.contains("dr-tab");
             if (clickSound) {
-                if (isChip)
-                    boomerRef.current(1);
-                else
-                    clickerRef.current(0.9);
+                // Tabs get the hardest strike, chips next, everything else a touch lighter.
+                boomerRef.current(isTab ? 1.15 : isChip ? 1 : 0.85);
             }
             button.classList.add("dr-pressed");
-            window.setTimeout(() => button.classList.remove("dr-pressed"), isChip ? 480 : 260);
+            window.setTimeout(() => button.classList.remove("dr-pressed"), 440);
         };
         document.addEventListener("pointerdown", onPointerDown, true);
         return () => document.removeEventListener("pointerdown", onPointerDown, true);
