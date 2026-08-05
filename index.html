@@ -17260,6 +17260,9 @@ const EMPTY_FORM = {
     chosenHook: "",
     chosenCta: "",
     batteryPowered: false,
+    // Exactly what the reference photo shows. This is what stops an image
+    // generator adding a lid, a second button, or a logo that is not there.
+    physicalFacts: "",
 };
 const EMPTY_MONEY = {
     type: "Affiliate revenue",
@@ -17524,6 +17527,12 @@ function flattenScript(pkg) {
         "AI VIDEO PROMPT",
         pkg.aiVideoPrompt,
         "",
+        "NEGATIVE PROMPT",
+        pkg.negativePrompt || "",
+        "",
+        "RENDER CHECK",
+        pkg.renderCheck || "",
+        "",
         "CROSS-PLATFORM CHECKLIST",
         pkg.crossPlatform,
         "",
@@ -17562,8 +17571,59 @@ function makePackage(form) {
     const hashtags = "#ad #TikTokShop #GadgetFinds #ProductDemo #DoneRite";
     const cta = form.chosenCta || ctaOptions(form.platform)[0].text;
     const thumbnail = "WORTH A CLOSER LOOK?";
-    const aiImagePrompt = `Create a vertical 9:16 product-image-only visual for ${product}. Use a black, chrome, and electric-blue DONE RITE technology style. Show only the product and a clean feature-focused environment. No person, face, hands, price, discount badge, competitor branding, unsupported specification, or added product claim.`;
-    const aiVideoPrompt = `Create a ${form.duration}-second vertical 9:16 product-image-only ${form.funnel} video for ${product}. Use three to five clean product shots, subtle electric-blue lighting, readable safe-zone text, and one cart-directed CTA. No face, hands, price, discount, false scarcity, competitor comparison, medical claim, absolute claim, or invented specification. Use only these verified details: ${cleaned || "No verified feature supplied; keep the presentation generic."}`;
+    // An image generator fills every gap you leave it, and it fills them with
+    // hardware that looks plausible for the category: a lid on a case that has
+    // none, a raised button where there is a flush pad. The only real fix is to
+    // run it image-to-image against the actual photo. This block is the second
+    // half of that — it forbids the generator from "completing" what it sees.
+    const physical = String(form.physicalFacts || "")
+        .split(/\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+    const physicalBlock = physical.length
+        ? physical.map((line) => `- ${line}`).join("\n")
+        : "- NOTHING RECORDED. Open Intake, look at the product photo, and list exactly what is there before you render anything.";
+    const imageLock = [
+        "THE ATTACHED REFERENCE PHOTO IS THE ONLY SOURCE OF TRUTH.",
+        "Reproduce the product exactly as it appears in that photo. Do not redesign, restyle, complete, tidy, modernise, or improve it.",
+        "",
+        "DO NOT ADD, REMOVE, OR ALTER ANY PHYSICAL PART. Do not add a lid, cover, cap, door, hinge, latch, clasp, extra button, second button, raised button, switch, dial, knob, screen, indicator light, port, vent, seam, strap, cable, stand, logo, brand mark, printed text, or label.",
+        "Do not turn a flat or flush surface into a raised control. Do not turn a rubber pad into a button. Do not duplicate a control that appears only once. Do not change how many items there are, their shape, their proportions, their size relative to each other, their colour, their finish, or their material.",
+        "",
+        "CONFIRMED PHYSICAL FACTS FROM THE PHOTO. These override anything you would otherwise assume about this kind of product:",
+        physicalBlock,
+        "",
+        "If a detail is not visible in the reference photo and not listed above, leave it out rather than inventing it. An incomplete render is correct. An invented part is not.",
+    ].join("\n");
+    const aiImagePrompt = [
+        imageLock,
+        "",
+        `PRESENTATION — vertical 9:16 product-image-only visual for ${product}.`,
+        "Black, chrome, and electric-blue DONE RITE technology styling in the lighting and background only, never on the product itself.",
+        "Show only the product and a clean feature-focused environment. No person, face, hands, price, discount badge, competitor branding, unsupported specification, or added product claim.",
+    ].join("\n");
+    const aiVideoPrompt = [
+        imageLock,
+        "",
+        `PRESENTATION — ${form.duration}-second vertical 9:16 product-image-only ${form.funnel} video for ${product}.`,
+        "Three to five clean shots of the same unchanged product, subtle electric-blue lighting, readable safe-zone text, one cart-directed call to action.",
+        "Camera moves and lighting may change between shots. The product may not.",
+        "No face, hands, price, discount, false scarcity, competitor comparison, medical claim, absolute claim, or invented specification.",
+        `Verified feature wording you may use: ${cleaned || "None supplied; keep the presentation generic."}`,
+    ].join("\n");
+    const negativePrompt = "lid, cover, cap, door, hinge, latch, clasp, extra button, second button, raised button, switch, dial, knob, screen, display, indicator light, extra port, extra cable, extra item, duplicate item, logo, brand mark, printed text, label, sticker, watermark, price tag, packaging not in the photo, redesigned product, restyled product, hands, fingers, face, person, reflection of a person";
+    const renderCheck = [
+        "Open the Intake photo next to the render before you use it.",
+        "\u2610 Same number of items?",
+        "\u2610 Every opening, lid, and closure: present in both, or absent in both?",
+        "\u2610 Every button, pad, switch, and light: same count, same place, same shape, same height?",
+        "\u2610 Ports and cables: the same ones, and nothing added?",
+        "\u2610 Colour, finish, and material: the same?",
+        "\u2610 Any text, logo, or label the photo does not have?",
+        "\u2610 If anything differs, re-render. Do not publish a render of a product that does not exist.",
+        "",
+        "Run this image-to-image with the photo attached. A text prompt on its own will not hold the shape.",
+    ].join("\n");
     const crossPlatform = [
         "☐ TikTok: 9:16, product link/cart selected, content disclosure enabled",
         "☐ YouTube Short: remove TikTok-only cart wording and use an approved description link",
@@ -17589,6 +17649,8 @@ function makePackage(form) {
         thumbnail,
         aiImagePrompt,
         aiVideoPrompt,
+        negativePrompt,
+        renderCheck,
         crossPlatform,
         complianceNote,
         issues,
@@ -18221,6 +18283,22 @@ function dataUrlToBlob(dataUrl) {
         bytes[i] = binary.charCodeAt(i);
     return new Blob([bytes], { type: match ? match[1] : "image/jpeg" });
 }
+/* The facts a generator most often gets wrong are absences: the thing that is
+   NOT there. These are one-tap ways to record an absence. */
+const PHYSICAL_CHIPS = [
+    "The case has no lid or cover",
+    "No hinge",
+    "One control only",
+    "The control is a flush rubber pad, not a raised button",
+    "No screen or display",
+    "No indicator light",
+    "No visible logo",
+    "No printed text on the product",
+    "Single item, not a pair",
+    "One cable included",
+    "Matte finish",
+    "All one colour",
+];
 const EMPTY_INTAKE = {
     productId: "",
     productName: "",
@@ -18229,6 +18307,7 @@ const EMPTY_INTAKE = {
     receivedAt: new Date().toISOString().slice(0, 10),
     confirmed: {},
     notes: "",
+    physical: "",
 };
 function Card({ children, className = "" }) {
     return React.createElement("section", { className: `dr-card ${className}` }, children);
@@ -18267,7 +18346,7 @@ function DoneRiteCreatorOS() {
     const [videoBusy, setVideoBusy] = useState(false);
     const [videoError, setVideoError] = useState("");
     const [videoText, setVideoText] = useState("");
-    const [videoDecl, setVideoDecl] = useState({ ownFootage: false, ownAudio: false, noLogos: false, sampleInHand: false });
+    const [videoDecl, setVideoDecl] = useState({ ownFootage: false, ownAudio: false, noLogos: false, sampleInHand: false, matchesPhoto: false });
     const videoRef = useRef(null);
     const [aiDraft, setAiDraft] = useState("");
     const [aiProduct, setAiProduct] = useState("");
@@ -18421,6 +18500,22 @@ function DoneRiteCreatorOS() {
         }));
         return out.slice(0, 12);
     }, [products]);
+    const addPhysical = (text) => {
+        setForm((current) => {
+            const lines = String(current.physicalFacts || "").split(/\n/).map((line) => line.trim()).filter(Boolean);
+            if (lines.some((line) => line.toLowerCase() === text.toLowerCase()))
+                return current;
+            return { ...current, physicalFacts: [...lines, text].join("\n") };
+        });
+    };
+    const addIntakePhysical = (text) => {
+        setIntake((current) => {
+            const lines = String(current.physical || "").split(/\n/).map((line) => line.trim()).filter(Boolean);
+            if (lines.some((line) => line.toLowerCase() === text.toLowerCase()))
+                return current;
+            return { ...current, physical: [...lines, text].join("\n") };
+        });
+    };
     const addFeature = (text) => {
         setForm((current) => {
             const lines = String(current.verifiedFeatures || "").split(/\n/).map((l) => l.trim()).filter(Boolean);
@@ -18461,6 +18556,7 @@ function DoneRiteCreatorOS() {
             `Audio/music is cleared: ${videoDecl.ownAudio ? "yes" : "NOT CONFIRMED"}`,
             `No competitor logos or brands in frame: ${videoDecl.noLogos ? "yes" : "NOT CONFIRMED"}`,
             `Product in hand (sample or purchased): ${videoDecl.sampleInHand ? "yes" : "NOT CONFIRMED"}`,
+            `Render matches the product photo, nothing added: ${videoDecl.matchesPhoto ? "yes" : "NOT CONFIRMED"}`,
         ];
         const lines = [
             `DONE RITE VIDEO CHECK — ${videoInfo.name}`,
@@ -18564,6 +18660,7 @@ function DoneRiteCreatorOS() {
             receivedAt: product.receivedAt || new Date().toISOString().slice(0, 10),
             confirmed,
             notes: product.intakeNotes || "",
+            physical: product.physicalFacts || "",
         });
     };
     const intakeFeatureLines = () => {
@@ -18638,6 +18735,7 @@ function DoneRiteCreatorOS() {
             sampleReceived: intake.acquisition === "sample",
             receivedAt: intake.receivedAt,
             intakeNotes: intake.notes,
+            physicalFacts: intake.physical,
             photoCount: count,
             status: intake.acquisition === "none" ? "Waiting for product" : "Ready to create",
             updatedAt: new Date().toISOString(),
@@ -18659,6 +18757,7 @@ function DoneRiteCreatorOS() {
             productName: name,
             category: intake.category,
             verifiedFeatures: intakeFeatureLines().join("\n"),
+            physicalFacts: intake.physical,
             acquisition: intake.acquisition,
             sampleReceived: intake.acquisition === "sample",
             chosenHook: "",
@@ -18858,6 +18957,8 @@ function DoneRiteCreatorOS() {
         ["Thumbnail", pkg.thumbnail],
         ["AI image prompt", pkg.aiImagePrompt],
         ["AI video prompt", pkg.aiVideoPrompt],
+        ["Negative prompt", pkg.negativePrompt || "Regenerate this package to get a negative prompt."],
+        ["Render check", pkg.renderCheck || "Regenerate this package to get a render check."],
         ["Cross-platform checklist", pkg.crossPlatform],
         ["Compliance note", pkg.complianceNote],
     ] : [];
@@ -18961,6 +19062,13 @@ function DoneRiteCreatorOS() {
                                     removePhoto(photo.id); } }, "Delete"),
                             React.createElement("div", { className: "dr-photo-cap" }, new Date(photo.addedAt).toLocaleDateString()))))),
                 React.createElement(Card, null,
+                    React.createElement("h3", null, "Exactly what the photo shows"),
+                    React.createElement("p", { className: "dr-help" }, "Look at the photo you just took and describe the physical object \u2014 especially what is NOT on it. An image generator will invent a lid, a hinge, or a second button unless you rule them out here. This block is pasted straight into every AI prompt for this product."),
+                    React.createElement("textarea", { className: "dr-textarea", rows: 5, value: intake.physical, onChange: (event) => setIntakeValue("physical", event.target.value), placeholder: "One fact per line. Example: the charging case has no lid. There is one flush rubber pad on the side, not a raised button." }),
+                    React.createElement("div", { className: "dr-chips" }, PHYSICAL_CHIPS.map((text) => React.createElement("button", { className: "dr-chip", type: "button", key: text, onClick: () => addIntakePhysical(text) },
+                        "+ ",
+                        text)))),
+                React.createElement(Card, null,
                     React.createElement("h3", null, "Confirm on the product"),
                     React.createElement("p", { className: "dr-help" }, "Tick only what you can see or do yourself, right now, holding it. Anything left unticked never reaches a script."),
                     React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
@@ -18998,6 +19106,7 @@ function DoneRiteCreatorOS() {
                                     productName: entry.name,
                                     category: found.category || current.category,
                                     verifiedFeatures: found.verifiedFeatures || current.verifiedFeatures,
+                                    physicalFacts: found.physicalFacts || current.physicalFacts,
                                     acquisition: found.acquisition || (found.sampleReceived ? "sample" : current.acquisition),
                                 }));
                                 setCopyStatus(`Loaded ${entry.name}.`);
@@ -19018,6 +19127,12 @@ function DoneRiteCreatorOS() {
                     React.createElement("div", { className: "dr-chips" }, (FEATURE_LIBRARY[form.category] || []).map((text) => (React.createElement("button", { className: "dr-chip", type: "button", key: text, onClick: () => addFeature(text) },
                         "+ ",
                         text)))),
+                    React.createElement(Field, { label: "Exactly what the photo shows", help: "Physical facts only \u2014 what is and is not on the product. This is the block that stops an image generator adding a lid or a second button." },
+                        React.createElement("textarea", { className: "dr-textarea", value: form.physicalFacts, onChange: (event) => setValue("physicalFacts", event.target.value), placeholder: "One fact per line. Example: the charging case has no lid. One flush rubber pad, not a raised button." })),
+                    React.createElement("div", { className: "dr-chips" }, PHYSICAL_CHIPS.map((text) => (React.createElement("button", { className: "dr-chip", type: "button", key: text, onClick: () => addPhysical(text) },
+                        "+ ",
+                        text)))),
+                    React.createElement("div", { style: { height: 14 } }),
                     React.createElement(Field, { label: "Platform", help: "Changes which hooks and calls to action are offered below." },
                         React.createElement("select", { className: "dr-select", value: form.platform, onChange: (e) => { setValue("platform", e.target.value); setValue("chosenHook", ""); setValue("chosenCta", ""); } },
                             ["TikTok Shop", "YouTube Shorts", "Facebook", "Instagram Reels", "Pinterest"].map((pf) => React.createElement("option", { key: pf, value: pf }, pf)))),
@@ -19138,6 +19253,7 @@ function DoneRiteCreatorOS() {
                         ["ownAudio", "Any music or audio is cleared, or I used TikTok's own library"],
                         ["noLogos", "No competitor brands, logos, or packaging appear in frame"],
                         ["sampleInHand", "I have this product in hand — sample or bought myself — so first-person claims are honest"],
+                        ["matchesPhoto", "I compared this against my Intake photo — no lid, button, port, logo, or extra item appears that is not on the real product"],
                     ].map(([key, label]) => (React.createElement("label", { className: "dr-check", key: key },
                         React.createElement("input", { type: "checkbox", checked: videoDecl[key], onChange: (event) => setVideoDecl({ ...videoDecl, [key]: event.target.checked }) }),
                         React.createElement("span", null, label)))),
