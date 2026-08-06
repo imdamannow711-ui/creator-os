@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DONE RITE — Amazon Setup Launchpad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --slab:#0B0B0D;
+    --slab-2:#141418;
+    --chrome:#DCDEE3;
+    --chrome-dim:#8A8F99;
+    --bolt:#1E9BFF;
+    --rail:#C9A227;
+    --ok:#3FD07A;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--slab);
+    color:var(--chrome);
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    padding:0 0 64px;
+  }
+  .wrap{max-width:680px;margin:0 auto;padding:0 18px}
+
+  /* ---------- masthead ---------- */
+  header{
+    background:linear-gradient(180deg,#17171C 0%,#0B0B0D 100%);
+    border-bottom:3px solid var(--rail);
+    padding:26px 0 22px;
+  }
+  .bolt{
+    display:inline-block;width:22px;height:34px;vertical-align:-6px;margin-right:10px;
+    background:var(--bolt);
+    clip-path:polygon(58% 0,10% 56%,44% 56%,32% 100%,90% 40%,52% 40%);
+    filter:drop-shadow(0 0 10px rgba(30,155,255,.55));
+  }
+  h1{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    font-size:34px;line-height:1;margin:0;
+    background:linear-gradient(180deg,#FFFFFF 0%,#B9BDC6 48%,#7C818B 52%,#EDEFF3 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .sub{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--chrome-dim);margin-top:8px;
+  }
+  .badge{
+    display:inline-block;margin-top:12px;padding:3px 9px;border:1px solid var(--rail);
+    color:var(--rail);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;
+  }
+
+  /* ---------- notice ---------- */
+  .notice{
+    margin:22px 0 0;padding:16px 18px;background:var(--slab-2);
+    border-left:4px solid var(--bolt);
+  }
+  .notice h2{
+    font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.08em;
+    font-size:19px;margin:0 0 6px;color:#fff;
+  }
+  .notice p{margin:0;font-size:15px;color:var(--chrome)}
+  .notice p+p{margin-top:10px}
+
+  /* ---------- copy vault ---------- */
+  h3.section{
+    font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.1em;
+    font-size:15px;color:var(--chrome-dim);margin:34px 0 12px;
+    padding-bottom:7px;border-bottom:1px solid #26262C;
+  }
+  .field{
+    background:var(--slab-2);border:1px solid #24242A;border-radius:3px;
+    padding:12px 14px;margin-bottom:10px;
+  }
+  .field .label{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--chrome-dim);margin-bottom:7px;
+  }
+  .row{display:flex;gap:10px;align-items:stretch}
+  .val{
+    flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:13px;color:#fff;
+    word-break:break-all;display:flex;align-items:center;
+  }
+  .val.prose{font-family:'Inter',sans-serif;font-size:14px;line-height:1.45;word-break:normal}
+  button.copy{
+    flex:0 0 auto;min-width:74px;min-height:44px;
+    background:transparent;border:1px solid var(--bolt);color:var(--bolt);
+    font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:15px;
+    letter-spacing:.1em;text-transform:uppercase;border-radius:3px;cursor:pointer;
+    transition:background .15s,color .15s,border-color .15s;
+  }
+  button.copy:active{background:var(--bolt);color:#04121F}
+  button.copy.done{border-color:var(--ok);color:var(--ok)}
+  button.copy:focus-visible{outline:2px solid var(--rail);outline-offset:2px}
+  .empty{color:#5E626B;font-style:italic}
+
+  /* ---------- open buttons ---------- */
+  a.open{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:var(--slab-2);border:1px solid #24242A;border-left:4px solid var(--rail);
+    padding:15px 16px;margin-bottom:10px;text-decoration:none;color:#fff;min-height:56px;
+  }
+  a.open:active{background:#1C1C22}
+  a.open:focus-visible{outline:2px solid var(--bolt);outline-offset:2px}
+  a.open .t{font-family:'Barlow Condensed',sans-serif;font-size:19px;text-transform:uppercase;letter-spacing:.05em}
+  a.open .d{font-size:12.5px;color:var(--chrome-dim);margin-top:2px;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif}
+  a.open .arrow{color:var(--rail);font-size:22px;flex:0 0 auto}
+
+  /* ---------- rail checklist (signature) ---------- */
+  ol.rail{list-style:none;margin:0;padding:0 0 0 34px;position:relative}
+  ol.rail:before{
+    content:"";position:absolute;left:9px;top:8px;bottom:8px;width:3px;
+    background:linear-gradient(180deg,var(--rail) 0%,rgba(201,162,39,.25) 100%);
+  }
+  ol.rail li{position:relative;padding:0 0 20px}
+  ol.rail li:before{
+    content:"";position:absolute;left:-31px;top:4px;width:15px;height:15px;
+    border:2px solid var(--rail);background:var(--slab);border-radius:50%;
+  }
+  ol.rail li.on:before{
+    background:var(--bolt);border-color:var(--bolt);
+    box-shadow:0 0 9px rgba(30,155,255,.6);
+  }
+  ol.rail li .step{
+    font-family:'Barlow Condensed',sans-serif;font-size:19px;text-transform:uppercase;
+    letter-spacing:.05em;color:#fff;
+  }
+  ol.rail li p{margin:3px 0 0;font-size:14.5px;color:var(--chrome)}
+  ol.rail li.on .step{color:var(--bolt)}
+  .tick{
+    display:inline-block;width:26px;height:26px;border:1px solid #3A3A42;border-radius:3px;
+    vertical-align:-7px;margin-right:9px;cursor:pointer;position:relative;flex:0 0 auto;
+  }
+  .tick.checked{border-color:var(--ok);background:rgba(63,208,122,.12)}
+  .tick.checked:after{
+    content:"";position:absolute;left:8px;top:3px;width:7px;height:13px;
+    border:solid var(--ok);border-width:0 2px 2px 0;transform:rotate(43deg);
+  }
+  li.struck .step,li.struck p{opacity:.42;text-decoration:line-through}
+
+  .warn{
+    margin-top:26px;padding:14px 16px;border:1px dashed #45454E;
+    font-size:14px;color:var(--chrome-dim);
+  }
+  .warn b{color:var(--rail)}
+  footer{margin-top:34px;text-align:center;font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:.2em;color:#4A4E56;text-transform:uppercase}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1><span class="bolt" aria-hidden="true"></span>Amazon Setup</h1>
+    <div class="sub">Done Rite &middot; The Gadget Guru</div>
+    <div class="badge">LAUNCHPAD &middot; EST. 2026</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="notice">
+    <h2>Read this before you apply again</h2>
+    <p>You already have an Amazon Associates account. It has two tracking IDs on it and you can still log in, which means it may already be active — reapplying could create a duplicate or get the new one rejected.</p>
+    <p><b style="color:var(--bolt)">Log in first.</b> If the dashboard loads and shows your tracking IDs, you're already in. Skip the application entirely and go straight to the Influencer Program.</p>
+  </div>
+
+  <h3 class="section">Open these</h3>
+
+  <a class="open" href="https://affiliate-program.amazon.com/home" target="_blank" rel="noopener">
+    <span><span class="t">Associates Dashboard</span><span class="d">Log in here first — check if you're already active</span></span>
+    <span class="arrow" aria-hidden="true">&rsaquo;</span>
+  </a>
+
+  <a class="open" href="https://affiliate-program.amazon.com/influencers" target="_blank" rel="noopener">
+    <span><span class="t">Influencer Program</span><span class="d">The storefront + onsite video application</span></span>
+    <span class="arrow" aria-hidden="true">&rsaquo;</span>
+  </a>
+
+  <a class="open" href="https://affiliate-program.amazon.com/" target="_blank" rel="noopener">
+    <span><span class="t">Associates Home</span><span class="d">New application, if the dashboard won't load</span></span>
+    <span class="arrow" aria-hidden="true">&rsaquo;</span>
+  </a>
+
+  <h3 class="section">Tap to copy — your form answers</h3>
+
+  <div class="field">
+    <div class="label">TikTok — primary profile</div>
+    <div class="row">
+      <div class="val" id="v1">https://www.tiktok.com/@jay.whorahh</div>
+      <button class="copy" data-t="v1">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="label">YouTube</div>
+    <div class="row">
+      <div class="val" id="v2">https://www.youtube.com/@DoneRiteHQ</div>
+      <button class="copy" data-t="v2">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="label">Preferred store / tracking ID</div>
+    <div class="row">
+      <div class="val" id="v3">donerite02-20</div>
+      <button class="copy" data-t="v3">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="label">Second tracking ID — do not use unless asked</div>
+    <div class="row">
+      <div class="val" id="v4">donerite0e-20</div>
+      <button class="copy" data-t="v4">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="label">What your site is about</div>
+    <div class="row">
+      <div class="val prose" id="v5">Honest short-form product reviews of gadgets, electronics, home, kitchen, garage and outdoor items, published on TikTok and YouTube.</div>
+      <button class="copy" data-t="v5">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="label">How you drive traffic</div>
+    <div class="row">
+      <div class="val prose" id="v6">Organic short-form video reviews posted to TikTok and YouTube, with product links in bio and video descriptions.</div>
+      <button class="copy" data-t="v6">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="label">Required Amazon disclosure — put on every post with a link</div>
+    <div class="row">
+      <div class="val prose" id="v7">As an Amazon Associate I earn from qualifying purchases.</div>
+      <button class="copy" data-t="v7">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="label">Instagram</div>
+    <div class="row">
+      <div class="val" id="v8">https://www.instagram.com/imdamandaman</div>
+      <button class="copy" data-t="v8">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="label">Facebook — share link, cleaned</div>
+    <div class="row">
+      <div class="val" id="v9">https://www.facebook.com/share/1FLQBWCmDW/</div>
+      <button class="copy" data-t="v9">Copy</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="label">Better Facebook link — get this one if you can</div>
+    <div class="row">
+      <div class="val empty">Open your page &rarr; tap the name at the top &rarr; copy the URL from the address bar. Should look like facebook.com/YourPageName</div>
+    </div>
+  </div>
+
+  <h3 class="section">Run it in this order</h3>
+
+  <ol class="rail">
+    <li class="on">
+      <div class="step"><span class="tick" role="checkbox" tabindex="0" aria-label="Step 1 done"></span>Check the old account</div>
+      <p>Open the Associates Dashboard above. If it loads and shows donerite02-20, you're already active — stop, don't reapply.</p>
+    </li>
+    <li>
+      <div class="step"><span class="tick" role="checkbox" tabindex="0" aria-label="Step 2 done"></span>Sign in on the right account</div>
+      <p>Use your personal Amazon shopping login, not the seller account. Wrong login is what caused the "no live account" error.</p>
+    </li>
+    <li>
+      <div class="step"><span class="tick" role="checkbox" tabindex="0" aria-label="Step 3 done"></span>Fill the form in one sitting</div>
+      <p>Copy each field from above without leaving this page. Auto-Lock is already set to Never, so the screen won't sleep on you.</p>
+    </li>
+    <li>
+      <div class="step"><span class="tick" role="checkbox" tabindex="0" aria-label="Step 4 done"></span>Confirm phone and address</div>
+      <p>These were wrong the first time. Read them back before you hit submit.</p>
+    </li>
+    <li>
+      <div class="step"><span class="tick" role="checkbox" tabindex="0" aria-label="Step 5 done"></span>Apply to the Influencer Program</div>
+      <p>Separate from Associates. Verify with TikTok. This is the one that gets you a storefront.</p>
+    </li>
+    <li>
+      <div class="step"><span class="tick" role="checkbox" tabindex="0" aria-label="Step 6 done"></span>Claim your storefront handle</div>
+      <p>Once approved, pick the handle. It's hard to change later, so decide before you type it.</p>
+    </li>
+    <li>
+      <div class="step"><span class="tick" role="checkbox" tabindex="0" aria-label="Step 7 done"></span>Upload onsite review videos</div>
+      <p>Gear you already own — Lark A1 mics, gimbal, lights, tripod, NOCO dock, Colmi rings. Separate approval, and it's where the money is.</p>
+    </li>
+  </ol>
+
+  <div class="warn">
+    <b>If the page times out again:</b> it's the session, not your phone. Close every other Amazon tab first, use one browser only, and don't hit Back mid-form. If it still resets, try it on a computer instead — the Associates form is far more stable there.
+  </div>
+
+  <div class="warn">
+    <b>Ticks aren't saved.</b> Closing this page clears them. It's a checklist for one sitting, not a tracker.
+  </div>
+
+  <footer>Done Rite &middot; The Gadget Guru</footer>
+</div>
+
+<script>
+  document.querySelectorAll('button.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var el = document.getElementById(btn.dataset.t);
+      var txt = el.textContent.trim();
+      var mark = function(){
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(mark).catch(function(){ fallback(txt, mark, btn); });
+      } else {
+        fallback(txt, mark, btn);
+      }
+    });
+  });
+
+  function fallback(txt, mark, btn){
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.setAttribute('readonly','');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, txt.length);
+    try { document.execCommand('copy'); mark(); }
+    catch(e){ btn.textContent = 'Hold to copy'; }
+    document.body.removeChild(ta);
+  }
+
+  function toggle(tick){
+    tick.classList.toggle('checked');
+    tick.closest('li').classList.toggle('struck');
+  }
+  document.querySelectorAll('.tick').forEach(function(t){
+    t.addEventListener('click', function(){ toggle(t); });
+    t.addEventListener('keydown', function(e){
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(t); }
+    });
+  });
+</script>
+</body>
+</html>
