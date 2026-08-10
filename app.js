@@ -218,6 +218,9 @@ const CSS = `
     border:2px solid #ffb020; border-radius:12px; background:#2a1c00; color:#ffffff;
     font-size:15px; line-height:1.45; }
   .dr-savewarn strong { color:#ffd166; font-size:16px; }
+  .dr-upload-box { border:1px dashed ${COLORS.blueGlow}; border-radius:14px; padding:14px; background:rgba(30,123,255,.08); }
+  .dr-progress { height:9px; overflow:hidden; border-radius:999px; background:${COLORS.panel2}; border:1px solid ${COLORS.line}; }
+  .dr-progress > span { display:block; height:100%; background:linear-gradient(90deg, ${COLORS.blue}, ${COLORS.green}); transition:width .18s ease; }
   .dr-nav {
     position:fixed; left:0; right:0; bottom:0; z-index:25;
     border-top:1px solid ${COLORS.line}; background:rgba(17,21,28,.97);
@@ -247,6 +250,43 @@ function safeFeatureText(text) {
         .replace(/\s+([,.;:])/g, "$1")
         .replace(/^[\s,;:.\-]+/, "")
         .trim();
+}
+
+let gapOcrLibraryPromise = null;
+function loadGapOcrLibrary() {
+    if (window.Tesseract)
+        return Promise.resolve(window.Tesseract);
+    if (gapOcrLibraryPromise)
+        return gapOcrLibraryPromise;
+    gapOcrLibraryPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
+        script.async = true;
+        script.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error("The screenshot reader did not start."));
+        script.onerror = () => reject(new Error("The screenshot reader could not load. Connect to the internet and try again."));
+        document.head.appendChild(script);
+    });
+    return gapOcrLibraryPromise;
+}
+
+function contentGapPhrasesFromText(text) {
+    const ignored = /^(content gap|creator search insights|search insights|search|inspiration|analytics|recommended|followers?|following|friends?|profile|home|shop|inbox|videos?|posts?|views?|likes?|comments?|shares?|high|medium|low|all|filter|filters|back|done|cancel|today|yesterday|last 7 days|last 30 days)$/i;
+    const seen = new Set();
+    return String(text || "")
+        .split(/\r?\n/)
+        .map((line) => line.replace(/[|•●■►]+/g, " ").replace(/\s+/g, " ").trim())
+        .map((line) => line.replace(/^\d+[.)]\s*/, "").replace(/\s+\d+(?:[.,]\d+)?[KMB]?\s*(?:views?|searches?|posts?|videos?|%)?.*$/i, "").trim())
+        .filter((line) => line.length >= 5 && line.length <= 110)
+        .filter((line) => !ignored.test(line) && !/^\d+(?:[.,]\d+)?%?$/.test(line))
+        .filter((line) => (line.match(/[A-Za-z]{2,}/g) || []).length >= 2)
+        .filter((line) => {
+            const key = line.toLowerCase();
+            if (seen.has(key))
+                return false;
+            seen.add(key);
+            return true;
+        })
+        .slice(0, 20);
 }
 function scanCompliance(text, form = {}) {
     const source = String(text || "");
@@ -1212,6 +1252,10 @@ function DoneRiteCreatorOS() {
     const metalRef = useRef(null); // metal latch for checkboxes
     const [gapRows, setGapRows] = useState([]);
     const [gapDraft, setGapDraft] = useState(EMPTY_GAP);
+    const [gapScanBusy, setGapScanBusy] = useState(false);
+    const [gapScanProgress, setGapScanProgress] = useState(0);
+    const [gapScanStatus, setGapScanStatus] = useState("");
+    const gapImageRef = useRef(null);
     const [hookLog, setHookLog] = useState([]);
     const [hookSpin, setHookSpin] = useState(0);
     const [hookDraft, setHookDraft] = useState({ text: "", platform: "TikTok Shop", product: "", sales: "", views: "" });
@@ -1501,6 +1545,72 @@ function DoneRiteCreatorOS() {
         }
         setMoneyRows((current) => [{ ...moneyForm, id: uid(), amount }, ...current]);
         setMoneyForm((current) => ({ ...EMPTY_MONEY, type: current.type, platform: current.platform }));
+    };
+    const scanContentGapImage = async (file) => {
+        if (!file)
+            return;
+        if (!String(file.type || "").startsWith("image/")) {
+            setGapScanStatus("Choose a screenshot or photo file.");
+            return;
+        }
+        setGapScanBusy(true);
+        setGapScanProgress(0.02);
+        setGapScanStatus("Preparing screenshot…");
+        let worker = null;
+        try {
+            const Tesseract = await loadGapOcrLibrary();
+            setGapScanStatus("Reading the words in the screenshot…");
+            worker = await Tesseract.createWorker("eng", 1, {
+                logger: (message) => {
+                    if (message.status === "recognizing text") {
+                        const progress = Number(message.progress || 0);
+                        setGapScanProgress(0.1 + progress * 0.88);
+                        setGapScanStatus(`Reading screenshot… ${Math.round(progress * 100)}%`);
+                    }
+                },
+            });
+            const result = await worker.recognize(file);
+            const ocrText = String((result && result.data && result.data.text) || "").trim();
+            const phrases = contentGapPhrasesFromText(ocrText);
+            const createdAt = new Date().toISOString();
+            if (phrases.length) {
+                setGapRows((current) => {
+                    const existing = new Set(current.map((row) => String(row.phrase || "").trim().toLowerCase()));
+                    const additions = phrases
+                        .filter((phrase) => !existing.has(phrase.toLowerCase()))
+                        .map((phrase) => ({
+                            phrase,
+                            category: gapDraft.category,
+                            gapLevel: gapDraft.gapLevel,
+                            note: "Imported from screenshot — review spelling before filming",
+                            id: uid(),
+                            status: "queued",
+                            source: "screenshot import",
+                            createdAt,
+                        }));
+                    return [...additions, ...current];
+                });
+                setGapScanStatus(`${phrases.length} phrase${phrases.length === 1 ? "" : "s"} read and saved in the queue. The image was discarded. Review the spelling, then remove any line that is not a real Content Gap phrase.`);
+                setCopyStatus("Detected Content Gap phrases saved. Image discarded.");
+            }
+            else {
+                setGapScanStatus("No clear phrases were found, and the image was discarded. Try a tighter screenshot with larger, sharper text.");
+            }
+            setGapScanProgress(1);
+        }
+        catch (error) {
+            setGapScanStatus((error && error.message) || "The screenshot could not be read. Try a sharper image while connected to the internet.");
+            setGapScanProgress(0);
+        }
+        finally {
+            if (worker) {
+                try { await worker.terminate(); }
+                catch { }
+            }
+            setGapScanBusy(false);
+            if (gapImageRef.current)
+                gapImageRef.current.value = "";
+        }
     };
     const exportBackup = () => {
         const backup = { version: 1, exportedAt: new Date().toISOString(), saved, products, tasks, moneyRows, gapRows, hookLog };
@@ -1886,19 +1996,27 @@ function DoneRiteCreatorOS() {
             tab === "gap" && (React.createElement(React.Fragment, null,
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Content Gap"),
-                    React.createElement("p", { className: "dr-help" }, "TikTok will not hand this data to an app — it lives behind your login. Read it off your phone once a day and log it here. Two minutes buys you a queue instead of a guess."),
+                    React.createElement("p", { className: "dr-help" }, "Take a screenshot of TikTok Creator Search Insights, upload it below, and the Creator OS will read the visible Content Gap phrases into your queue. You can still type one manually when needed."),
                     React.createElement("div", { className: "dr-output", style: { marginTop: 12 } }, [
                         "1. Open TikTok, go to your profile",
                         "2. Creator Tools → Creator Search Insights",
                         "   (on some builds it sits under Settings instead)",
                         "3. Choose Content Gap",
                         "4. Filter to High % Gap",
-                        "5. Log any phrase that touches a category you sell in",
+                        "5. Screenshot the visible phrases and upload it here",
                     ].join("\n")),
-                    React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "Some days it comes back thin, especially in a narrow niche. That is normal. This supplements your product pipeline, it does not replace it.")),
+                    React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "The first scan needs an internet connection to load the on-device text reader. The screenshot is used only long enough to read the text, then discarded. Only the detected phrases are saved.")),
 
                 React.createElement(Card, null,
-                    React.createElement("h3", null, "Log a phrase"),
+                    React.createElement("h3", null, "Upload Content Gap Screenshot"),
+                    React.createElement("div", { className: "dr-upload-box", style: { marginTop: 12 } },
+                        React.createElement("input", { ref: gapImageRef, type: "file", accept: "image/*", hidden: true, onChange: (event) => scanContentGapImage(event.target.files && event.target.files[0]) }),
+                        React.createElement("button", { className: "dr-button", type: "button", disabled: gapScanBusy, onClick: () => gapImageRef.current && gapImageRef.current.click() }, gapScanBusy ? "Reading Screenshot…" : "Choose Screenshot or Take Photo"),
+                        gapScanBusy && React.createElement("div", { className: "dr-progress", style: { marginTop: 12 } }, React.createElement("span", { style: { width: `${Math.round(gapScanProgress * 100)}%` } })),
+                        gapScanStatus && React.createElement("p", { className: "dr-help", role: "status", style: { marginBottom: 0, color: gapScanProgress === 1 ? COLORS.green : COLORS.chrome } }, gapScanStatus))),
+
+                React.createElement(Card, null,
+                    React.createElement("h3", null, "Type One Phrase Manually"),
                     React.createElement("div", { style: { height: 12 } }),
                     React.createElement(Field, { label: "Search phrase", help: "Type it exactly as TikTok shows it. Exact wording is the whole point." },
                         React.createElement("input", { className: "dr-input", value: gapDraft.phrase, onChange: (e) => setGapDraft({ ...gapDraft, phrase: e.target.value }), placeholder: "e.g. best neck phone holder for reading in bed" })),
@@ -2048,6 +2166,7 @@ function DoneRiteCreatorOS() {
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Backup & Restore"),
                     React.createElement("p", { className: "dr-help" }, "This component stores data on the current device. Export regular backups before clearing browser data or changing devices."),
+                    React.createElement("p", { className: "dr-help" }, "Backups include every Content Gap phrase imported from a screenshot. Images are never saved."),
                     React.createElement("div", { className: "dr-row", style: { marginTop: 14 } },
                         React.createElement("button", { className: "dr-button", type: "button", onClick: exportBackup }, "Export Backup"),
                         React.createElement("button", { className: "dr-copy", type: "button", onClick: () => { var _a; return (_a = importRef.current) === null || _a === void 0 ? void 0 : _a.click(); } }, "Restore Backup")),
