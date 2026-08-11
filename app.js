@@ -1227,6 +1227,7 @@ function DoneRiteCreatorOS() {
     const [pkg, setPkg] = useState(null);
     const [saved, setSaved] = useState([]);
     const [products, setProducts] = useState([]);
+    const [quickCreateHistory, setQuickCreateHistory] = useState([]);
     const [tasks, setTasks] = useState(DEFAULT_TASKS);
     const [moneyRows, setMoneyRows] = useState([]);
     const [moneyForm, setMoneyForm] = useState(EMPTY_MONEY);
@@ -1305,6 +1306,9 @@ function DoneRiteCreatorOS() {
                 const data = JSON.parse(raw);
                 setSaved(Array.isArray(data.saved) ? data.saved : []);
                 setProducts(Array.isArray(data.products) ? data.products : []);
+                setQuickCreateHistory(Array.isArray(data.quickCreateHistory) ? data.quickCreateHistory : []);
+                if (data.form && typeof data.form === "object")
+                    setForm({ ...EMPTY_FORM, ...data.form });
                 setTasks(Array.isArray(data.tasks) ? data.tasks : DEFAULT_TASKS);
                 setMoneyRows(Array.isArray(data.moneyRows) ? data.moneyRows : []);
                 if (data.lastTab)
@@ -1330,7 +1334,7 @@ function DoneRiteCreatorOS() {
         if (!ready)
             return;
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, tasks, moneyRows, gapRows, lastTab: tab, clickSound, hookLog, hookSpin, version: 1 }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, quickCreateHistory, form, tasks, moneyRows, gapRows, lastTab: tab, clickSound, hookLog, hookSpin, version: 1 }));
             setSaveBlocked("");
         }
         catch (error) {
@@ -1339,7 +1343,7 @@ function DoneRiteCreatorOS() {
                 ? "This device is out of storage space, so new changes are not being saved. Go to Settings and download a backup now, then delete some saved packages."
                 : "This browser is not allowing anything to be saved on this device. Your work is still on screen, but it will disappear if you close this page. Go to Settings and download a backup now. Private browsing mode is the usual cause.");
         }
-    }, [ready, saved, products, tasks, moneyRows, gapRows, tab, clickSound, hookLog, hookSpin]);
+    }, [ready, saved, products, quickCreateHistory, form, tasks, moneyRows, gapRows, tab, clickSound, hookLog, hookSpin]);
     useEffect(() => {
         if (!copyStatus)
             return undefined;
@@ -1358,8 +1362,9 @@ function DoneRiteCreatorOS() {
             return;
         setSaved((current) => [pkg, ...current.filter((item) => item.id !== pkg.id)]);
     }, [ready, pkg]);
-    // Anything you've ever typed a product name into counts as history —
-    // saved product records first, then every package generated in Quick Create.
+    // Quick Create remembers names even when the user has not generated a
+    // package yet. Product records and saved packages remain the authoritative
+    // sources when the same name exists in more than one place.
     const productHistory = useMemo(() => {
         const list = [];
         const seen = new Set();
@@ -1375,8 +1380,10 @@ function DoneRiteCreatorOS() {
         };
         products.forEach((item) => push(item.productName, item));
         saved.forEach((item) => push(item.productName, item));
+        quickCreateHistory.forEach((item) => push(item.productName, item));
+        push(form.productName, form);
         return list;
-    }, [products, saved]);
+    }, [products, saved, quickCreateHistory, form]);
     const featureHistory = useMemo(() => {
         const seen = new Set();
         const out = [];
@@ -1481,6 +1488,20 @@ function DoneRiteCreatorOS() {
     const completedTasks = tasks.filter((task) => task.done).length;
     const sampleCount = products.filter((product) => product.acquisition === "sample" || product.acquisition === "purchased" || product.sampleReceived).length;
     const setValue = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+    const rememberQuickCreateProduct = (draft = form) => {
+        const name = String(draft.productName || "").trim();
+        if (!name)
+            return;
+        const record = {
+            productName: name,
+            category: draft.category,
+            verifiedFeatures: safeFeatureText(draft.verifiedFeatures),
+            acquisition: draft.acquisition,
+            sampleReceived: draft.acquisition === "sample",
+            updatedAt: new Date().toISOString(),
+        };
+        setQuickCreateHistory((current) => [record, ...current.filter((item) => String(item.productName || "").trim().toLowerCase() !== name.toLowerCase())]);
+    };
     const notifyCopy = async (text, label) => {
         const ok = await copyText(text);
         setCopyStatus(ok ? `${label} copied.` : "Copy was blocked. Press and hold the text, then choose Select All and Copy.");
@@ -1495,6 +1516,7 @@ function DoneRiteCreatorOS() {
             return;
         }
         setNeedsName(false);
+        rememberQuickCreateProduct();
         // Rotate the hook angles and hand the generator any proven winners.
         const spin = hookSpin + 1;
         setHookSpin(spin);
@@ -1613,7 +1635,7 @@ function DoneRiteCreatorOS() {
         }
     };
     const exportBackup = () => {
-        const backup = { version: 1, exportedAt: new Date().toISOString(), saved, products, tasks, moneyRows, gapRows, hookLog };
+        const backup = { version: 1, exportedAt: new Date().toISOString(), saved, products, quickCreateHistory, form, tasks, moneyRows, gapRows, hookLog };
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -1632,6 +1654,9 @@ function DoneRiteCreatorOS() {
                 throw new Error("Unsupported backup version");
             setSaved(Array.isArray(data.saved) ? data.saved : []);
             setProducts(Array.isArray(data.products) ? data.products : []);
+            setQuickCreateHistory(Array.isArray(data.quickCreateHistory) ? data.quickCreateHistory : []);
+            if (data.form && typeof data.form === "object")
+                setForm({ ...EMPTY_FORM, ...data.form });
             setTasks(Array.isArray(data.tasks) ? data.tasks : DEFAULT_TASKS);
             setMoneyRows(Array.isArray(data.moneyRows) ? data.moneyRows : []);
             setGapRows(Array.isArray(data.gapRows) ? data.gapRows : []);
@@ -1736,7 +1761,7 @@ function DoneRiteCreatorOS() {
                             productHistory.map((item) => (React.createElement("option", { key: item.key, value: item.key }, item.name)))))),
                     React.createElement(Field, { label: "Product name" },
                         React.createElement("input", { ref: nameRef, className: "dr-input", style: needsName ? { borderColor: COLORS.red } : undefined, value: form.productName, onChange: (event) => { setValue("productName", event.target.value); if (event.target.value.trim())
-                                setNeedsName(false); }, placeholder: "Example: rechargeable work light" })),
+                                setNeedsName(false); }, onBlur: () => rememberQuickCreateProduct(), placeholder: "Example: rechargeable work light" })),
                     needsName && (React.createElement("div", { className: "dr-savewarn", role: "alert" },
                         React.createElement("strong", null, "Nothing was generated."),
                         React.createElement("span", null, "Type the product name in the box above, then press Generate Content Package again."))),
