@@ -5,7 +5,7 @@
    connection. That means a bad upload can never get stuck on the phone
    the way it did before. */
 
-const CACHE_NAME = "done-rite-v6-clean";
+const CACHE_NAME = "done-rite-v7-clean";
 
 const FILES = ["./", "./index.html", "./app.js", "./content-gap-import.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
