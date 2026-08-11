@@ -1227,7 +1227,7 @@ function videoFlags(info, mode) {
    nothing here is true of a product until you have looked at the product and
    confirmed it. Deliberately plain: no performance, health, or quality claims. */
 const FEATURE_LIBRARY = {
-    "Electronics & Gadgets": ["USB-C charging", "Rechargeable battery", "Cordless", "Foldable design", "Built-in LED indicator", "Magnetic base", "Multiple brightness settings", "Carrying case included"],
+    "Electronics & Gadgets": ["USB-C charging", "Lightning-compatible connector", "Rechargeable battery", "Cordless", "Foldable design", "Built-in LED indicator", "Magnetic base", "Multiple brightness settings", "Carrying case included"],
     Kitchen: ["Dishwasher safe", "Stainless steel body", "Non-stick surface", "Stackable", "Cordless", "Removable lid", "Measurement markings", "Fits standard cabinets"],
     Home: ["Adhesive backing", "No tools needed to set up", "Foldable for storage", "Machine washable cover", "Non-slip base", "Comes in multiple sizes"],
     Outdoor: ["Water-resistant housing", "Foldable", "Carrying strap included", "Stake or clip mount", "Rechargeable battery", "Packs into its own bag"],
