@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#080a0e">
 <title>DONE RITE Content Gap Batch Import</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{width:min(760px,100%);margin:auto;padding:18px 14px 80px}.card{background:#11151c;border:1px solid #2a3442;border-radius:18px;padding:16px;margin:12px 0;min-width:0;max-width:100%;overflow:hidden}.brand{font-weight:900;letter-spacing:.1em;color:#58a6ff}.help,.status,.row{overflow-wrap:anywhere;word-break:break-word}.help{color:#8793a1;line-height:1.5}.picker{width:100%;padding:14px;background:#171c25;color:#eef3f8;border:1px solid #2a3442;border-radius:12px}.btn{width:100%;min-height:48px;border:1px solid #58a6ff;border-radius:12px;background:#1e7bff;color:#fff;font:inherit;font-weight:900;margin-top:12px}.btn.secondary{background:#171c25;color:#58a6ff;border-color:#2a3442}.btn:disabled{opacity:.5}.progress{height:10px;border-radius:999px;background:#171c25;border:1px solid #2a3442;overflow:hidden;margin-top:12px}.progress span{display:block;height:100%;background:#1e7bff;width:0%}.status{margin-top:10px;color:#c4ccd6;line-height:1.45}.ok{color:#2bd97c}.bad{color:#ff6673}.row{padding:10px;background:#171c25;border:1px solid #2a3442;border-radius:10px;margin-top:8px;line-height:1.4}h1{font-size:22px;margin:6px 0}a{color:inherit;text-decoration:none}
+*{box-sizing:border-box}body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{width:min(760px,100%);margin:auto;padding:18px 14px 80px}.card{background:#11151c;border:1px solid #2a3442;border-radius:18px;padding:16px;margin:12px 0;min-width:0;max-width:100%;overflow:hidden}.brand{font-weight:900;letter-spacing:.1em;color:#58a6ff}.help,.status,.row{overflow-wrap:anywhere;word-break:break-word}.help{color:#8793a1;line-height:1.5}.picker{width:100%;padding:14px;background:#171c25;color:#eef3f8;border:1px solid #2a3442;border-radius:12px}.btn{width:100%;min-height:48px;border:1px solid #58a6ff;border-radius:12px;background:#1e7bff;color:#fff;font:inherit;font-weight:900;margin-top:12px}.btn.secondary{background:#171c25;color:#58a6ff;border-color:#2a3442}.btn:disabled{opacity:.5}.progress{height:10px;border-radius:999px;background:#171c25;border:1px solid #2a3442;overflow:hidden;margin-top:12px}.progress span{display:block;height:100%;background:#1e7bff;width:0%;transition:width .18s ease}.status{margin-top:10px;color:#c4ccd6;line-height:1.45}.ok{color:#2bd97c}.bad{color:#ff6673}.row{padding:10px;background:#171c25;border:1px solid #2a3442;border-radius:10px;margin-top:8px;line-height:1.4}h1{font-size:22px;margin:6px 0}a{color:inherit;text-decoration:none}.count{margin-top:8px;color:#58a6ff;font-weight:800}
 </style>
 </head>
 <body>
@@ -14,8 +14,9 @@
   <div class="brand">⚡ DONE RITE CREATOR OS</div>
   <h1>Content Gap — Multi-Screenshot Import</h1>
   <div class="card">
-    <p class="help">Select several TikTok Creator Search Insights screenshots at the same time. They are read one-by-one, duplicate phrases are removed, and only the detected text is saved into your existing Creator OS Content Gap queue. Images are not stored.</p>
+    <p class="help">Select several TikTok Creator Search Insights screenshots at the same time. Creator OS uses one reader for the whole batch, shrinks oversized screenshots for faster iPhone processing, removes duplicate lines, and saves only the detected text. Images are not stored.</p>
     <input id="files" class="picker" type="file" accept="image/*" multiple>
+    <div id="selected" class="count">No screenshots selected.</div>
     <button id="run" class="btn">Import Selected Screenshots</button>
     <div class="progress"><span id="bar"></span></div>
     <div id="status" class="status">Choose multiple screenshots above.</div>
@@ -52,26 +53,74 @@ function saveIntoCreatorOS(phrases){
   phrases.forEach(phrase=>{const p=clean(phrase),k=p.toLowerCase();if(!p||existing.has(k))return;existing.add(k);additions.push({phrase:p,category:'Electronics & Gadgets',gapLevel:'High',note:'Imported from multi-screenshot batch — review spelling and demand before filming',id:uid(),status:'queued',source:'multi-screenshot import',createdAt})});
   data.gapRows=[...additions,...rows];data.version=data.version||1;localStorage.setItem(STORAGE_KEY,JSON.stringify(data));return additions;
 }
+async function loadImage(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=new Image();
+    img.decoding='async';
+    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error('One screenshot could not be opened.'));img.src=url});
+    return img;
+  }finally{URL.revokeObjectURL(url)}
+}
+async function prepareImage(file){
+  const img=await loadImage(file);
+  const maxW=1400;
+  const scale=Math.min(1,maxW/img.naturalWidth);
+  if(scale===1)return file;
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
+  canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+  const ctx=canvas.getContext('2d',{alpha:false});
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  return await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not prepare screenshot.')),'image/jpeg',0.88));
+}
+$('files').addEventListener('change',()=>{
+ const n=Array.from($('files').files||[]).filter(f=>String(f.type||'').startsWith('image/')).length;
+ $('selected').textContent=n?`${n} screenshot${n===1?'':'s'} selected.`:'No screenshots selected.';
+});
 $('run').onclick=async()=>{
  const files=Array.from($('files').files||[]).filter(f=>String(f.type||'').startsWith('image/'));
- if(!files.length){$('status').textContent='Choose two or more screenshots first.';$('status').className='status bad';return;}
- $('run').disabled=true;$('preview').innerHTML='';$('status').className='status';
+ if(!files.length){$('status').textContent='Choose one or more screenshots first.';$('status').className='status bad';return;}
+ $('run').disabled=true;$('preview').innerHTML='';$('status').className='status';$('bar').style.width='2%';
+ let worker=null;
  try{
-  const T=await loadOCR(),all=[];
+  $('status').textContent='Loading screenshot reader… first batch can take a moment.';
+  const T=await loadOCR();
+  $('status').textContent='Starting reader once for the whole batch…';
+  worker=await T.createWorker('eng',1,{logger:m=>{
+    if(m.status==='recognizing text' && window.__drCurrent){
+      const c=window.__drCurrent,fp=Number(m.progress||0);
+      $('bar').style.width=Math.round(((c.index+fp)/c.total)*100)+'%';
+      $('status').textContent=`Screenshot ${c.index+1} of ${c.total} — ${Math.round(fp*100)}% read`;
+    }
+  }});
+  const all=[];
   for(let i=0;i<files.length;i++){
-   let worker=null;const file=files[i];
-   $('status').textContent=`Reading ${i+1} of ${files.length}: ${file.name||'screenshot'}…`;
-   try{
-    worker=await T.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text'){const fp=Number(m.progress||0);$('bar').style.width=Math.round(((i+fp)/files.length)*100)+'%';$('status').textContent=`Reading ${i+1} of ${files.length} — ${Math.round(fp*100)}%`;}}});
-    const r=await worker.recognize(file);phrasesFromText(r&&r.data&&r.data.text).forEach(p=>all.push(p));
-   }finally{if(worker){try{await worker.terminate()}catch(e){}}}
+   window.__drCurrent={index:i,total:files.length};
+   $('status').textContent=`Preparing screenshot ${i+1} of ${files.length}…`;
+   const prepared=await prepareImage(files[i]);
+   $('status').textContent=`Reading screenshot ${i+1} of ${files.length}…`;
+   const r=await worker.recognize(prepared);
+   phrasesFromText(r&&r.data&&r.data.text).forEach(p=>all.push(p));
+   $('bar').style.width=Math.round(((i+1)/files.length)*100)+'%';
+   await new Promise(resolve=>setTimeout(resolve,40));
   }
   const unique=[],seen=new Set();all.forEach(p=>{const k=p.toLowerCase();if(!seen.has(k)){seen.add(k);unique.push(p)}});
-  const saved=saveIntoCreatorOS(unique);$('bar').style.width='100%';$('status').textContent=`Done — ${files.length} screenshots processed, ${unique.length} unique lines detected, ${saved.length} new phrases saved to Creator OS.`;$('status').className='status ok';
+  const saved=saveIntoCreatorOS(unique);
+  $('bar').style.width='100%';
+  $('status').textContent=`Done — ${files.length} screenshot${files.length===1?'':'s'} processed, ${unique.length} unique lines detected, ${saved.length} new phrases saved to Creator OS.`;
+  $('status').className='status ok';
   saved.forEach(x=>{const d=document.createElement('div');d.className='row';d.textContent=x.phrase;$('preview').appendChild(d)});
-  $('files').value='';
- }catch(e){$('status').textContent=(e&&e.message)||'Batch import failed.';$('status').className='status bad';$('bar').style.width='0%';}
- finally{$('run').disabled=false}
+  $('files').value='';$('selected').textContent='No screenshots selected.';
+ }catch(e){
+  $('status').textContent=((e&&e.message)||'Batch import failed.')+' Try 3–5 screenshots at a time if iPhone memory is tight.';
+  $('status').className='status bad';$('bar').style.width='0%';
+ }finally{
+  window.__drCurrent=null;
+  if(worker){try{await worker.terminate()}catch(e){}}
+  $('run').disabled=false;
+ }
 };
 </script>
 </body>
