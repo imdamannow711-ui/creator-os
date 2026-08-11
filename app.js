@@ -45,6 +45,7 @@ const COLORS = {
     red: "#ff4d5a",
 };
 const STORAGE_KEY = "done-rite-creator-os:v1";
+const PRODUCT_HISTORY_KEY = "done-rite-product-history:v1";
 const CATEGORIES = [
     "Electronics & Gadgets",
     "Kitchen",
@@ -1376,30 +1377,86 @@ function DoneRiteCreatorOS() {
     const importRef = useRef(null);
     useEffect(() => {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                const data = JSON.parse(raw);
-                setSaved(Array.isArray(data.saved) ? data.saved : []);
-                setProducts(Array.isArray(data.products) ? data.products : []);
-                setQuickCreateHistory(Array.isArray(data.quickCreateHistory) ? data.quickCreateHistory : []);
-                if (data.form && typeof data.form === "object")
-                    setForm({ ...EMPTY_FORM, ...data.form });
-                setTasks(Array.isArray(data.tasks) ? data.tasks : DEFAULT_TASKS);
-                setMoneyRows(Array.isArray(data.moneyRows) ? data.moneyRows : []);
-                if (data.lastTab)
-                    setTab(data.lastTab);
-                if (typeof data.clickSound === "boolean")
-                    setClickSound(data.clickSound);
-                if (Array.isArray(data.hookLog))
-                    setHookLog(data.hookLog);
-                if (Array.isArray(data.gapRows))
-                    setGapRows(data.gapRows);
-                if (typeof data.hookSpin === "number")
-                    setHookSpin(data.hookSpin);
+            const candidates = [];
+            const addCandidate = (key, raw) => {
+                if (!raw)
+                    return;
+                try {
+                    const parsed = JSON.parse(raw);
+                    const value = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+                        ? (parsed.state && typeof parsed.state === "object" ? parsed.state : parsed.data && typeof parsed.data === "object" ? parsed.data : parsed)
+                        : parsed;
+                    const data = Array.isArray(value) ? { quickCreateHistory: value } : value;
+                    if (!data || typeof data !== "object")
+                        return;
+                    const looksLikeCreatorData = ["saved", "products", "quickCreateHistory", "gapRows", "hookLog"].some((field) => Array.isArray(data[field]))
+                        || (data.form && typeof data.form === "object" && data.form.productName);
+                    if (looksLikeCreatorData)
+                        candidates.push({ key, data });
+                }
+                catch { }
+            };
+            addCandidate(STORAGE_KEY, localStorage.getItem(STORAGE_KEY));
+            addCandidate(PRODUCT_HISTORY_KEY, localStorage.getItem(PRODUCT_HISTORY_KEY));
+            for (let index = 0; index < localStorage.length; index += 1) {
+                const key = localStorage.key(index);
+                if (!key || key === STORAGE_KEY || key === PRODUCT_HISTORY_KEY)
+                    continue;
+                if (/done.?rite|creator.?os|gadget.?guru/i.test(key))
+                    addCandidate(key, localStorage.getItem(key));
+            }
+            const primary = candidates.find((item) => item.key === STORAGE_KEY);
+            const sources = primary ? [primary, ...candidates.filter((item) => item !== primary)] : candidates;
+            const mergeRecords = (field, keyFor) => {
+                const out = [];
+                const seen = new Set();
+                sources.forEach(({ data }) => {
+                    (Array.isArray(data[field]) ? data[field] : []).forEach((item, index) => {
+                        if (!item || typeof item !== "object")
+                            return;
+                        const key = String(keyFor(item, index) || "").toLowerCase();
+                        if (!key || seen.has(key))
+                            return;
+                        seen.add(key);
+                        out.push(item);
+                    });
+                });
+                return out;
+            };
+            const savedRecovered = mergeRecords("saved", (item, index) => item.id || `${item.productName || ""}|${item.createdAt || index}`);
+            const productsRecovered = mergeRecords("products", (item, index) => item.id || item.productName || index);
+            const historyRecovered = mergeRecords("quickCreateHistory", (item, index) => item.productName || item.id || index);
+            const gapsRecovered = mergeRecords("gapRows", (item, index) => item.id || item.phrase || index);
+            const hooksRecovered = mergeRecords("hookLog", (item, index) => item.id || `${item.text || ""}|${index}`);
+            const chosen = sources.map((item) => item.data).find((data) =>
+                (data.form && data.form.productName)
+                || (Array.isArray(data.products) && data.products.length)
+                || (Array.isArray(data.saved) && data.saved.length)
+                || (Array.isArray(data.quickCreateHistory) && data.quickCreateHistory.length)
+            ) || (sources[0] && sources[0].data);
+            if (sources.length) {
+                setSaved(savedRecovered);
+                setProducts(productsRecovered);
+                setQuickCreateHistory(historyRecovered);
+                if (chosen && chosen.form && typeof chosen.form === "object")
+                    setForm({ ...EMPTY_FORM, ...chosen.form });
+                setTasks(chosen && Array.isArray(chosen.tasks) ? chosen.tasks : DEFAULT_TASKS);
+                setMoneyRows(chosen && Array.isArray(chosen.moneyRows) ? chosen.moneyRows : []);
+                if (chosen && chosen.lastTab)
+                    setTab(chosen.lastTab);
+                if (chosen && typeof chosen.clickSound === "boolean")
+                    setClickSound(chosen.clickSound);
+                setHookLog(hooksRecovered);
+                setGapRows(gapsRecovered);
+                if (chosen && typeof chosen.hookSpin === "number")
+                    setHookSpin(chosen.hookSpin);
+                if (candidates.some((item) => item.key !== STORAGE_KEY)
+                    && (productsRecovered.length || savedRecovered.length || historyRecovered.length))
+                    setImportStatus("Previous Creator OS product history was found and recovered.");
             }
         }
         catch {
-            setImportStatus("Saved data could not be read. A fresh local workspace was opened.");
+            setImportStatus("Saved data could not be read. Open Settings and use Restore Backup if you exported one.");
         }
         finally {
             setReady(true);
@@ -1409,6 +1466,29 @@ function DoneRiteCreatorOS() {
         if (!ready)
             return;
         try {
+            const historyMirror = {
+                version: 1,
+                updatedAt: new Date().toISOString(),
+                products: products.map((item) => ({
+                    id: item.id,
+                    productName: item.productName,
+                    category: item.category,
+                    verifiedFeatures: item.verifiedFeatures,
+                    acquisition: item.acquisition,
+                    sampleReceived: item.sampleReceived,
+                    updatedAt: item.updatedAt,
+                })),
+                quickCreateHistory,
+                form: {
+                    productName: form.productName,
+                    category: form.category,
+                    verifiedFeatures: form.verifiedFeatures,
+                    acquisition: form.acquisition,
+                    sampleReceived: form.sampleReceived,
+                    updatedAt: new Date().toISOString(),
+                },
+            };
+            localStorage.setItem(PRODUCT_HISTORY_KEY, JSON.stringify(historyMirror));
             localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, quickCreateHistory, form, tasks, moneyRows, gapRows, lastTab: tab, clickSound, hookLog, hookSpin, version: 1 }));
             setSaveBlocked("");
         }
