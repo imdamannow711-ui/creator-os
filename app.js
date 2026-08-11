@@ -252,6 +252,49 @@ function safeFeatureText(text) {
         .trim();
 }
 
+function correctKnownProductNames(text) {
+    return String(text || "")
+        .replace(/\bhollayland\b/gi, "Hollyland")
+        .replace(/\bhollyland\s+lark\s+a1\b/gi, "Hollyland LARK A1");
+}
+function normalizeProductName(text) {
+    return correctKnownProductNames(text).trim();
+}
+function splitVerifiedFeatures(text) {
+    return String(text || "")
+        .split(/[\n.;]+/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+}
+function naturalFeatureText(text) {
+    const value = String(text || "").trim().replace(/[.]+$/, "");
+    if (!value)
+        return "";
+    return /^[A-Z]{2,}(?:\b|-)/.test(value)
+        ? value
+        : value.charAt(0).toLowerCase() + value.slice(1);
+}
+function timelineMarks(duration) {
+    const total = [7, 10, 15].includes(Number(duration)) ? Number(duration) : 15;
+    return [
+        0,
+        Math.max(2, Math.round(total * 0.18)),
+        Math.round(total * 0.48),
+        Math.round(total * 0.76),
+        total,
+    ];
+}
+function spokenScriptLines(product, feature, hook, cta) {
+    const detail = naturalFeatureText(feature);
+    const hookMentionsProduct = String(hook || "").toLowerCase().includes(String(product || "").toLowerCase());
+    return [
+        correctKnownProductNames(hook),
+        hookMentionsProduct ? (detail ? `Designed with ${detail}.` : "Here it is in one take.") : `Meet ${product}.`,
+        detail ? (hookMentionsProduct ? "Watch it in use." : `Designed with ${detail}.`) : "Watch the hands-on demo.",
+        cta,
+    ];
+}
+
 let gapOcrLibraryPromise = null;
 function loadGapOcrLibrary() {
     if (window.Tesseract)
@@ -388,12 +431,14 @@ function flattenScript(pkg) {
     ].join("\n");
 }
 function makePackage(form) {
-    const product = form.productName.trim();
+    const product = normalizeProductName(form.productName);
     const cleaned = safeFeatureText(form.verifiedFeatures);
-    const feature = cleaned.split(/[\n.;]/).map((part) => part.trim()).filter(Boolean)[0] || "a simpler everyday routine";
+    const features = splitVerifiedFeatures(cleaned);
+    const feature = features[0] || "";
+    const displayFeature = naturalFeatureText(feature) || "a simpler everyday routine";
     const inHand = form.acquisition === "sample" || form.acquisition === "purchased";
     const planning = !inHand;
-    const issues = scanCompliance(`${form.productName}\n${form.verifiedFeatures}`, form);
+    const issues = scanCompliance(`${product}\n${form.verifiedFeatures}`, form);
     const changed = safeFeatureText(form.verifiedFeatures) !== form.verifiedFeatures.trim();
     if (changed) {
         issues.unshift({
@@ -404,24 +449,27 @@ function makePackage(form) {
         });
     }
     const prefix = planning ? "PLANNING DRAFT — SAMPLE NOT CONFIRMED\n\n" : "";
-    let hooks = pickHooks(product, feature, form.platform, form.hookWinners || [], form.hookSpin || 0);
+    let hooks = pickHooks(product, displayFeature, form.platform, form.hookWinners || [], form.hookSpin || 0);
     if (form.chosenHook) {
-        hooks = [form.chosenHook].concat(hooks.filter((h) => h !== form.chosenHook)).slice(0, 3);
+        const chosenHook = correctKnownProductNames(form.chosenHook);
+        hooks = [chosenHook].concat(hooks.filter((h) => h !== chosenHook)).slice(0, 3);
     }
     const pattern = pickPattern(form.platform, form.chosenPattern, form.hookSpin || 0);
-    const voiceover = `${prefix}${hooks[0]} This is ${product}, built around ${feature}. Watch it work rather than listen to me describe it. Product details are in the cart.`;
+    const cta = form.chosenCta || ctaOptions(form.platform)[0].text;
+    const spokenLines = spokenScriptLines(product, feature, hooks[0], cta);
+    const voiceover = `${prefix}${spokenLines.join(" ")}`;
     const searchPhrase = String(form.searchPhrase || "").trim();
+    const marks = timelineMarks(form.duration);
     const onScreenText = [
-        `0–2s: ${searchPhrase ? searchPhrase.toUpperCase() : "WORTH A CLOSER LOOK?"}`,
-        `2–6s: ${product.toUpperCase()}`,
-        `6–11s: ${feature.toUpperCase()}`,
-        `11–${form.duration}s: CHECK PRODUCT DETAILS`,
+        `${marks[0]}–${marks[1]}s: ${searchPhrase ? searchPhrase.toUpperCase() : hooks[0].toUpperCase()}`,
+        `${marks[1]}–${marks[2]}s: ${product.toUpperCase()}`,
+        `${marks[2]}–${marks[3]}s: ${displayFeature.toUpperCase()}`,
+        `${marks[3]}–${marks[4]}s: ${cta.toUpperCase()}`,
     ].join("\n");
     const caption = `${planning ? "Planning draft: " : ""}${searchPhrase ? searchPhrase + ". " : ""}A closer look at ${product} and the verified features it was designed around. Product details are available in the cart.`;
     const hashtags = "#ad #TikTokShop #GadgetFinds #ProductDemo #DoneRite";
-    const cta = form.chosenCta || ctaOptions(form.platform)[0].text;
-    const thumbnail = "WORTH A CLOSER LOOK?";
-    const shotList = buildShotList(pattern, product, feature, form.duration, hooks[0], cta);
+    const thumbnail = searchPhrase ? searchPhrase.toUpperCase() : "WORTH A CLOSER LOOK?";
+    const shotList = buildShotList(pattern, product, feature, form.duration, spokenLines);
     const aiImagePrompt = `Create a vertical 9:16 hands-on visual for ${product}. Hands may hold, open, or operate the product. Use a black, chrome, and electric-blue DONE RITE technology style. Show the product, the hands using it, and a clean feature-focused environment. No face, no head, no shoulders, no price, discount badge, competitor branding, unsupported specification, or added product claim.`;
     const aiVideoPrompt = `Create a ${form.duration}-second vertical 9:16 hands-on ${form.funnel} demo video for ${product}, shot in the "${pattern.name}" pattern. Hands enter frame and operate the product; the camera stays above or beside the hands so no face, head, or shoulders are visible. Keep the product moving — continuous hand motion, not a slideshow of stills. Use subtle electric-blue lighting, readable safe-zone text, and one cart-directed CTA. No face, price, discount, false scarcity, competitor comparison, medical claim, absolute claim, or invented specification. Use only these verified details: ${cleaned || "No verified feature supplied; keep the presentation generic."}`;
     const crossPlatform = [
@@ -441,7 +489,7 @@ function makePackage(form) {
         id: uid(),
         createdAt: new Date().toISOString(),
         productName: product,
-        form: { ...form, verifiedFeatures: cleaned },
+        form: { ...form, productName: product, verifiedFeatures: cleaned },
         hooks,
         voiceover,
         onScreenText,
@@ -799,7 +847,7 @@ const SHOT_PATTERNS = [
     beats: (p, f) => [
       { label: "ALREADY OPENING", hands: "Box is mid-open on frame one. Never start with a sealed box sitting still." },
       { label: "OUT AND UP", hands: `${p} lifted clear of the packaging in one motion.` },
-      { label: "STRAIGHT TO USE", hands: `Hands go directly into using it. Show ${f} working.` },
+      { label: "STRAIGHT TO USE", hands: `Hands go directly into using it. Show ${f} in use.` },
       { label: "HAND OFF", hands: "Packaging pushed out of frame, product held up, point toward the cart." },
     ],
   },
@@ -875,25 +923,14 @@ function pickPattern(platform, chosenId, spin) {
 }
 
 /* Turns a pattern into a timed, filmable shot list. Hands in frame, head out. */
-function buildShotList(pattern, product, feature, duration, hook, cta) {
-  const total = Number(duration) || 15;
-  const marks = [
-    0,
-    Math.max(2, Math.round(total * 0.18)),
-    Math.round(total * 0.48),
-    Math.round(total * 0.76),
-    total,
-  ];
-  const say = [
-    hook,
-    `${product}. ${feature}.`,
-    "Narrate the demo as it happens. Verified features only.",
-    cta,
-  ];
-  const rows = pattern.beats(product, feature).map((beat, index) => [
+function buildShotList(pattern, product, feature, duration, spokenLines) {
+  const marks = timelineMarks(duration);
+  const displayFeature = naturalFeatureText(feature) || "the selected verified detail";
+  const beats = pattern.beats(product, displayFeature);
+  const rows = beats.map((beat, index) => [
     `${marks[index]}–${marks[index + 1]}s  ${beat.label}`,
     `   HANDS: ${beat.hands}`,
-    `   SAY:   ${say[index]}`,
+    `   SAY:   ${spokenLines[index] || ""}`,
   ].join("\n"));
   return [
     `PATTERN: ${pattern.name} — ${pattern.why}`,
@@ -1542,10 +1579,11 @@ function DoneRiteCreatorOS() {
             return;
         }
         setNeedsName(false);
-        const effectiveForm = form.searchPhrase.trim()
-            ? form
-            : { ...form, searchPhrase: buildTargetPhraseChoices(form)[0] || "" };
-        if (effectiveForm.searchPhrase !== form.searchPhrase)
+        const correctedForm = { ...form, productName: normalizeProductName(form.productName) };
+        const effectiveForm = correctedForm.searchPhrase.trim()
+            ? correctedForm
+            : { ...correctedForm, searchPhrase: buildTargetPhraseChoices(correctedForm)[0] || "" };
+        if (effectiveForm.searchPhrase !== form.searchPhrase || effectiveForm.productName !== form.productName)
             setForm(effectiveForm);
         rememberQuickCreateProduct(effectiveForm);
         // Rotate the hook angles and hand the generator any proven winners.
