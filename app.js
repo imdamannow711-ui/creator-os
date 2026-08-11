@@ -1363,8 +1363,8 @@ function DoneRiteCreatorOS() {
         setSaved((current) => [pkg, ...current.filter((item) => item.id !== pkg.id)]);
     }, [ready, pkg]);
     // Quick Create remembers names even when the user has not generated a
-    // package yet. Product records and saved packages remain the authoritative
-    // sources when the same name exists in more than one place.
+    // package yet. Saved packages go first so a product's most recent target
+    // search phrase is restored when the same name also exists in the vault.
     const productHistory = useMemo(() => {
         const list = [];
         const seen = new Set();
@@ -1378,8 +1378,8 @@ function DoneRiteCreatorOS() {
             seen.add(key);
             list.push({ key, name: clean, source });
         };
-        products.forEach((item) => push(item.productName, item));
         saved.forEach((item) => push(item.productName, item));
+        products.forEach((item) => push(item.productName, item));
         quickCreateHistory.forEach((item) => push(item.productName, item));
         push(form.productName, form);
         return list;
@@ -1396,6 +1396,51 @@ function DoneRiteCreatorOS() {
         }));
         return out.slice(0, 12);
     }, [products]);
+    const buildTargetPhraseChoices = (draft) => {
+        const out = [];
+        const seen = new Set();
+        const push = (value) => {
+            const phrase = String(value || "").trim();
+            const key = phrase.toLowerCase();
+            if (!phrase || seen.has(key))
+                return;
+            seen.add(key);
+            out.push(phrase);
+        };
+        const productName = String(draft.productName || "").trim();
+        const productKey = productName.toLowerCase();
+        saved.forEach((item) => {
+            if (String(item.productName || "").trim().toLowerCase() === productKey)
+                push(item.searchPhrase);
+        });
+        const stopWords = new Set(["and", "the", "for", "with", "this", "that", "from", "your"]);
+        const productWords = new Set(`${productName} ${draft.verifiedFeatures || ""}`.toLowerCase().match(/[a-z0-9]+/g) || []);
+        const relevantGaps = gapRows
+            .map((item) => {
+                const words = String(item.phrase || "").toLowerCase().match(/[a-z0-9]+/g) || [];
+                const hits = words.filter((word) => word.length > 2 && !stopWords.has(word) && productWords.has(word)).length;
+                return { phrase: item.phrase, score: hits + (item.category === draft.category ? 0.25 : 0) };
+            })
+            .filter((item) => item.score >= 1)
+            .sort((a, b) => b.score - a.score);
+        relevantGaps.forEach((item) => push(item.phrase));
+        if (productName) {
+            const funnel = String(draft.funnel || "BOF").toUpperCase();
+            if (/\b(mic|microphone)\b/i.test(productName)) {
+                push(funnel === "TOF" ? "wireless microphone for phone videos" : funnel === "MOF" ? `${productName} test` : `${productName} review`);
+            }
+            else {
+                push(funnel === "TOF" ? productName : funnel === "MOF" ? `${productName} test` : `${productName} review`);
+            }
+            push(`${productName} setup`);
+            push(`${productName} test`);
+            push(productName);
+            if (/\b(mic|microphone)\b/i.test(productName))
+                push("wireless microphone for TikTok videos");
+        }
+        return out.slice(0, 30);
+    };
+    const targetPhraseChoices = useMemo(() => buildTargetPhraseChoices(form), [form.productName, form.category, form.verifiedFeatures, form.funnel, saved, gapRows]);
     const addFeature = (text) => {
         setForm((current) => {
             const lines = String(current.verifiedFeatures || "").split(/\n/).map((l) => l.trim()).filter(Boolean);
@@ -1496,6 +1541,7 @@ function DoneRiteCreatorOS() {
             productName: name,
             category: draft.category,
             verifiedFeatures: safeFeatureText(draft.verifiedFeatures),
+            searchPhrase: String(draft.searchPhrase || "").trim(),
             acquisition: draft.acquisition,
             sampleReceived: draft.acquisition === "sample",
             updatedAt: new Date().toISOString(),
@@ -1516,24 +1562,30 @@ function DoneRiteCreatorOS() {
             return;
         }
         setNeedsName(false);
-        rememberQuickCreateProduct();
+        const effectiveForm = form.searchPhrase.trim()
+            ? form
+            : { ...form, searchPhrase: buildTargetPhraseChoices(form)[0] || "" };
+        if (effectiveForm.searchPhrase !== form.searchPhrase)
+            setForm(effectiveForm);
+        rememberQuickCreateProduct(effectiveForm);
         // Rotate the hook angles and hand the generator any proven winners.
         const spin = hookSpin + 1;
         setHookSpin(spin);
         const winners = hookLog.filter((entry) => entry.winner);
-        const next = makePackage({ ...form, hookWinners: winners, hookSpin: spin });
+        const next = makePackage({ ...effectiveForm, hookWinners: winners, hookSpin: spin });
         setPkg(next);
         window.setTimeout(() => { var _a; return (_a = resultsRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60);
         setProducts((current) => {
-            const existing = current.find((item) => item.productName.toLowerCase() === form.productName.trim().toLowerCase());
+            const existing = current.find((item) => item.productName.toLowerCase() === effectiveForm.productName.trim().toLowerCase());
             const record = {
                 id: (existing === null || existing === void 0 ? void 0 : existing.id) || uid(),
-                productName: form.productName.trim(),
-                category: form.category,
-                verifiedFeatures: safeFeatureText(form.verifiedFeatures),
-                sampleReceived: form.acquisition === "sample",
-                acquisition: form.acquisition,
-                status: form.acquisition === "none" ? "Waiting for product" : "Ready to create",
+                productName: effectiveForm.productName.trim(),
+                category: effectiveForm.category,
+                verifiedFeatures: safeFeatureText(effectiveForm.verifiedFeatures),
+                searchPhrase: effectiveForm.searchPhrase,
+                sampleReceived: effectiveForm.acquisition === "sample",
+                acquisition: effectiveForm.acquisition,
+                status: effectiveForm.acquisition === "none" ? "Waiting for product" : "Ready to create",
                 updatedAt: new Date().toISOString(),
             };
             return [record, ...current.filter((item) => item.id !== (existing === null || existing === void 0 ? void 0 : existing.id))];
@@ -1748,13 +1800,19 @@ function DoneRiteCreatorOS() {
                                 if (!entry)
                                     return;
                                 const found = entry.source;
-                                setForm((current) => ({
-                                    ...current,
-                                    productName: entry.name,
-                                    category: found.category || current.category,
-                                    verifiedFeatures: found.verifiedFeatures || current.verifiedFeatures,
-                                    acquisition: found.acquisition || (found.sampleReceived ? "sample" : current.acquisition),
-                                }));
+                                setForm((current) => {
+                                    const loaded = {
+                                        ...current,
+                                        productName: entry.name,
+                                        category: found.category || current.category,
+                                        verifiedFeatures: found.verifiedFeatures || current.verifiedFeatures,
+                                        searchPhrase: found.searchPhrase || "",
+                                        acquisition: found.acquisition || (found.sampleReceived ? "sample" : current.acquisition),
+                                    };
+                                    return loaded.searchPhrase
+                                        ? loaded
+                                        : { ...loaded, searchPhrase: buildTargetPhraseChoices(loaded)[0] || "" };
+                                });
                                 setCopyStatus(`Loaded ${entry.name}.`);
                             } },
                             React.createElement("option", { value: "" }, "New product"),
@@ -1767,8 +1825,15 @@ function DoneRiteCreatorOS() {
                         React.createElement("span", null, "Type the product name in the box above, then press Generate Content Package again."))),
                     React.createElement(Field, { label: "Category" },
                         React.createElement("select", { className: "dr-select", value: form.category, onChange: (event) => setValue("category", event.target.value) }, CATEGORIES.map((category) => React.createElement("option", { key: category }, category)))),
-                    React.createElement(Field, { label: "Target search phrase", help: "Optional. Paste a phrase from Content Gap and it goes into the caption and the opening on-screen text word for word, which is how TikTok search finds the video." },
-                        React.createElement("input", { className: "dr-input", value: form.searchPhrase, onChange: (event) => setValue("searchPhrase", event.target.value), placeholder: "Leave empty if you are not targeting a search" })),
+                    React.createElement(Field, { label: "Choose a target search phrase", help: "Pick a product-specific option or a phrase saved in Content Gap." },
+                        React.createElement("select", { className: "dr-select", value: "", onChange: (event) => {
+                                if (event.target.value)
+                                    setValue("searchPhrase", event.target.value);
+                            } },
+                            React.createElement("option", { value: "" }, targetPhraseChoices.length ? "Select a phrase" : "Select a product first"),
+                            targetPhraseChoices.map((phrase, index) => React.createElement("option", { key: phrase, value: phrase }, index === 0 ? `Recommended: ${phrase}` : phrase)))),
+                    React.createElement(Field, { label: "Target search phrase", help: "The selected phrase appears here. You can also type or edit your own phrase." },
+                        React.createElement("input", { className: "dr-input", value: form.searchPhrase, onChange: (event) => setValue("searchPhrase", event.target.value), placeholder: "Choose from the list above or type your own" })),
                     React.createElement(Field, { label: "Verified features", help: "Do not paste seller hype, prices, discounts, unsupported specifications, or medical claims." },
                         React.createElement("textarea", { className: "dr-textarea", value: form.verifiedFeatures, onChange: (event) => setValue("verifiedFeatures", event.target.value), placeholder: "One verified feature per line" })),
                     React.createElement("p", { className: "dr-help", style: { marginTop: 4 } }, "Tap to add. Only add what you have actually confirmed on the product \u2014 these are wordings, not facts."),
