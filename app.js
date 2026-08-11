@@ -1676,37 +1676,55 @@ function DoneRiteCreatorOS() {
         setMoneyRows((current) => [{ ...moneyForm, id: uid(), amount }, ...current]);
         setMoneyForm((current) => ({ ...EMPTY_MONEY, type: current.type, platform: current.platform }));
     };
-    const scanContentGapImage = async (file) => {
-        if (!file)
-            return;
-        if (!String(file.type || "").startsWith("image/")) {
-            setGapScanStatus("Choose a screenshot or photo file.");
+    const scanContentGapImages = async (fileList) => {
+        const files = Array.from(fileList || []).filter((file) => String(file && file.type || "").startsWith("image/"));
+        if (!files.length) {
+            setGapScanStatus("Choose one or more screenshots or photos.");
             return;
         }
         setGapScanBusy(true);
         setGapScanProgress(0.02);
-        setGapScanStatus("Preparing screenshot…");
+        setGapScanStatus(`Preparing ${files.length} screenshot${files.length === 1 ? "" : "s"}…`);
         let worker = null;
+        let currentIndex = 0;
+        let failedImages = 0;
+        const detected = [];
+        const detectedKeys = new Set();
         try {
             const Tesseract = await loadGapOcrLibrary();
-            setGapScanStatus("Reading the words in the screenshot…");
             worker = await Tesseract.createWorker("eng", 1, {
                 logger: (message) => {
                     if (message.status === "recognizing text") {
-                        const progress = Number(message.progress || 0);
-                        setGapScanProgress(0.1 + progress * 0.88);
-                        setGapScanStatus(`Reading screenshot… ${Math.round(progress * 100)}%`);
+                        const imageProgress = Number(message.progress || 0);
+                        const overall = (currentIndex + imageProgress) / files.length;
+                        setGapScanProgress(0.05 + overall * 0.93);
+                        setGapScanStatus(`Reading screenshot ${currentIndex + 1} of ${files.length}… ${Math.round(imageProgress * 100)}%`);
                     }
                 },
             });
-            const result = await worker.recognize(file);
-            const ocrText = String((result && result.data && result.data.text) || "").trim();
-            const phrases = contentGapPhrasesFromText(ocrText);
+            for (currentIndex = 0; currentIndex < files.length; currentIndex += 1) {
+                setGapScanStatus(`Reading screenshot ${currentIndex + 1} of ${files.length}…`);
+                try {
+                    const result = await worker.recognize(files[currentIndex]);
+                    const ocrText = String((result && result.data && result.data.text) || "").trim();
+                    contentGapPhrasesFromText(ocrText).forEach((phrase) => {
+                        const key = phrase.toLowerCase();
+                        if (detectedKeys.has(key))
+                            return;
+                        detectedKeys.add(key);
+                        detected.push(phrase);
+                    });
+                }
+                catch {
+                    failedImages += 1;
+                }
+                setGapScanProgress(0.05 + ((currentIndex + 1) / files.length) * 0.93);
+            }
             const createdAt = new Date().toISOString();
-            if (phrases.length) {
+            if (detected.length) {
                 setGapRows((current) => {
                     const existing = new Set(current.map((row) => String(row.phrase || "").trim().toLowerCase()));
-                    const additions = phrases
+                    const additions = detected
                         .filter((phrase) => !existing.has(phrase.toLowerCase()))
                         .map((phrase) => ({
                             phrase,
@@ -1720,16 +1738,18 @@ function DoneRiteCreatorOS() {
                         }));
                     return [...additions, ...current];
                 });
-                setGapScanStatus(`${phrases.length} phrase${phrases.length === 1 ? "" : "s"} read and saved in the queue. The image was discarded. Review the spelling, then remove any line that is not a real Content Gap phrase.`);
-                setCopyStatus("Detected Content Gap phrases saved. Image discarded.");
+                const failureNote = failedImages ? ` ${failedImages} image${failedImages === 1 ? "" : "s"} could not be read.` : "";
+                setGapScanStatus(`${files.length} screenshot${files.length === 1 ? "" : "s"} processed. ${detected.length} unique phrase${detected.length === 1 ? "" : "s"} detected and saved; duplicates were ignored.${failureNote} All images were discarded.`);
+                setCopyStatus("Content Gap screenshots processed and phrases saved.");
             }
             else {
-                setGapScanStatus("No clear phrases were found, and the image was discarded. Try a tighter screenshot with larger, sharper text.");
+                const failureNote = failedImages ? ` ${failedImages} image${failedImages === 1 ? "" : "s"} could not be read.` : "";
+                setGapScanStatus(`No clear phrases were found.${failureNote} Try tighter screenshots with larger, sharper text. All images were discarded.`);
             }
             setGapScanProgress(1);
         }
         catch (error) {
-            setGapScanStatus((error && error.message) || "The screenshot could not be read. Try a sharper image while connected to the internet.");
+            setGapScanStatus((error && error.message) || "The screenshots could not be read. Try sharper images while connected to the internet.");
             setGapScanProgress(0);
         }
         finally {
@@ -2146,15 +2166,15 @@ function DoneRiteCreatorOS() {
                         "   (on some builds it sits under Settings instead)",
                         "3. Choose Content Gap",
                         "4. Filter to High % Gap",
-                        "5. Screenshot the visible phrases and upload it here",
+                        "5. Take all needed screenshots, then select and upload them together",
                     ].join("\n")),
-                    React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "The first scan needs an internet connection to load the on-device text reader. The screenshot is used only long enough to read the text, then discarded. Only the detected phrases are saved.")),
+                    React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "The first scan needs an internet connection to load the on-device text reader. Select several screenshots at once if needed. Each image is used only long enough to read the text, then discarded. Only the detected phrases are saved.")),
 
                 React.createElement(Card, null,
-                    React.createElement("h3", null, "Upload Content Gap Screenshot"),
+                    React.createElement("h3", null, "Upload Content Gap Screenshots"),
                     React.createElement("div", { className: "dr-upload-box", style: { marginTop: 12 } },
-                        React.createElement("input", { ref: gapImageRef, type: "file", accept: "image/*", hidden: true, onChange: (event) => scanContentGapImage(event.target.files && event.target.files[0]) }),
-                        React.createElement("button", { className: "dr-button", type: "button", disabled: gapScanBusy, onClick: () => gapImageRef.current && gapImageRef.current.click() }, gapScanBusy ? "Reading Screenshot…" : "Choose Screenshot or Take Photo"),
+                        React.createElement("input", { ref: gapImageRef, type: "file", accept: "image/*", multiple: true, hidden: true, onChange: (event) => scanContentGapImages(event.target.files) }),
+                        React.createElement("button", { className: "dr-button", type: "button", disabled: gapScanBusy, onClick: () => gapImageRef.current && gapImageRef.current.click() }, gapScanBusy ? "Reading Screenshots…" : "Choose Screenshots or Take Photos"),
                         gapScanBusy && React.createElement("div", { className: "dr-progress", style: { marginTop: 12 } }, React.createElement("span", { style: { width: `${Math.round(gapScanProgress * 100)}%` } })),
                         gapScanStatus && React.createElement("p", { className: "dr-help", role: "status", style: { marginBottom: 0, color: gapScanProgress === 1 ? COLORS.green : COLORS.chrome } }, gapScanStatus))),
 
