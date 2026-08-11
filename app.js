@@ -222,6 +222,11 @@ const CSS = `
   .dr-upload-box { border:1px dashed ${COLORS.blueGlow}; border-radius:14px; padding:14px; background:rgba(30,123,255,.08); }
   .dr-progress { height:9px; overflow:hidden; border-radius:999px; background:${COLORS.panel2}; border:1px solid ${COLORS.line}; }
   .dr-progress > span { display:block; height:100%; background:linear-gradient(90deg, ${COLORS.blue}, ${COLORS.green}); transition:width .18s ease; }
+  .dr-review-list { display:grid; gap:10px; margin-top:12px; }
+  .dr-review-item { padding:12px; border:1px solid ${COLORS.line}; border-radius:12px; background:${COLORS.panel2}; }
+  .dr-review-top { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:9px; }
+  .dr-review-item .dr-danger { width:auto; min-height:38px; padding:7px 11px; font-size:13px; }
+  .dr-review-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .dr-nav {
     position:fixed; left:0; right:0; bottom:0; z-index:25;
     border-top:1px solid ${COLORS.line}; background:rgba(17,21,28,.97);
@@ -352,6 +357,7 @@ function cleanContentGapPhrase(value) {
         .replace(/^\s*\d+[.)]\s*/, "")
         .replace(/^\s*(?:content gap|creator search insights?|all searches?|searches?)\s*[:\-–—]*\s*/i, "")
         .replace(/\s+\d+(?:[.,]\d+)?\s*[KMB]?\s*(?:views?|searches?|posts?|videos?|%)\b.*$/i, "")
+        .replace(/\s+(?:0|O)\s*(?:C(?:om|m)?|BC|B6|Cm|Com|om)\b.*$/i, "")
         .replace(/\s+[Y¥]{1,2}\s*C\s*$/i, "")
         .replace(/[¥€£©®™]+/g, " ")
         .replace(/^[\s,;:.\-–—_[\]{}]+|[\s,;:.\-–—_[\]{}]+$/g, "")
@@ -2336,13 +2342,17 @@ function DoneRiteCreatorOS() {
                         React.createElement("button", { className: "dr-button", type: "button", disabled: gapScanBusy, onClick: () => gapImageRef.current && gapImageRef.current.click() }, gapScanBusy ? "Reading Screenshots…" : "Choose Screenshots or Take Photos"),
                         gapScanBusy && React.createElement("div", { className: "dr-progress", style: { marginTop: 12 } }, React.createElement("span", { style: { width: `${Math.round(gapScanProgress * 100)}%` } })),
                         gapScanStatus && React.createElement("p", { className: "dr-help", role: "status", style: { marginBottom: 0, color: gapScanProgress === 1 ? COLORS.green : COLORS.chrome } }, gapScanStatus)),
-                    gapScanResults.length > 0 && React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
-                        React.createElement("p", { className: "dr-help", style: { color: COLORS.amber } }, "Review every phrase. Correct any OCR spelling before saving."),
-                        gapScanResults.map((item) => React.createElement("div", { className: "dr-item", key: item.id, style: { flexDirection: "column", alignItems: "stretch" } },
-                            React.createElement("span", { className: "dr-pill" }, `${item.searches.toLocaleString()} searches`),
-                            React.createElement("input", { className: "dr-input", value: item.phrase, onChange: (event) => setGapScanResults((current) => current.map((row) => row.id === item.id ? { ...row, phrase: event.target.value } : row)), "aria-label": "Review detected Content Gap phrase" }),
-                            React.createElement("button", { className: "dr-danger", type: "button", onClick: () => setGapScanResults((current) => current.filter((row) => row.id !== item.id)) }, "Discard This Phrase"))),
-                        React.createElement("button", { className: "dr-button", type: "button", onClick: saveReviewedGapResults }, "Save Reviewed Phrases"))),
+                    gapScanResults.length > 0 && React.createElement("div", { className: "dr-review-list" },
+                        React.createElement("h3", null, "Detected Phrases — Review Before Saving"),
+                        React.createElement("p", { className: "dr-help", style: { color: COLORS.amber, margin: 0 } }, "These are not saved yet. Correct any OCR spelling or discard the phrase."),
+                        gapScanResults.map((item) => React.createElement("div", { className: "dr-review-item", key: item.id },
+                            React.createElement("div", { className: "dr-review-top" },
+                                React.createElement("span", { className: "dr-pill" }, `${item.searches.toLocaleString()} searches`),
+                                React.createElement("button", { className: "dr-danger", type: "button", onClick: () => setGapScanResults((current) => current.filter((row) => row.id !== item.id)) }, "Discard")),
+                            React.createElement("input", { className: "dr-input", value: item.phrase, onChange: (event) => setGapScanResults((current) => current.map((row) => row.id === item.id ? { ...row, phrase: event.target.value } : row)), "aria-label": "Review detected Content Gap phrase" }))),
+                        React.createElement("div", { className: "dr-review-actions" },
+                            React.createElement("button", { className: "dr-button", type: "button", onClick: saveReviewedGapResults }, "Save Reviewed"),
+                            React.createElement("button", { className: "dr-danger", type: "button", onClick: () => { setGapScanResults([]); setGapScanStatus("Detected phrases discarded. Nothing was saved."); } }, "Discard All")))),
 
                 React.createElement(Card, null,
                     React.createElement("h3", null, "Type One Phrase Manually"),
