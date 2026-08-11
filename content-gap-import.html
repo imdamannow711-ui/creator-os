@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080a0e">
+<title>DONE RITE Content Gap Batch Import</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{width:min(760px,100%);margin:auto;padding:18px 14px 80px}.card{background:#11151c;border:1px solid #2a3442;border-radius:18px;padding:16px;margin:12px 0;min-width:0;max-width:100%;overflow:hidden}.brand{font-weight:900;letter-spacing:.1em;color:#58a6ff}.help,.status,.row{overflow-wrap:anywhere;word-break:break-word}.help{color:#8793a1;line-height:1.5}.picker{width:100%;padding:14px;background:#171c25;color:#eef3f8;border:1px solid #2a3442;border-radius:12px}.btn{width:100%;min-height:48px;border:1px solid #58a6ff;border-radius:12px;background:#1e7bff;color:#fff;font:inherit;font-weight:900;margin-top:12px}.btn.secondary{background:#171c25;color:#58a6ff;border-color:#2a3442}.btn:disabled{opacity:.5}.progress{height:10px;border-radius:999px;background:#171c25;border:1px solid #2a3442;overflow:hidden;margin-top:12px}.progress span{display:block;height:100%;background:#1e7bff;width:0%}.status{margin-top:10px;color:#c4ccd6;line-height:1.45}.ok{color:#2bd97c}.bad{color:#ff6673}.row{padding:10px;background:#171c25;border:1px solid #2a3442;border-radius:10px;margin-top:8px;line-height:1.4}h1{font-size:22px;margin:6px 0}a{color:inherit;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">⚡ DONE RITE CREATOR OS</div>
+  <h1>Content Gap — Multi-Screenshot Import</h1>
+  <div class="card">
+    <p class="help">Select several TikTok Creator Search Insights screenshots at the same time. They are read one-by-one, duplicate phrases are removed, and only the detected text is saved into your existing Creator OS Content Gap queue. Images are not stored.</p>
+    <input id="files" class="picker" type="file" accept="image/*" multiple>
+    <button id="run" class="btn">Import Selected Screenshots</button>
+    <div class="progress"><span id="bar"></span></div>
+    <div id="status" class="status">Choose multiple screenshots above.</div>
+  </div>
+  <div class="card">
+    <strong>Imported this batch</strong>
+    <div id="preview"></div>
+  </div>
+  <a href="./"><button class="btn secondary">Return to Creator OS</button></a>
+</div>
+<script>
+const STORAGE_KEY='done-rite-creator-os:v1';
+let libPromise=null;
+const $=id=>document.getElementById(id);
+function uid(){return Date.now()+'-'+Math.random().toString(36).slice(2,8)}
+function loadOCR(){
+  if(window.Tesseract)return Promise.resolve(window.Tesseract);
+  if(libPromise)return libPromise;
+  libPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js';s.async=true;s.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error('Screenshot reader did not start.'));s.onerror=()=>reject(new Error('Screenshot reader could not load. Check internet connection.'));document.head.appendChild(s)});
+  return libPromise;
+}
+function clean(v){return String(v||'').replace(/\s+/g,' ').trim()}
+function phrasesFromText(text){
+  const reject=/^(content gap|creator search insights|search|views?|posts?|likes?|filters?|high % gap|recommended|trending|related searches?|today|yesterday|7d|custom)$/i;
+  const noise=/^[\d\W_]+$/;
+  const seen=new Set();
+  return String(text||'').split(/\r?\n/).map(clean).filter(x=>x.length>=4&&x.length<=120&&!reject.test(x)&&!noise.test(x)).filter(x=>{const k=x.toLowerCase();if(seen.has(k))return false;seen.add(k);return true});
+}
+function saveIntoCreatorOS(phrases){
+  let data={};try{data=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){}
+  const rows=Array.isArray(data.gapRows)?data.gapRows:[];
+  const existing=new Set(rows.map(r=>clean(r.phrase).toLowerCase()));
+  const createdAt=new Date().toISOString();const additions=[];
+  phrases.forEach(phrase=>{const p=clean(phrase),k=p.toLowerCase();if(!p||existing.has(k))return;existing.add(k);additions.push({phrase:p,category:'Electronics & Gadgets',gapLevel:'High',note:'Imported from multi-screenshot batch — review spelling and demand before filming',id:uid(),status:'queued',source:'multi-screenshot import',createdAt})});
+  data.gapRows=[...additions,...rows];data.version=data.version||1;localStorage.setItem(STORAGE_KEY,JSON.stringify(data));return additions;
+}
+$('run').onclick=async()=>{
+ const files=Array.from($('files').files||[]).filter(f=>String(f.type||'').startsWith('image/'));
+ if(!files.length){$('status').textContent='Choose two or more screenshots first.';$('status').className='status bad';return;}
+ $('run').disabled=true;$('preview').innerHTML='';$('status').className='status';
+ try{
+  const T=await loadOCR(),all=[];
+  for(let i=0;i<files.length;i++){
+   let worker=null;const file=files[i];
+   $('status').textContent=`Reading ${i+1} of ${files.length}: ${file.name||'screenshot'}…`;
+   try{
+    worker=await T.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text'){const fp=Number(m.progress||0);$('bar').style.width=Math.round(((i+fp)/files.length)*100)+'%';$('status').textContent=`Reading ${i+1} of ${files.length} — ${Math.round(fp*100)}%`;}}});
+    const r=await worker.recognize(file);phrasesFromText(r&&r.data&&r.data.text).forEach(p=>all.push(p));
+   }finally{if(worker){try{await worker.terminate()}catch(e){}}}
+  }
+  const unique=[],seen=new Set();all.forEach(p=>{const k=p.toLowerCase();if(!seen.has(k)){seen.add(k);unique.push(p)}});
+  const saved=saveIntoCreatorOS(unique);$('bar').style.width='100%';$('status').textContent=`Done — ${files.length} screenshots processed, ${unique.length} unique lines detected, ${saved.length} new phrases saved to Creator OS.`;$('status').className='status ok';
+  saved.forEach(x=>{const d=document.createElement('div');d.className='row';d.textContent=x.phrase;$('preview').appendChild(d)});
+  $('files').value='';
+ }catch(e){$('status').textContent=(e&&e.message)||'Batch import failed.';$('status').className='status bad';$('bar').style.width='0%';}
+ finally{$('run').disabled=false}
+};
+</script>
+</body>
+</html>
