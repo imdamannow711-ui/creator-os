@@ -266,6 +266,27 @@ function splitVerifiedFeatures(text) {
         .map((part) => part.trim())
         .filter(Boolean);
 }
+function featurePriority(text) {
+    const value = String(text || "").toLowerCase();
+    if (/\b(rechargeable battery|battery-powered|battery powered|cordless)\b/.test(value))
+        return -50;
+    if (/\b(lightning|noise cancellation|noise canceling|noise cancelling|charging case|compact|foldable|carrying case)\b/.test(value))
+        return 50;
+    if (/\b(compatible|connector|microphone|transmitter|receiver|wireless|range|adapter|mount|magnetic|brightness|usb-c)\b/.test(value))
+        return 25;
+    return 10;
+}
+function rankVerifiedFeatures(features) {
+    return (features || [])
+        .map((text, index) => ({ text, index, priority: featurePriority(text) }))
+        .sort((a, b) => b.priority - a.priority || a.index - b.index)
+        .map((item) => item.text);
+}
+function hookWorthyFeatures(features) {
+    const ranked = rankVerifiedFeatures(features);
+    const stronger = ranked.filter((text) => featurePriority(text) >= 10);
+    return stronger.length ? stronger : [];
+}
 function naturalFeatureText(text) {
     const value = String(text || "").trim().replace(/[.]+$/, "");
     if (!value)
@@ -433,9 +454,10 @@ function flattenScript(pkg) {
 function makePackage(form) {
     const product = normalizeProductName(form.productName);
     const cleaned = safeFeatureText(form.verifiedFeatures);
-    const features = splitVerifiedFeatures(cleaned);
-    const feature = features[0] || "";
-    const displayFeature = naturalFeatureText(feature) || "a simpler everyday routine";
+    const features = rankVerifiedFeatures(splitVerifiedFeatures(cleaned));
+    const hookFeatures = hookWorthyFeatures(features);
+    const feature = hookFeatures[0] || "";
+    const displayFeature = naturalFeatureText(feature) || "the hands-on setup";
     const inHand = form.acquisition === "sample" || form.acquisition === "purchased";
     const planning = !inHand;
     const issues = scanCompliance(`${product}\n${form.verifiedFeatures}`, form);
@@ -449,7 +471,7 @@ function makePackage(form) {
         });
     }
     const prefix = planning ? "PLANNING DRAFT — SAMPLE NOT CONFIRMED\n\n" : "";
-    let hooks = pickHooks(product, displayFeature, form.platform, form.hookWinners || [], form.hookSpin || 0);
+    let hooks = pickHooks(product, features, form.platform, form.hookWinners || [], form.hookSpin || 0);
     if (form.chosenHook) {
         const chosenHook = correctKnownProductNames(form.chosenHook);
         hooks = [chosenHook].concat(hooks.filter((h) => h !== chosenHook)).slice(0, 3);
@@ -662,29 +684,38 @@ const HOOK_LIBRARY = [
    same product does not produce the same three twice in a row. Anything the
    user has marked as a proven winner is offered first — their own sales data
    beats any generic list. */
-function pickHooks(product, feature, platform, winners, spin) {
+function pickHooks(product, features, platform, winners, spin) {
+  const ranked = rankVerifiedFeatures(features);
+  const hookFeatures = hookWorthyFeatures(ranked);
+  const lowPriority = ranked.filter((text) => featurePriority(text) < 0).map((text) => text.toLowerCase());
   const proven = (winners || [])
     .filter((w) => !w.platform || w.platform === platform)
-    .slice(0, 2)
-    .map((w) => w.text);
+    .map((w) => w.text)
+    .filter((text) => !lowPriority.some((detail) => String(text || "").toLowerCase().includes(detail)))
+    .slice(0, 2);
 
   const pool = HOOK_LIBRARY.filter((h) => h.platforms.indexOf(platform) !== -1);
   const usable = pool.length ? pool : HOOK_LIBRARY;
-
   const byAngle = {};
   usable.forEach((h) => {
+    const usesFeature = h.make(product, "__DETAIL__").includes("__DETAIL__");
+    if (!hookFeatures.length && usesFeature) return;
     if (!byAngle[h.angle]) byAngle[h.angle] = [];
     byAngle[h.angle].push(h);
   });
   const angles = Object.keys(byAngle);
-
   const out = proven.slice();
-  for (let i = 0; out.length < 3 && i < angles.length; i += 1) {
-    const angle = angles[(spin + i) % angles.length];
+  let attempts = 0;
+  while (out.length < 3 && attempts < Math.max(angles.length * 4, 12)) {
+    const angle = angles[(spin + attempts) % angles.length];
     const bucket = byAngle[angle];
-    const choice = bucket[(spin + i * 7) % bucket.length];
-    const text = choice.make(product, feature);
+    const choice = bucket[(spin + attempts * 7) % bucket.length];
+    const detail = hookFeatures.length
+      ? naturalFeatureText(hookFeatures[(spin + out.length + attempts) % hookFeatures.length])
+      : "";
+    const text = choice.make(product, detail);
     if (out.indexOf(text) === -1) out.push(text);
+    attempts += 1;
   }
   return out.slice(0, 3);
 }
@@ -739,13 +770,20 @@ const CTA_LIBRARY = [
 
 /* Every hook the library can produce for a given platform, already filled in
    with this product and feature — used to populate the Quick Create dropdown. */
-function hookOptions(product, feature, platform) {
+function hookOptions(product, features, platform) {
   const pool = HOOK_LIBRARY.filter((h) => h.platforms.indexOf(platform) !== -1);
   const usable = pool.length ? pool : HOOK_LIBRARY;
+  const hookFeatures = hookWorthyFeatures(features);
   const seen = {};
   const out = [];
+  let detailIndex = 0;
   usable.forEach((h) => {
-    const text = h.make(product, feature);
+    const usesFeature = h.make(product, "__DETAIL__").includes("__DETAIL__");
+    if (usesFeature && !hookFeatures.length) return;
+    const detail = usesFeature
+      ? naturalFeatureText(hookFeatures[detailIndex++ % hookFeatures.length])
+      : "";
+    const text = h.make(product, detail);
     if (seen[text]) return;
     seen[text] = true;
     out.push({ angle: h.angle, text });
@@ -1227,7 +1265,7 @@ function videoFlags(info, mode) {
    nothing here is true of a product until you have looked at the product and
    confirmed it. Deliberately plain: no performance, health, or quality claims. */
 const FEATURE_LIBRARY = {
-    "Electronics & Gadgets": ["USB-C charging", "Lightning-compatible connector", "Rechargeable battery", "Cordless", "Foldable design", "Built-in LED indicator", "Magnetic base", "Multiple brightness settings", "Carrying case included"],
+    "Electronics & Gadgets": ["Lightning-compatible connector", "Noise cancellation", "Charging case included", "Compact design", "Foldable design", "Carrying case included", "USB-C charging", "Multiple brightness settings", "Magnetic base", "Built-in LED indicator", "Cordless", "Rechargeable battery"],
     Kitchen: ["Dishwasher safe", "Stainless steel body", "Non-stick surface", "Stackable", "Cordless", "Removable lid", "Measurement markings", "Fits standard cabinets"],
     Home: ["Adhesive backing", "No tools needed to set up", "Foldable for storage", "Machine washable cover", "Non-slip base", "Comes in multiple sizes"],
     Outdoor: ["Water-resistant housing", "Foldable", "Carrying strap included", "Stake or clip mount", "Rechargeable battery", "Packs into its own bag"],
@@ -1467,9 +1505,9 @@ function DoneRiteCreatorOS() {
         });
     };
     const hookChoices = useMemo(() => {
-        const productName = form.productName.trim() || "this product";
-        const featureLine = String(form.verifiedFeatures || "").split(/\n/).map((l) => l.trim()).filter(Boolean)[0] || "a simpler everyday routine";
-        return hookOptions(productName, featureLine, form.platform);
+        const productName = normalizeProductName(form.productName) || "this product";
+        const features = rankVerifiedFeatures(splitVerifiedFeatures(safeFeatureText(form.verifiedFeatures)));
+        return hookOptions(productName, features, form.platform);
     }, [form.productName, form.verifiedFeatures, form.platform]);
     const ctaChoices = useMemo(() => ctaOptions(form.platform), [form.platform]);
     const patternChoices = useMemo(() => patternOptions(form.platform), [form.platform]);
