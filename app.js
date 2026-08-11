@@ -689,7 +689,7 @@ const HOOK_LIBRARY = [
   { angle: "Search", platforms: ["YouTube Shorts"], make: (p, f) => `${p} walkthrough — the parts that matter.` },
 
   // --- Contrast without naming competitors
-  { angle: "Contrast", platforms: ["TikTok Shop", "YouTube Shorts", "Facebook"], make: (p, f) => `Most of them skip this. ${p} does not.` },
+  { angle: "Detail", platforms: ["TikTok Shop", "YouTube Shorts", "Facebook"], make: (p, f) => `This is the detail to look at on ${p}.` },
   { angle: "Contrast", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `The version with ${f} is a different experience.` },
   { angle: "Contrast", platforms: ["TikTok Shop"], make: (p, f) => `Same idea, different execution. ${p}.` },
 
@@ -730,8 +730,7 @@ const HOOK_LIBRARY = [
   { angle: "Search", platforms: ["Pinterest", "Facebook"], make: (p, f) => `Looking at ${p}? Start with ${f}.` },
 
   // --- Hands-on (added Aug 2026 with the format change).
-  // Demonstrations convert far better than talking-head reviews, and static
-  // slideshows no longer earn distribution. These openers only make sense if
+  // Demonstrations make product utility easier to see. These openers make sense if
   // hands are actually in frame doing the thing — which is now the default.
   { angle: "Hands-on", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `Hands on ${p}. Here is what ${f} feels like.` },
   { angle: "Hands-on", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Watch my hands, not a product photo. ${p}.` },
@@ -797,7 +796,7 @@ const CTA_LIBRARY = [
   { style: "Direct", platforms: ["TikTok Shop"], text: "Product details are in the cart." },
   { style: "Direct", platforms: ["TikTok Shop"], text: "Tap the cart to see the full listing." },
   { style: "Direct", platforms: ["TikTok Shop"], text: "Full specs are on the product page in the cart." },
-  { style: "Direct", platforms: ["TikTok Shop"], text: "Everything you need is in the orange cart." },
+  { style: "Direct", platforms: ["TikTok Shop"], text: "More product details are in the orange cart." },
   { style: "Informed", platforms: ["TikTok Shop"], text: "Check the specs in the cart before you decide." },
   { style: "Informed", platforms: ["TikTok Shop"], text: "Read the listing in the cart and see if it fits your setup." },
   { style: "Low pressure", platforms: ["TikTok Shop"], text: "Have a look at the details in the cart. No rush." },
@@ -828,7 +827,7 @@ const CTA_LIBRARY = [
   // no price, no scarcity — the specificity comes from the footage.
   { style: "Demo-linked", platforms: ["TikTok Shop"], text: "That is the whole motion. Full listing is in the cart." },
   { style: "Demo-linked", platforms: ["TikTok Shop"], text: "You just watched it work. Specs are in the cart." },
-  { style: "Demo-linked", platforms: ["TikTok Shop"], text: "Same product, same hands, no edit. Details are in the cart." },
+  { style: "Demo-linked", platforms: ["TikTok Shop"], text: "The demonstration is complete. Full specifications are in the cart." },
   { style: "Demo-linked", platforms: ["YouTube Shorts"], text: "That is it in real use. Full details are linked below." },
   { style: "Demo-linked", platforms: ["Instagram Reels", "Facebook"], text: "You saw what it does. The listing has the rest." },
   { style: "Demo-linked", platforms: ["Pinterest"], text: "Save this demo. The product page has the full spec." },
@@ -870,34 +869,34 @@ function ctaOptions(platform) {
    moves faster than any app can. */
 const RESEARCH_NOTES = [
   {
-    finding: "Demonstrations beat talking heads",
-    detail: "TikTok Shop affiliate videos with a product demonstration convert roughly 3–5x better than talking-head reviews. Hands doing something to the product is the lift — not a face.",
-    soWhat: "Every shot pattern below keeps hands in frame and the head out.",
+    finding: "Demonstrations make utility clearer",
+    detail: "Showing the product in use can help viewers understand its function quickly without requiring a face on camera.",
+    soWhat: "The shot patterns below keep hands in frame and the head out.",
   },
   {
-    finding: "Static slideshows are being throttled",
-    detail: "Static image slideshows and silent unboxing videos no longer earn organic algorithmic distribution.",
-    soWhat: "Continuous hand motion is now the default. The old product-image-only format is retired.",
+    finding: "Motion can hold attention",
+    detail: "A clear product demonstration may be easier to follow than a sequence of still images.",
+    soWhat: "Use continuous hand motion when the product can be demonstrated safely and honestly.",
   },
   {
-    finding: "First three seconds must show utility",
-    detail: "The opening three seconds should show what the product actually does, not build suspense.",
-    soWhat: "Every pattern opens mid-action. No empty frame, no reaching in, no logo card.",
+    finding: "Show utility early",
+    detail: "Opening with the product's verified use can help viewers understand the video quickly.",
+    soWhat: "The patterns open with the product already visible or in use.",
   },
   {
-    finding: "Faceless is still fine",
-    detail: "The algorithm measures watch time, completion, shares, comments and saves. It does not measure whether a face appears.",
-    soWhat: "Hands-on with no face keeps the 5StarGadgetGuru identity and takes the demo lift.",
+    finding: "Faceless content can show the product clearly",
+    detail: "A face is not required to demonstrate a gadget's verified features or use.",
+    soWhat: "Hands-only framing keeps the 5StarGadgetGuru identity while focusing on the product.",
   },
   {
-    finding: "Daily posting limits exist now",
-    detail: "A Content Posting Limit introduced in May 2026 dampens accounts that flood the feed with shoppable video. New creators in the pilot period are capped at a handful of shoppable videos and LIVEs per week.",
-    soWhat: "Fewer, better product tests. Volume alone is no longer a strategy.",
+    finding: "Quality matters more than flooding the feed",
+    detail: "A smaller number of clear, accurate product demonstrations is easier to evaluate than many rushed posts.",
+    soWhat: "Track each hook and result, then improve the next test.",
   },
   {
-    finding: "Tutorials and demos read as organic",
-    detail: "Product tutorials, unboxings and in-use footage outperform static promotion because they look less like an advertisement.",
-    soWhat: "The Unbox to use and Problem to demo patterns exist for exactly this.",
+    finding: "Tutorials and demos explain the product",
+    detail: "Unboxing and in-use footage can show verified features without relying on unsupported promises.",
+    soWhat: "Use the Unbox to use or Problem to demo pattern when it fits the product.",
   },
 ];
 
@@ -910,7 +909,7 @@ const SHOT_PATTERNS = [
   {
     id: "demo-first",
     name: "Demo first",
-    why: "Demonstrations convert about 3–5x better than talking-head reviews.",
+    why: "A demonstration can make the product's verified function easier to understand.",
     platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook"],
     beats: (p, f) => [
       { label: "OPEN MID-ACTION", hands: `Hands are already using ${p} on frame one. Nothing enters the shot.` },
@@ -970,7 +969,7 @@ const SHOT_PATTERNS = [
   {
     id: "detail-pass",
     name: "Close-up detail pass",
-    why: "One feature shown properly outperforms five features listed. Macro hands read as inspection, not sales.",
+    why: "Showing one verified feature clearly can be easier to follow than listing several at once.",
     platforms: ["TikTok Shop", "Pinterest", "YouTube Shorts", "Instagram Reels"],
     beats: (p, f) => [
       { label: "MACRO OPEN", hands: `Extreme close-up. Fingertips already turning ${p}.` },
@@ -1315,7 +1314,7 @@ function videoFlags(info, mode) {
     }
     if (info.motionScore !== null) {
         if (info.motionScore < 2.5) {
-            add("block", "Almost no movement — this reads as a static slideshow.", "Static slideshows and silent unboxings no longer earn organic distribution. Re-shoot with your hands operating the product the whole way through.");
+            add("review", "Almost no movement — this may read as a static slideshow.", "Consider re-shooting with your hands operating the product so its verified use is clear.");
         }
         else if (info.motionScore < 8) {
             add("review", "Only slight movement between frames.", "Keep the hands working for the full clip. A still section in the middle is where viewers drop.");
