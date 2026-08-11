@@ -1,0 +1,17 @@
+/* DONE RITE Creator OS — YouTube + Amazon Associates engine v1.0 */
+(function(){
+'use strict';
+const KEY='done-rite-youtube-amazon:v1';
+const TRACKING_ID='donerite02-20';
+const DISCLOSURE='As an Amazon Associate I earn from qualifying purchases.';
+const EMPTY={products:[],queue:[],results:[]};
+function load(){try{return Object.assign({},EMPTY,JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(e){return JSON.parse(JSON.stringify(EMPTY));}}
+function save(s){localStorage.setItem(KEY,JSON.stringify(s));return s;}
+function uid(p){return p+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);}
+function addProduct(x){const s=load();const p={id:uid('amz'),name:String(x.name||'').trim(),affiliateUrl:String(x.affiliateUrl||'').trim(),category:String(x.category||'Electronics & Gadgets'),trackingId:String(x.trackingId||TRACKING_ID),active:true,createdAt:new Date().toISOString()};if(!p.name)throw new Error('Product name is required.');if(!/^https?:\/\//i.test(p.affiliateUrl))throw new Error('Paste the Amazon Associates product link.');s.products.unshift(p);save(s);return p;}
+function queueShort(x){const s=load();const q={id:uid('short'),productId:x.productId||'',productName:String(x.productName||'').trim(),slot:x.slot||'Morning',date:x.date||new Date().toISOString().slice(0,10),hook:String(x.hook||'').trim(),funnel:x.funnel||'BOF',status:'Planned',handsOnly:true,duration:x.duration||'7-10',createdAt:new Date().toISOString()};s.queue.push(q);save(s);return q;}
+function logResult(x){const s=load();const r={id:uid('result'),shortId:x.shortId||'',productId:x.productId||'',productName:String(x.productName||'').trim(),hook:String(x.hook||'').trim(),funnel:x.funnel||'BOF',views:Number(x.views||0),engagedViews:Number(x.engagedViews||0),likes:Number(x.likes||0),comments:Number(x.comments||0),shares:Number(x.shares||0),saves:Number(x.saves||0),clicks:Number(x.clicks||0),orders:Number(x.orders||0),commission:Number(x.commission||0),attribution:x.attribution||'Unknown',date:x.date||new Date().toISOString().slice(0,10)};r.videoAttributedSale=(r.attribution==='Video'&&(r.orders>0||r.commission>0));s.results.unshift(r);save(s);return r;}
+function rankings(){const s=load(),m={};s.results.forEach(r=>{const k=r.productId||r.productName;if(!m[k])m[k]={productId:r.productId,productName:r.productName,views:0,engagedViews:0,clicks:0,orders:0,commission:0};m[k].views+=r.views;m[k].engagedViews+=r.engagedViews;m[k].clicks+=r.clicks;m[k].orders+=r.orders;m[k].commission+=r.commission;});return Object.values(m).map(x=>Object.assign(x,{rpm:x.views?(x.commission/x.views)*1000:0})).sort((a,b)=>b.commission-a.commission||b.orders-a.orders||b.engagedViews-a.engagedViews);}
+function shortPackage(product,opts){opts=opts||{};const n=product.name||'this product',f=String(opts.feature||'the main feature').trim();return{platform:'YouTube Shorts',product:n,duration:'7-10 seconds',funnel:opts.funnel||'BOF',hook:String(opts.hook||`Watch ${f} before you decide on ${n}.`),shotList:['0–1s — Product already in frame and moving/working.','1–5s — Hands demonstrate one feature only.','5–7s — Show the practical result/close-up.','7–10s — Clean hero shot + CTA.'],cta:'Product picks are linked on my channel profile.',disclosure:DISCLOSURE,rules:['Real hands-only footage','One video = one selling point','No unverified price/discount claim','No AI-generated product demonstration']};}
+window.DoneRiteYouTubeAmazon={version:'1.0',trackingId:TRACKING_ID,disclosure:DISCLOSURE,getState:load,addProduct,queueShort,logResult,rankings,shortPackage};
+})();
