@@ -321,6 +321,38 @@ function spokenScriptLines(product, feature, hook, cta) {
         cta,
     ];
 }
+function platformDestination(platform) {
+    if (platform === "YouTube Shorts") return {
+        target: "the channel profile",
+        caption: "Follow for more gadget reviews. My TikTok is linked on my channel profile.",
+        prompt: "a follow-or-channel-profile call to action with no cart or product-link wording",
+        checklist: "☐ YouTube Short: growth-only mode; channel profile points to TikTok; no cart, product-link, or Amazon CTA yet",
+        hashtags: "#ad #YouTubeShorts #GadgetReview #ProductDemo #DoneRite",
+    };
+    if (platform === "Pinterest") return {
+        target: "the product page",
+        caption: "Product details are available through the product page.",
+        prompt: "a product-page call to action",
+        checklist: "☐ Pinterest: vertical format, destination link checked, affiliate disclosure included",
+        hashtags: "#ad #PinterestFinds #GadgetReview #ProductDemo #DoneRite",
+    };
+    if (platform === "Facebook" || platform === "Instagram Reels") return {
+        target: "the product link",
+        caption: "Product details are available through the product link.",
+        prompt: "a product-link call to action",
+        checklist: `☐ ${platform}: vertical format, product link checked, paid-partnership or affiliate disclosure enabled when required`,
+        hashtags: platform === "Instagram Reels"
+            ? "#ad #InstagramReels #GadgetReview #ProductDemo #DoneRite"
+            : "#ad #FacebookReels #GadgetReview #ProductDemo #DoneRite",
+    };
+    return {
+        target: "the cart",
+        caption: "Product details are available in the cart.",
+        prompt: "a cart-directed call to action",
+        checklist: "☐ TikTok Shop: 9:16, product link/cart selected, content disclosure enabled",
+        hashtags: "#ad #TikTokShop #GadgetFinds #ProductDemo #DoneRite",
+    };
+}
 
 let gapOcrLibraryPromise = null;
 function loadGapOcrLibrary() {
@@ -549,7 +581,9 @@ function makePackage(form) {
         hooks = [chosenHook].concat(hooks.filter((h) => h !== chosenHook)).slice(0, 3);
     }
     const pattern = pickPattern(form.platform, form.chosenPattern, form.hookSpin || 0);
-    const cta = form.chosenCta || ctaOptions(form.platform)[0].text;
+    const destination = platformDestination(form.platform);
+    const availableCtas = ctaOptions(form.platform);
+    const cta = availableCtas.some((item) => item.text === form.chosenCta) ? form.chosenCta : availableCtas[0].text;
     const spokenLines = spokenScriptLines(product, feature, hooks[0], cta);
     const voiceover = `${prefix}${spokenLines.join(" ")}`;
     const searchPhrase = String(form.searchPhrase || "").trim();
@@ -560,19 +594,16 @@ function makePackage(form) {
         `${marks[2]}–${marks[3]}s: ${displayFeature.toUpperCase()}`,
         `${marks[3]}–${marks[4]}s: ${cta.toUpperCase()}`,
     ].join("\n");
-    const caption = `${planning ? "Planning draft: " : ""}${searchPhrase ? searchPhrase + ". " : ""}A closer look at ${product} and the verified features it was designed around. Product details are available in the cart.`;
-    const hashtags = "#ad #TikTokShop #GadgetFinds #ProductDemo #DoneRite";
+    const caption = `${planning ? "Planning draft: " : ""}${searchPhrase ? searchPhrase + ". " : ""}A closer look at ${product} and the verified features it was designed around. ${destination.caption}`;
+    const hashtags = destination.hashtags;
     const thumbnail = searchPhrase ? searchPhrase.toUpperCase() : "WORTH A CLOSER LOOK?";
-    const shotList = buildShotList(pattern, product, feature, form.duration, spokenLines);
+    const shotList = buildShotList(pattern, product, feature, form.duration, spokenLines, form.platform);
     const aiImagePrompt = `Create a vertical 9:16 hands-on visual for ${product}. Hands may hold, open, or operate the product. Use a black, chrome, and electric-blue DONE RITE technology style. Show the product, the hands using it, and a clean feature-focused environment. No face, no head, no shoulders, no price, discount badge, competitor branding, unsupported specification, or added product claim.`;
-    const aiVideoPrompt = `Create a ${form.duration}-second vertical 9:16 hands-on ${form.funnel} demo video for ${product}, shot in the "${pattern.name}" pattern. Hands enter frame and operate the product; the camera stays above or beside the hands so no face, head, or shoulders are visible. Keep the product moving — continuous hand motion, not a slideshow of stills. Use subtle electric-blue lighting, readable safe-zone text, and one cart-directed CTA. No face, price, discount, false scarcity, competitor comparison, medical claim, absolute claim, or invented specification. Use only these verified details: ${cleaned || "No verified feature supplied; keep the presentation generic."}`;
+    const aiVideoPrompt = `Create a ${form.duration}-second vertical 9:16 hands-on ${form.funnel} demo video for ${product}, shot in the "${pattern.name}" pattern. Hands enter frame and operate the product; the camera stays above or beside the hands so no face, head, or shoulders are visible. Keep the product moving — continuous hand motion, not a slideshow of stills. Use subtle electric-blue lighting, readable safe-zone text, and ${destination.prompt}. No face, price, discount, false scarcity, competitor comparison, medical claim, absolute claim, or invented specification. Use only these verified details: ${cleaned || "No verified feature supplied; keep the presentation generic."}`;
     const crossPlatform = [
         "☐ Watch it back: no face, head, or shoulders in any frame",
         "☐ Watch it back: the product is moving throughout — no static slideshow section",
-        "☐ TikTok: 9:16, product link/cart selected, content disclosure enabled",
-        "☐ YouTube Short: remove TikTok-only cart wording and use an approved description link",
-        "☐ Facebook/Instagram Reels: verify disclosure and link placement",
-        "☐ Pinterest: link only to the approved YouTube or Amazon destination, never TikTok",
+        destination.checklist,
         "☐ Confirm music is licensed for commercial use",
     ].join("\n");
     const firstIssue = issues[0];
@@ -810,11 +841,11 @@ const CTA_LIBRARY = [
   { style: "Qualifying", platforms: ["TikTok Shop"], text: "If that matches what you need, the cart has the full listing." },
   { style: "Qualifying", platforms: ["TikTok Shop"], text: "Not for everyone. If it is for you, the details are in the cart." },
 
-  // YouTube Shorts — description link.
-  { style: "Direct", platforms: ["YouTube Shorts"], text: "Product link is in the description." },
-  { style: "Direct", platforms: ["YouTube Shorts"], text: "Full details are linked below." },
-  { style: "Informed", platforms: ["YouTube Shorts"], text: "Check the description for the full spec sheet." },
-  { style: "Low pressure", platforms: ["YouTube Shorts"], text: "Link is below if you want a closer look." },
+  // YouTube Shorts — growth-only until the channel product-link route is ready.
+  { style: "Follow", platforms: ["YouTube Shorts"], text: "Follow for more gadget reviews." },
+  { style: "Profile", platforms: ["YouTube Shorts"], text: "My TikTok is linked on my channel profile." },
+  { style: "Subscribe", platforms: ["YouTube Shorts"], text: "Subscribe for more hands-on gadget demos." },
+  { style: "Profile", platforms: ["YouTube Shorts"], text: "More gadget content is linked on my channel profile." },
 
   // Pinterest — savers and searchers, not impulse buyers.
   { style: "Direct", platforms: ["Pinterest"], text: "Tap through for the full product details." },
@@ -834,7 +865,7 @@ const CTA_LIBRARY = [
   { style: "Demo-linked", platforms: ["TikTok Shop"], text: "That is the whole motion. Full listing is in the cart." },
   { style: "Demo-linked", platforms: ["TikTok Shop"], text: "You just watched it work. Specs are in the cart." },
   { style: "Demo-linked", platforms: ["TikTok Shop"], text: "The demonstration is complete. Full specifications are in the cart." },
-  { style: "Demo-linked", platforms: ["YouTube Shorts"], text: "That is it in real use. Full details are linked below." },
+  { style: "Demo-linked", platforms: ["YouTube Shorts"], text: "That is it in real use. Subscribe for more gadget demos." },
   { style: "Demo-linked", platforms: ["Instagram Reels", "Facebook"], text: "You saw what it does. The listing has the rest." },
   { style: "Demo-linked", platforms: ["Pinterest"], text: "Save this demo. The product page has the full spec." },
 ];
@@ -1032,13 +1063,14 @@ function pickPattern(platform, chosenId, spin) {
 }
 
 /* Turns a pattern into a timed, filmable shot list. Hands in frame, head out. */
-function buildShotList(pattern, product, feature, duration, spokenLines) {
+function buildShotList(pattern, product, feature, duration, spokenLines, platform) {
   const marks = timelineMarks(duration);
   const displayFeature = naturalFeatureText(feature) || "the selected verified detail";
   const beats = pattern.beats(product, displayFeature);
+  const destination = platformDestination(platform).target;
   const rows = beats.map((beat, index) => [
     `${marks[index]}–${marks[index + 1]}s  ${beat.label}`,
-    `   HANDS: ${beat.hands}`,
+    `   HANDS: ${String(beat.hands || "").replace(/\bthe cart\b/gi, destination)}`,
     `   SAY:   ${spokenLines[index] || ""}`,
   ].join("\n"));
   return [
@@ -2087,7 +2119,7 @@ function DoneRiteCreatorOS() {
                         React.createElement("select", { className: "dr-select", value: form.chosenHook, onChange: (e) => setValue("chosenHook", e.target.value) },
                             React.createElement("option", { value: "" }, "Auto \u2014 rotate a new hook each time"),
                             hookChoices.map((h) => React.createElement("option", { key: h.text, value: h.text }, `${h.angle}: ${h.text}`)))),
-                    React.createElement(Field, { label: "Pick a call to action", help: `${ctaChoices.length} written for ${form.platform}. All cart or link directed, no urgency or price language.` },
+                    React.createElement(Field, { label: "Pick a call to action", help: `${ctaChoices.length} written specifically for ${form.platform}. No urgency or price language.` },
                         React.createElement("select", { className: "dr-select", value: form.chosenCta, onChange: (e) => setValue("chosenCta", e.target.value) },
                             React.createElement("option", { value: "" }, "Auto \u2014 use the default for this platform"),
                             ctaChoices.map((c) => React.createElement("option", { key: c.text, value: c.text }, `${c.style}: ${c.text}`)))),
