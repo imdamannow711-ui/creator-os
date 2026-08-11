@@ -334,24 +334,89 @@ function loadGapOcrLibrary() {
     return gapOcrLibraryPromise;
 }
 
+const MIN_CONTENT_GAP_SEARCHES = 1000;
+function parseContentGapSearchCount(value) {
+    const line = String(value || "").replace(/,/g, " ").replace(/\s+/g, " ").trim();
+    const compact = line.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*([KkMm])\b/);
+    if (compact) {
+        const number = Number(compact[1]);
+        if (!Number.isFinite(number)) return 0;
+        return Math.round(number * (compact[2].toLowerCase() === "m" ? 1000000 : 1000));
+    }
+    const labelled = line.match(/(?:^|\s)(\d{1,3}(?:[ ,]\d{3})+)\s*(?:searches?|views?)\b/i);
+    return labelled ? Number(labelled[1].replace(/\D/g, "")) : 0;
+}
+function cleanContentGapPhrase(value) {
+    return String(value || "")
+        .replace(/[|•●■►]+/g, " ")
+        .replace(/^\s*\d+[.)]\s*/, "")
+        .replace(/^\s*(?:content gap|creator search insights?|all searches?|searches?)\s*[:\-–—]*\s*/i, "")
+        .replace(/\s+\d+(?:[.,]\d+)?\s*[KMB]?\s*(?:views?|searches?|posts?|videos?|%)\b.*$/i, "")
+        .replace(/\s+[Y¥]{1,2}\s*C\s*$/i, "")
+        .replace(/[¥€£©®™]+/g, " ")
+        .replace(/^[\s,;:.\-–—_[\]{}]+|[\s,;:.\-–—_[\]{}]+$/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+function isContentGapPhraseJunk(value) {
+    const phrase = cleanContentGapPhrase(value);
+    const lower = phrase.toLowerCase();
+    if (!phrase || phrase.length < 5 || phrase.length > 110) return true;
+    if ((phrase.match(/[A-Za-z]{2,}/g) || []).length < 2) return true;
+    if (/^(content gap|creator search insights?|search insights?|all searches?|search|inspiration|analytics|recommended|followers?|following|friends?|profile|home|shop|inbox|videos?|posts?|views?|likes?|comments?|shares?|high|medium|low|all|filter|filters|back|done|cancel|today|yesterday|last 7 days|last 30 days)$/i.test(phrase)) return true;
+    if (/\b(all searches?|creator search insights?|content gap|high % gap|search popularity)\b/i.test(phrase)) return true;
+    if (/^\d+(?:[.,]\d+)?\s*(?:[KMB]|%|searches?|views?)?$/i.test(phrase)) return true;
+    if (/[¥€£©®™]|\uFFFD/.test(value) || /\b(?:wifi|battery|gmt)\b/i.test(lower)) return true;
+    return false;
+}
 function contentGapPhrasesFromText(text) {
-    const ignored = /^(content gap|creator search insights|search insights|search|inspiration|analytics|recommended|followers?|following|friends?|profile|home|shop|inbox|videos?|posts?|views?|likes?|comments?|shares?|high|medium|low|all|filter|filters|back|done|cancel|today|yesterday|last 7 days|last 30 days)$/i;
+    const lines = String(text || "").split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+    const found = [];
+    for (let index = 0; index < lines.length; index += 1) {
+        const searches = parseContentGapSearchCount(lines[index]);
+        if (searches < MIN_CONTENT_GAP_SEARCHES) continue;
+        let phrase = "";
+        for (let distance = 1; distance <= 3 && !phrase; distance += 1) {
+            const candidate = cleanContentGapPhrase(lines[index - distance] || "");
+            if (!isContentGapPhraseJunk(candidate) && !parseContentGapSearchCount(candidate)) phrase = candidate;
+        }
+        for (let distance = 1; distance <= 2 && !phrase; distance += 1) {
+            const candidate = cleanContentGapPhrase(lines[index + distance] || "");
+            if (!isContentGapPhraseJunk(candidate) && !parseContentGapSearchCount(candidate)) phrase = candidate;
+        }
+        if (phrase) found.push({ phrase, searches, rawMetric: lines[index] });
+    }
+    const best = new Map();
+    found.forEach((item) => {
+        const key = item.phrase.toLowerCase();
+        if (!best.has(key) || best.get(key).searches < item.searches) best.set(key, item);
+    });
+    return [...best.values()].sort((a, b) => b.searches - a.searches).slice(0, 20);
+}
+function sanitizeContentGapRows(rows) {
     const seen = new Set();
-    return String(text || "")
-        .split(/\r?\n/)
-        .map((line) => line.replace(/[|•●■►]+/g, " ").replace(/\s+/g, " ").trim())
-        .map((line) => line.replace(/^\d+[.)]\s*/, "").replace(/\s+\d+(?:[.,]\d+)?[KMB]?\s*(?:views?|searches?|posts?|videos?|%)?.*$/i, "").trim())
-        .filter((line) => line.length >= 5 && line.length <= 110)
-        .filter((line) => !ignored.test(line) && !/^\d+(?:[.,]\d+)?%?$/.test(line))
-        .filter((line) => (line.match(/[A-Za-z]{2,}/g) || []).length >= 2)
-        .filter((line) => {
-            const key = line.toLowerCase();
-            if (seen.has(key))
-                return false;
-            seen.add(key);
-            return true;
-        })
-        .slice(0, 20);
+    const cleaned = [];
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+        if (!row || typeof row !== "object") return;
+        const phrase = cleanContentGapPhrase(row.phrase);
+        const source = String(row.source || "").toLowerCase();
+        const note = String(row.note || "").toLowerCase();
+        const imported = source.includes("screenshot") || note.includes("imported from screenshot");
+        const searches = Number(row.searches || 0);
+        const key = phrase.toLowerCase();
+        if (isContentGapPhraseJunk(phrase) || seen.has(key)) return;
+        if (imported && searches < MIN_CONTENT_GAP_SEARCHES) return;
+        seen.add(key);
+        cleaned.push({ ...row, phrase, searches: searches || undefined });
+    });
+    return cleaned;
+}
+function normalizeRestoredForm(value) {
+    const restored = value && typeof value === "object" ? { ...EMPTY_FORM, ...value } : { ...EMPTY_FORM };
+    restored.productName = normalizeProductName(restored.productName);
+    restored.duration = ["7", "10", "15"].includes(String(restored.duration)) ? String(restored.duration) : "15";
+    restored.searchPhrase = isContentGapPhraseJunk(restored.searchPhrase) ? "" : cleanContentGapPhrase(restored.searchPhrase);
+    return restored;
 }
 function scanCompliance(text, form = {}) {
     const source = String(text || "");
@@ -1332,6 +1397,7 @@ function DoneRiteCreatorOS() {
     const [gapScanBusy, setGapScanBusy] = useState(false);
     const [gapScanProgress, setGapScanProgress] = useState(0);
     const [gapScanStatus, setGapScanStatus] = useState("");
+    const [gapScanResults, setGapScanResults] = useState([]);
     const gapImageRef = useRef(null);
     const [hookLog, setHookLog] = useState([]);
     const [hookSpin, setHookSpin] = useState(0);
@@ -1439,7 +1505,7 @@ function DoneRiteCreatorOS() {
                 setProducts(productsRecovered);
                 setQuickCreateHistory(historyRecovered);
                 if (chosen && chosen.form && typeof chosen.form === "object")
-                    setForm({ ...EMPTY_FORM, ...chosen.form });
+                    setForm(normalizeRestoredForm(chosen.form));
                 setTasks(chosen && Array.isArray(chosen.tasks) ? chosen.tasks : DEFAULT_TASKS);
                 setMoneyRows(chosen && Array.isArray(chosen.moneyRows) ? chosen.moneyRows : []);
                 if (chosen && chosen.lastTab)
@@ -1447,7 +1513,7 @@ function DoneRiteCreatorOS() {
                 if (chosen && typeof chosen.clickSound === "boolean")
                     setClickSound(chosen.clickSound);
                 setHookLog(hooksRecovered);
-                setGapRows(gapsRecovered);
+                setGapRows(sanitizeContentGapRows(gapsRecovered));
                 if (chosen && typeof chosen.hookSpin === "number")
                     setHookSpin(chosen.hookSpin);
                 if (candidates.some((item) => item.key !== STORAGE_KEY)
@@ -1489,7 +1555,7 @@ function DoneRiteCreatorOS() {
                 },
             };
             localStorage.setItem(PRODUCT_HISTORY_KEY, JSON.stringify(historyMirror));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, quickCreateHistory, form, tasks, moneyRows, gapRows, lastTab: tab, clickSound, hookLog, hookSpin, version: 1 }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, quickCreateHistory, form: normalizeRestoredForm(form), tasks, moneyRows, gapRows: sanitizeContentGapRows(gapRows), lastTab: tab, clickSound, hookLog, hookSpin, version: 1 }));
             setSaveBlocked("");
         }
         catch (error) {
@@ -1565,7 +1631,7 @@ function DoneRiteCreatorOS() {
         const productName = String(draft.productName || "").trim();
         const stopWords = new Set(["and", "the", "for", "with", "this", "that", "from", "your"]);
         const productWords = new Set(`${productName} ${draft.verifiedFeatures || ""}`.toLowerCase().match(/[a-z0-9]+/g) || []);
-        const rankedGaps = gapRows
+        const rankedGaps = sanitizeContentGapRows(gapRows)
             .map((item) => {
                 const words = String(item.phrase || "").toLowerCase().match(/[a-z0-9]+/g) || [];
                 const hits = words.filter((word) => word.length > 2 && !stopWords.has(word) && productWords.has(word)).length;
@@ -1763,6 +1829,7 @@ function DoneRiteCreatorOS() {
             return;
         }
         setGapScanBusy(true);
+        setGapScanResults([]);
         setGapScanProgress(0.02);
         setGapScanStatus(`Preparing ${files.length} screenshot${files.length === 1 ? "" : "s"}…`);
         let worker = null;
@@ -1787,12 +1854,12 @@ function DoneRiteCreatorOS() {
                 try {
                     const result = await worker.recognize(files[currentIndex]);
                     const ocrText = String((result && result.data && result.data.text) || "").trim();
-                    contentGapPhrasesFromText(ocrText).forEach((phrase) => {
-                        const key = phrase.toLowerCase();
+                    contentGapPhrasesFromText(ocrText).forEach((item) => {
+                        const key = item.phrase.toLowerCase();
                         if (detectedKeys.has(key))
                             return;
                         detectedKeys.add(key);
-                        detected.push(phrase);
+                        detected.push(item);
                     });
                 }
                 catch {
@@ -1800,31 +1867,15 @@ function DoneRiteCreatorOS() {
                 }
                 setGapScanProgress(0.05 + ((currentIndex + 1) / files.length) * 0.93);
             }
-            const createdAt = new Date().toISOString();
             if (detected.length) {
-                setGapRows((current) => {
-                    const existing = new Set(current.map((row) => String(row.phrase || "").trim().toLowerCase()));
-                    const additions = detected
-                        .filter((phrase) => !existing.has(phrase.toLowerCase()))
-                        .map((phrase) => ({
-                            phrase,
-                            category: gapDraft.category,
-                            gapLevel: gapDraft.gapLevel,
-                            note: "Imported from screenshot — review spelling before filming",
-                            id: uid(),
-                            status: "queued",
-                            source: "screenshot import",
-                            createdAt,
-                        }));
-                    return [...additions, ...current];
-                });
+                setGapScanResults(detected.map((item) => ({ ...item, phrase: cleanContentGapPhrase(item.phrase), id: uid() })));
                 const failureNote = failedImages ? ` ${failedImages} image${failedImages === 1 ? "" : "s"} could not be read.` : "";
-                setGapScanStatus(`${files.length} screenshot${files.length === 1 ? "" : "s"} processed. ${detected.length} unique phrase${detected.length === 1 ? "" : "s"} detected and saved; duplicates were ignored.${failureNote} All images were discarded.`);
-                setCopyStatus("Content Gap screenshots processed and phrases saved.");
+                setGapScanStatus(`${files.length} screenshot${files.length === 1 ? "" : "s"} processed. ${detected.length} qualified phrase${detected.length === 1 ? "" : "s"} found.${failureNote} Check every word below before saving. All images were discarded.`);
+                setCopyStatus("Screenshot reading finished. Review the detected wording before saving.");
             }
             else {
                 const failureNote = failedImages ? ` ${failedImages} image${failedImages === 1 ? "" : "s"} could not be read.` : "";
-                setGapScanStatus(`No clear phrases were found.${failureNote} Try tighter screenshots with larger, sharper text. All images were discarded.`);
+                setGapScanStatus(`No trustworthy 1,000+ search phrases were found.${failureNote} Try tighter screenshots that show each phrase and its search count together. Nothing was saved, and all images were discarded.`);
             }
             setGapScanProgress(1);
         }
@@ -1842,8 +1893,37 @@ function DoneRiteCreatorOS() {
                 gapImageRef.current.value = "";
         }
     };
+    const saveReviewedGapResults = () => {
+        const reviewed = gapScanResults
+            .map((item) => ({ ...item, phrase: cleanContentGapPhrase(item.phrase) }))
+            .filter((item) => item.searches >= MIN_CONTENT_GAP_SEARCHES && !isContentGapPhraseJunk(item.phrase));
+        if (!reviewed.length) {
+            setCopyStatus("No valid reviewed phrases are ready to save.");
+            return;
+        }
+        const createdAt = new Date().toISOString();
+        setGapRows((current) => sanitizeContentGapRows([
+            ...reviewed.map((item) => ({
+                phrase: item.phrase,
+                searches: item.searches,
+                searchVolumeLabel: item.searches >= 1000000 ? `${Number((item.searches / 1000000).toFixed(1))}M` : `${Number((item.searches / 1000).toFixed(1))}K`,
+                rawMetric: item.rawMetric,
+                category: gapDraft.category,
+                gapLevel: gapDraft.gapLevel,
+                note: `Reviewed screenshot import · ${item.searches.toLocaleString()} searches`,
+                id: uid(),
+                status: "queued",
+                source: "qualified screenshot import",
+                createdAt,
+            })),
+            ...current,
+        ]));
+        setGapScanResults([]);
+        setGapScanStatus(`${reviewed.length} reviewed phrase${reviewed.length === 1 ? "" : "s"} saved to Content Gap.`);
+        setCopyStatus("Reviewed Content Gap phrases saved.");
+    };
     const exportBackup = () => {
-        const backup = { version: 1, exportedAt: new Date().toISOString(), saved, products, quickCreateHistory, form, tasks, moneyRows, gapRows, hookLog };
+        const backup = { version: 1, exportedAt: new Date().toISOString(), appBuild: "2026.08.11-clean", saved, products, quickCreateHistory, form: normalizeRestoredForm(form), tasks, moneyRows, gapRows: sanitizeContentGapRows(gapRows), hookLog, hookSpin, lastTab: tab, clickSound };
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -1864,10 +1944,10 @@ function DoneRiteCreatorOS() {
             setProducts(Array.isArray(data.products) ? data.products : []);
             setQuickCreateHistory(Array.isArray(data.quickCreateHistory) ? data.quickCreateHistory : []);
             if (data.form && typeof data.form === "object")
-                setForm({ ...EMPTY_FORM, ...data.form });
+                setForm(normalizeRestoredForm(data.form));
             setTasks(Array.isArray(data.tasks) ? data.tasks : DEFAULT_TASKS);
             setMoneyRows(Array.isArray(data.moneyRows) ? data.moneyRows : []);
-            setGapRows(Array.isArray(data.gapRows) ? data.gapRows : []);
+            setGapRows(sanitizeContentGapRows(data.gapRows));
             if (Array.isArray(data.hookLog))
                 setHookLog(data.hookLog);
             setImportStatus("Backup restored successfully.");
@@ -2239,7 +2319,7 @@ function DoneRiteCreatorOS() {
             tab === "gap" && (React.createElement(React.Fragment, null,
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Content Gap"),
-                    React.createElement("p", { className: "dr-help" }, "Take a screenshot of TikTok Creator Search Insights, upload it below, and the Creator OS will read the visible Content Gap phrases into your queue. You can still type one manually when needed."),
+                    React.createElement("p", { className: "dr-help" }, "Upload TikTok Creator Search Insights screenshots. Creator OS now saves only phrases it can pair with a visible search count of 1,000 or more. Labels, broken symbols, percentages, and other OCR junk are discarded."),
                     React.createElement("div", { className: "dr-output", style: { marginTop: 12 } }, [
                         "1. Open TikTok, go to your profile",
                         "2. Creator Tools → Creator Search Insights",
@@ -2248,7 +2328,7 @@ function DoneRiteCreatorOS() {
                         "4. Filter to High % Gap",
                         "5. Take all needed screenshots, then select and upload them together",
                     ].join("\n")),
-                    React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "The first scan needs an internet connection to load the on-device text reader. Select several screenshots at once if needed. Each image is used only long enough to read the text, then discarded. Only the detected phrases are saved.")),
+                    React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "Keep each phrase and its search count visible in the same screenshot. The first scan needs internet to load the on-device reader. Images are discarded after reading.")),
 
                 React.createElement(Card, null,
                     React.createElement("h3", null, "Upload Content Gap Screenshots"),
@@ -2256,7 +2336,14 @@ function DoneRiteCreatorOS() {
                         React.createElement("input", { ref: gapImageRef, type: "file", accept: "image/*", multiple: true, hidden: true, onChange: (event) => scanContentGapImages(event.target.files) }),
                         React.createElement("button", { className: "dr-button", type: "button", disabled: gapScanBusy, onClick: () => gapImageRef.current && gapImageRef.current.click() }, gapScanBusy ? "Reading Screenshots…" : "Choose Screenshots or Take Photos"),
                         gapScanBusy && React.createElement("div", { className: "dr-progress", style: { marginTop: 12 } }, React.createElement("span", { style: { width: `${Math.round(gapScanProgress * 100)}%` } })),
-                        gapScanStatus && React.createElement("p", { className: "dr-help", role: "status", style: { marginBottom: 0, color: gapScanProgress === 1 ? COLORS.green : COLORS.chrome } }, gapScanStatus))),
+                        gapScanStatus && React.createElement("p", { className: "dr-help", role: "status", style: { marginBottom: 0, color: gapScanProgress === 1 ? COLORS.green : COLORS.chrome } }, gapScanStatus)),
+                    gapScanResults.length > 0 && React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
+                        React.createElement("p", { className: "dr-help", style: { color: COLORS.amber } }, "Review every phrase. Correct any OCR spelling before saving."),
+                        gapScanResults.map((item) => React.createElement("div", { className: "dr-item", key: item.id, style: { flexDirection: "column", alignItems: "stretch" } },
+                            React.createElement("span", { className: "dr-pill" }, `${item.searches.toLocaleString()} searches`),
+                            React.createElement("input", { className: "dr-input", value: item.phrase, onChange: (event) => setGapScanResults((current) => current.map((row) => row.id === item.id ? { ...row, phrase: event.target.value } : row)), "aria-label": "Review detected Content Gap phrase" }),
+                            React.createElement("button", { className: "dr-danger", type: "button", onClick: () => setGapScanResults((current) => current.filter((row) => row.id !== item.id)) }, "Discard This Phrase"))),
+                        React.createElement("button", { className: "dr-button", type: "button", onClick: saveReviewedGapResults }, "Save Reviewed Phrases"))),
 
                 React.createElement(Card, null,
                     React.createElement("h3", null, "Type One Phrase Manually"),
@@ -2274,8 +2361,10 @@ function DoneRiteCreatorOS() {
                     React.createElement(Field, { label: "Note" },
                         React.createElement("input", { className: "dr-input", value: gapDraft.note, onChange: (e) => setGapDraft({ ...gapDraft, note: e.target.value }), placeholder: "Optional — anything you noticed" })),
                     React.createElement("button", { className: "dr-button", type: "button", onClick: () => {
-                        if (!gapDraft.phrase.trim()) { setCopyStatus("Type the search phrase first."); return; }
-                        setGapRows((current) => [{ ...gapDraft, phrase: gapDraft.phrase.trim(), note: gapDraft.note.trim(), id: uid(), status: "queued", createdAt: new Date().toISOString() }, ...current]);
+                        const phrase = cleanContentGapPhrase(gapDraft.phrase);
+                        if (!phrase) { setCopyStatus("Type the search phrase first."); return; }
+                        if (isContentGapPhraseJunk(phrase)) { setCopyStatus("That looks like a label or broken OCR text. Type only the exact search phrase."); return; }
+                        setGapRows((current) => sanitizeContentGapRows([{ ...gapDraft, phrase, note: gapDraft.note.trim(), id: uid(), status: "queued", source: "manual", createdAt: new Date().toISOString() }, ...current]));
                         setGapDraft({ ...EMPTY_GAP, category: gapDraft.category, gapLevel: gapDraft.gapLevel });
                         setCopyStatus("Phrase logged.");
                     } }, "Log This Phrase")),
@@ -2284,6 +2373,13 @@ function DoneRiteCreatorOS() {
                     React.createElement("div", { className: "dr-output-head" },
                         React.createElement("h3", null, "Queue"),
                         React.createElement("span", { className: "dr-pill" }, `${gapRows.filter((r) => r.status !== "filmed").length} waiting`)),
+                    React.createElement("button", { className: "dr-copy", type: "button", style: { width: "100%", marginBottom: 12 }, onClick: () => {
+                        const cleaned = sanitizeContentGapRows(gapRows);
+                        const removed = gapRows.length - cleaned.length;
+                        setGapRows(cleaned);
+                        if (form.searchPhrase && isContentGapPhraseJunk(form.searchPhrase)) setValue("searchPhrase", "");
+                        setCopyStatus(removed ? `${removed} bad or duplicate Content Gap row${removed === 1 ? "" : "s"} removed.` : "Content Gap queue is already clean.");
+                    } }, "Clean Bad Imported Rows"),
                     React.createElement("p", { className: "dr-help" }, "Products you already own are matched by keyword. A match is a suggestion, not a verdict — you decide whether the phrase honestly describes the product."),
                     React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
                         gapRows.length === 0 && React.createElement("p", { className: "dr-help" }, "Nothing logged yet. Open Creator Search Insights and bring back five phrases."),
@@ -2292,7 +2388,7 @@ function DoneRiteCreatorOS() {
                             const filmed = row.status === "filmed";
                             return React.createElement("div", { className: "dr-item", key: row.id, style: { flexDirection: "column", alignItems: "stretch", opacity: filmed ? 0.55 : 1 } },
                                 React.createElement("div", { className: "dr-item-title", style: { color: filmed ? COLORS.dim : row.gapLevel === "High" ? COLORS.green : COLORS.chrome, textDecoration: filmed ? "line-through" : "none" } }, row.phrase),
-                                React.createElement("div", { className: "dr-help", style: { marginTop: 4 } }, `${row.gapLevel} gap · ${row.category}${row.note ? " · " + row.note : ""}`),
+                                React.createElement("div", { className: "dr-help", style: { marginTop: 4 } }, `${row.gapLevel} gap · ${row.category}${row.searchVolumeLabel ? " · " + row.searchVolumeLabel + " searches" : ""}${row.note ? " · " + row.note : ""}`),
                                 React.createElement("div", { className: "dr-help", style: { marginTop: 8, color: matches.length ? COLORS.blueGlow : COLORS.amber } },
                                     matches.length
                                         ? `Possible match: ${matches.map((m) => m.product.productName).join(", ")}`
@@ -2409,7 +2505,7 @@ function DoneRiteCreatorOS() {
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Backup & Restore"),
                     React.createElement("p", { className: "dr-help" }, "This component stores data on the current device. Export regular backups before clearing browser data or changing devices."),
-                    React.createElement("p", { className: "dr-help" }, "Backups include every Content Gap phrase imported from a screenshot. Images are never saved."),
+                    React.createElement("p", { className: "dr-help" }, "Backups include saved packages, products, Quick Create history, tasks, money records, hook results, settings, and cleaned Content Gap phrases. Screenshot images are never saved."),
                     React.createElement("div", { className: "dr-row", style: { marginTop: 14 } },
                         React.createElement("button", { className: "dr-button", type: "button", onClick: exportBackup }, "Export Backup"),
                         React.createElement("button", { className: "dr-copy", type: "button", onClick: () => { var _a; return (_a = importRef.current) === null || _a === void 0 ? void 0 : _a.click(); } }, "Restore Backup")),
@@ -2419,8 +2515,8 @@ function DoneRiteCreatorOS() {
                     React.createElement("h3", null, "Permanent Playbook Rules"),
                     React.createElement("div", { className: "dr-output", style: { marginTop: 10 } }, "No pricing or discount language. No competitor comparisons. No unsupported claims. Health content uses support language only. Every affiliate hashtag set includes #ad. Hands-on demo by default \u2014 hands in frame, face never in frame, product moving throughout. Confirm Sample Received before publish-ready first-person content.")),
                 React.createElement(Card, null,
-                    React.createElement("h3", null, "Implementation note for Claude"),
-                    React.createElement("p", { className: "dr-help" }, "This is the single-file local-first baseline. Preserve its data schema and working copy flow when splitting it into modules. A complete installable PWA still needs a project manifest, service worker, icons, and deployment configuration outside this component."))))),
+                    React.createElement("h3", null, "App Status"),
+                    React.createElement("p", { className: "dr-help" }, `Clean build 2026.08.11 · ${products.length} product${products.length === 1 ? "" : "s"} · ${saved.length} saved creation${saved.length === 1 ? "" : "s"} · ${gapRows.length} Content Gap phrase${gapRows.length === 1 ? "" : "s"}.`))))),
         React.createElement("nav", { className: "dr-nav", "aria-label": "Bottom navigation" },
             React.createElement("div", { className: "dr-nav-inner" }, tabs.map(([id, label]) => React.createElement("button", { key: id, type: "button", "aria-current": tab === id ? "page" : undefined, onClick: () => setTab(id) }, label))))));
 }
