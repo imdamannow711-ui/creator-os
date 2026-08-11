@@ -1,0 +1,19 @@
+name: Creator OS Next Check
+on:
+  push:
+    branches: ["build/creator-os-next"]
+  pull_request:
+    branches: ["main"]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check staged modules
+        run: |
+          for f in modules/*.js; do node --check "$f"; done
+      - name: Run Creator OS Next smoke test
+        run: node tests/creator-os-next-smoke.js

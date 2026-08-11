@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "branch": "build/creator-os-next",
+  "modules": [
+    "creator-os-next-config.js",
+    "media-vault.js",
+    "content-gap-demand.js",
+    "hook-ranking.js",
+    "hands-only-quick-create.js",
+    "youtube-amazon.js",
+    "product-picks.js",
+    "performance-engine.js",
+    "cross-platform-package.js",
+    "daily-hq.js",
+    "analytics-baseline.js",
+    "ui-dashboard-dev.js",
+    "media-vault-ui.js",
+    "amazon-product-form.js",
+    "youtube-queue-ui.js",
+    "daily-hq-ui.js"
+  ],
+  "liveLoaderTouched": false,
+  "mergeStatus": "not-ready"
+}

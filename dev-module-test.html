@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DONE RITE Module Test</title><style>body{font-family:system-ui;background:#05070d;color:#eef3f8;padding:20px}pre{white-space:pre-wrap;background:#11151c;padding:14px;border-radius:12px}.ok{color:#2bd97c}.bad{color:#ff4d5a}</style></head><body><h1>DONE RITE Creator OS Next — Module Test</h1><div id="status">Running…</div><pre id="out"></pre>
+<script src="modules/creator-os-next-config.js"></script>
+<script src="modules/media-vault.js"></script>
+<script src="modules/content-gap-demand.js"></script>
+<script src="modules/hook-ranking.js"></script>
+<script src="modules/hands-only-quick-create.js"></script>
+<script src="modules/youtube-amazon.js"></script>
+<script src="modules/product-picks.js"></script>
+<script src="modules/performance-engine.js"></script>
+<script src="modules/cross-platform-package.js"></script>
+<script src="modules/daily-hq.js"></script>
+<script src="modules/self-test.js"></script>
+<script>(function(){const result=DoneRiteSelfTest.run();document.getElementById('status').innerHTML='<b class="'+(result.pass?'ok':'bad')+'">'+(result.pass?'PASS':'FAIL')+' — '+result.passed+'/'+result.total+'</b>';document.getElementById('out').textContent=JSON.stringify(result.tests,null,2);})();</script>
+</body></html>

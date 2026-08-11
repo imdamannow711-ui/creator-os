@@ -1,0 +1,6 @@
+/* DONE RITE Creator OS Next — Amazon Product Form helper v1.0 */
+(function(){
+'use strict';
+function render(root){if(!root||!window.DoneRiteYouTubeAmazon)return;root.innerHTML='';const name=document.createElement('input');name.placeholder='Amazon product name';const url=document.createElement('input');url.placeholder='Amazon Associates link';[name,url].forEach(x=>{x.style.cssText='width:100%;padding:10px;margin:6px 0;background:#171c25;color:white;border:1px solid #2a3442;border-radius:10px;box-sizing:border-box';root.appendChild(x);});const btn=document.createElement('button');btn.textContent='Save Amazon Product';btn.style.cssText='width:100%;padding:11px;margin-top:6px;background:#1e7bff;color:white;border:0;border-radius:10px;font-weight:800';const status=document.createElement('p');btn.onclick=()=>{try{const p=DoneRiteYouTubeAmazon.addProduct({name:name.value,affiliateUrl:url.value});status.textContent=`Saved: ${p.name}`;name.value='';url.value='';}catch(e){status.textContent=e.message;}};root.appendChild(btn);root.appendChild(status);}
+window.DoneRiteAmazonProductForm={version:'1.0',render};
+})();
