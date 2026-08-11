@@ -1408,52 +1408,19 @@ function DoneRiteCreatorOS() {
             out.push(phrase);
         };
         const productName = String(draft.productName || "").trim();
-        const productKey = productName.toLowerCase();
-        saved.forEach((item) => {
-            if (String(item.productName || "").trim().toLowerCase() === productKey)
-                push(item.searchPhrase);
-        });
         const stopWords = new Set(["and", "the", "for", "with", "this", "that", "from", "your"]);
         const productWords = new Set(`${productName} ${draft.verifiedFeatures || ""}`.toLowerCase().match(/[a-z0-9]+/g) || []);
-        const relevantGaps = gapRows
+        const rankedGaps = gapRows
             .map((item) => {
                 const words = String(item.phrase || "").toLowerCase().match(/[a-z0-9]+/g) || [];
                 const hits = words.filter((word) => word.length > 2 && !stopWords.has(word) && productWords.has(word)).length;
                 return { phrase: item.phrase, score: hits + (item.category === draft.category ? 0.25 : 0) };
             })
-            .filter((item) => item.score >= 1)
             .sort((a, b) => b.score - a.score);
-        relevantGaps.forEach((item) => push(item.phrase));
-        if (productName) {
-            const funnel = String(draft.funnel || "BOF").toUpperCase();
-            if (/\b(mic|microphone)\b/i.test(productName)) {
-                push(funnel === "TOF" ? "wireless microphone for phone videos" : funnel === "MOF" ? `${productName} test` : `${productName} review`);
-            }
-            else {
-                push(funnel === "TOF" ? productName : funnel === "MOF" ? `${productName} test` : `${productName} review`);
-            }
-            push(`${productName} setup`);
-            push(`${productName} test`);
-            push(productName);
-            if (/\b(mic|microphone)\b/i.test(productName))
-                push("wireless microphone for TikTok videos");
-        }
-        return out.slice(0, 30);
-    };
-    const targetPhraseChoices = useMemo(() => buildTargetPhraseChoices(form), [form.productName, form.category, form.verifiedFeatures, form.funnel, saved, gapRows]);
-    const contentGapPhraseChoices = useMemo(() => {
-        const out = [];
-        const seen = new Set();
-        gapRows.forEach((item) => {
-            const phrase = String(item.phrase || "").trim();
-            const key = phrase.toLowerCase();
-            if (!phrase || seen.has(key))
-                return;
-            seen.add(key);
-            out.push(phrase);
-        });
+        rankedGaps.forEach((item) => push(item.phrase));
         return out;
-    }, [gapRows]);
+    };
+    const targetPhraseChoices = useMemo(() => buildTargetPhraseChoices(form), [form.productName, form.category, form.verifiedFeatures, form.funnel, gapRows]);
     const addFeature = (text) => {
         setForm((current) => {
             const lines = String(current.verifiedFeatures || "").split(/\n/).map((l) => l.trim()).filter(Boolean);
@@ -1819,12 +1786,10 @@ function DoneRiteCreatorOS() {
                                         productName: entry.name,
                                         category: found.category || current.category,
                                         verifiedFeatures: found.verifiedFeatures || current.verifiedFeatures,
-                                        searchPhrase: found.searchPhrase || "",
+                                        searchPhrase: "",
                                         acquisition: found.acquisition || (found.sampleReceived ? "sample" : current.acquisition),
                                     };
-                                    return loaded.searchPhrase
-                                        ? loaded
-                                        : { ...loaded, searchPhrase: buildTargetPhraseChoices(loaded)[0] || "" };
+                                    return { ...loaded, searchPhrase: buildTargetPhraseChoices(loaded)[0] || "" };
                                 });
                                 setCopyStatus(`Loaded ${entry.name}.`);
                             } },
@@ -1838,16 +1803,14 @@ function DoneRiteCreatorOS() {
                         React.createElement("span", null, "Type the product name in the box above, then press Generate Content Package again."))),
                     React.createElement(Field, { label: "Category" },
                         React.createElement("select", { className: "dr-select", value: form.category, onChange: (event) => setValue("category", event.target.value) }, CATEGORIES.map((category) => React.createElement("option", { key: category }, category)))),
-                    React.createElement(Field, { label: "Choose a target search phrase", help: "The first section is recommended for this product. The second section contains every phrase saved in Content Gap." },
+                    React.createElement(Field, { label: "Choose a target search phrase", help: "Only phrases saved in Content Gap appear here. The closest match for the selected product is listed first." },
                         React.createElement("select", { className: "dr-select", value: "", onChange: (event) => {
                                 if (event.target.value)
                                     setValue("searchPhrase", event.target.value);
                             } },
-                            React.createElement("option", { value: "" }, targetPhraseChoices.length || contentGapPhraseChoices.length ? "Select a phrase" : "Select a product or save a Content Gap phrase first"),
-                            targetPhraseChoices.length > 0 && React.createElement("optgroup", { label: "Recommended for this product" },
-                                targetPhraseChoices.map((phrase, index) => React.createElement("option", { key: `recommended-${phrase}`, value: phrase }, index === 0 ? `Best match: ${phrase}` : phrase))),
-                            contentGapPhraseChoices.length > 0 && React.createElement("optgroup", { label: "All saved Content Gap phrases" },
-                                contentGapPhraseChoices.map((phrase) => React.createElement("option", { key: `gap-${phrase}`, value: phrase }, phrase))))),
+                            React.createElement("option", { value: "" }, targetPhraseChoices.length ? "Select a Content Gap phrase" : "Save a Content Gap phrase first"),
+                            targetPhraseChoices.length > 0 && React.createElement("optgroup", { label: "Saved Content Gap phrases" },
+                                targetPhraseChoices.map((phrase, index) => React.createElement("option", { key: `gap-${phrase}`, value: phrase }, index === 0 ? `Best match: ${phrase}` : phrase))))),
                     React.createElement(Field, { label: "Target search phrase", help: "The selected phrase appears here. You can also type or edit your own phrase." },
                         React.createElement("input", { className: "dr-input", value: form.searchPhrase, onChange: (event) => setValue("searchPhrase", event.target.value), placeholder: "Choose from the list above or type your own" })),
                     React.createElement(Field, { label: "Verified features", help: "Do not paste seller hype, prices, discounts, unsupported specifications, or medical claims." },
@@ -1889,9 +1852,7 @@ function DoneRiteCreatorOS() {
                             React.createElement("select", { className: "dr-select", value: form.duration, onChange: (event) => setValue("duration", event.target.value) },
                                 React.createElement("option", null, "7"),
                                 React.createElement("option", null, "10"),
-                                React.createElement("option", null, "15"),
-                                React.createElement("option", null, "20"),
-                                React.createElement("option", null, "30")))),
+                                React.createElement("option", null, "15")))),
                     React.createElement("div", { className: "dr-field" },
                         React.createElement(Field, { label: "How did you get this product?", help: "Anything other than \u201Cnot in hand yet\u201D lets the script speak from real use." },
                             React.createElement("select", { className: "dr-select", value: form.acquisition, onChange: (event) => setValue("acquisition", event.target.value) },
