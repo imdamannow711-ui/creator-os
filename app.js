@@ -685,6 +685,16 @@ const HOOK_LIBRARY = [
   { angle: "Curiosity", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `Watch what ${f} actually looks like in use.` },
   { angle: "Curiosity", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Here is the part of ${p} the photos do not show.` },
 
+  // --- Conversation starters (added Aug 2026 from the supplied Hook Library
+  // screenshots). Each keeps the natural opening phrase but completes the
+  // thought with the selected product and verified feature. This avoids a
+  // dangling open loop while staying claim-free and usable in a 7-second ad.
+  { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `You know that feeling when one product detail keeps catching your attention? On ${p}, it is ${f}.` },
+  { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `I did not think this would matter until I saw ${f} on ${p}.` },
+  { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `This might sound weird, but ${f} is the part of ${p} I wanted to see up close.` },
+  { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook"], make: (p, f) => `Can I show you something? This is ${f} on ${p}.` },
+  { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `I was not expecting this from ${p}: ${f}.` },
+
   // --- Problem first
   { angle: "Problem", platforms: ["TikTok Shop", "Facebook", "YouTube Shorts"], make: (p, f) => `Tired of dealing with this the hard way? ${p} was built for it.` },
   { angle: "Problem", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `If this keeps happening to you, ${f} is the part to look at.` },
