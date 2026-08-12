@@ -240,6 +240,17 @@ const CSS = `
   }
   .dr-gap-menu summary::-webkit-details-marker { display:none; }
   .dr-gap-menu[open] summary { margin-bottom:8px; }
+  .dr-hook-options { display:grid; gap:9px; margin-top:12px; }
+  .dr-hook-choice {
+    width:100%; min-height:50px; padding:11px 13px; border:1px solid ${COLORS.line}; border-radius:12px;
+    background:${COLORS.panel2}; color:${COLORS.text}; text-align:left; font:inherit; font-size:14px;
+    line-height:1.4; cursor:pointer; touch-action:manipulation;
+  }
+  .dr-hook-choice strong { color:${COLORS.blueGlow}; margin-right:7px; }
+  .dr-hook-choice[aria-pressed="true"] {
+    border-color:${COLORS.green}; background:rgba(43,217,124,.12); box-shadow:0 0 0 2px rgba(43,217,124,.14);
+  }
+  .dr-hook-choice[aria-pressed="true"] strong { color:${COLORS.green}; }
   .dr-nav {
     position:fixed; left:0; right:0; bottom:0; z-index:25;
     border-top:1px solid ${COLORS.line}; background:rgba(17,21,28,.97);
@@ -661,6 +672,7 @@ function makePackage(form) {
         productName: product,
         form: { ...form, productName: product, verifiedFeatures: cleaned },
         hooks,
+        selectedHook: hooks[0],
         voiceover,
         voiceovers,
         onScreenText,
@@ -1904,6 +1916,28 @@ function DoneRiteCreatorOS() {
             return [record, ...current.filter((item) => item.id !== (existing === null || existing === void 0 ? void 0 : existing.id))];
         });
     };
+    const selectGeneratedHook = (hook) => {
+        if (!pkg || !hook)
+            return;
+        const hookOptions = [...pkg.hooks];
+        const chosenForm = { ...pkg.form, chosenHook: hook };
+        const rebuilt = makePackage(chosenForm);
+        const next = {
+            ...rebuilt,
+            id: pkg.id,
+            createdAt: pkg.createdAt,
+            hooks: hookOptions,
+            selectedHook: hook,
+        };
+        setForm((current) => ({ ...current, chosenHook: hook }));
+        setPkg(next);
+        try {
+            localStorage.setItem(VOICEOVER_QUEUE_KEY, JSON.stringify({ version: 1, productName: next.productName, duration: next.form.duration, createdAt: next.createdAt, segments: next.voiceovers }));
+        }
+        catch { }
+        const number = hookOptions.findIndex((item) => item === hook) + 1;
+        setCopyStatus(`Hook ${number} selected. Script and voiceover queue updated.`);
+    };
     const savePackage = () => {
         if (!pkg)
             return;
@@ -2068,7 +2102,6 @@ function DoneRiteCreatorOS() {
         }
     };
     const sections = pkg ? [
-        ["Hooks", pkg.hooks.map((hook, index) => `${index + 1}. ${hook}`).join("\n")],
         ...(pkg.shotList ? [["Shot list — hands in frame, no face", pkg.shotList]] : []),
         ["Voiceover", pkg.voiceover],
         ...(pkg.voiceovers && pkg.voiceovers.length ? [["Voiceover recording queue", pkg.voiceovers.map((item) => `${item.label} · ${item.start}–${item.end}s · ${item.direction}\n${item.text}`).join("\n\n")]] : []),
@@ -2260,6 +2293,15 @@ function DoneRiteCreatorOS() {
                             React.createElement("button", { className: `dr-button ${copiedKey === "Everything" ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(flattenScript(pkg), "Everything") }, copiedKey === "Everything" ? "Copied ✓" : "Copy Everything"),
                             React.createElement("button", { className: `dr-copy ${copiedKey === "AI prompt" ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(pkg.aiVideoPrompt, "AI prompt") }, copiedKey === "AI prompt" ? "Copied ✓" : "Copy AI Prompt"),
                             React.createElement("span", { className: "dr-pill" }, "Saved automatically"))),
+                    React.createElement(Card, null,
+                        React.createElement("h3", null, "Choose the Hook Used in Your Script"),
+                        React.createElement("p", { className: "dr-help" }, "Tap any suggestion. The script, opening text, shot timing, saved package, and teleprompter queue update immediately."),
+                        React.createElement("div", { className: "dr-hook-options" }, pkg.hooks.map((hook, index) => {
+                            const selected = hook === (pkg.selectedHook || pkg.hooks[0]);
+                            return React.createElement("button", { key: hook, className: "dr-hook-choice", type: "button", "aria-pressed": selected, onClick: () => selectGeneratedHook(hook) },
+                                React.createElement("strong", null, selected ? `✓ Hook ${index + 1}` : `Hook ${index + 1}`),
+                                hook);
+                        }))),
                     React.createElement(Card, null,
                         React.createElement("h3", null, `Record ${pkg.voiceovers && pkg.voiceovers.length || 1} voiceover part${pkg.voiceovers && pkg.voiceovers.length === 1 ? "" : "s"}`),
                         React.createElement("p", { className: "dr-help" }, "Every part of this script is loaded into one teleprompter dropdown with its delivery tone and time window."),
