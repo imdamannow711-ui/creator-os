@@ -46,6 +46,7 @@ const COLORS = {
 };
 const STORAGE_KEY = "done-rite-creator-os:v1";
 const PRODUCT_HISTORY_KEY = "done-rite-product-history:v1";
+const VOICEOVER_QUEUE_KEY = "done-rite-voiceover-queue:v1";
 const CATEGORIES = [
     "Electronics & Gadgets",
     "Kitchen",
@@ -439,15 +440,46 @@ function sanitizeContentGapRows(rows) {
         const phrase = cleanContentGapPhrase(row.phrase);
         const source = String(row.source || "").toLowerCase();
         const note = String(row.note || "").toLowerCase();
-        const imported = source.includes("screenshot") || note.includes("imported from screenshot");
         const searches = Number(row.searches || 0);
         const key = phrase.toLowerCase();
         if (isContentGapPhraseJunk(phrase) || seen.has(key)) return;
-        if (imported && searches < MIN_CONTENT_GAP_SEARCHES) return;
         seen.add(key);
-        cleaned.push({ ...row, phrase, searches: searches || undefined });
+        cleaned.push({
+            ...row,
+            phrase,
+            searches: searches || undefined,
+            needsSearchCountReview: (!searches && (source.includes("screenshot") || note.includes("imported from screenshot"))) || undefined,
+        });
     });
     return cleaned;
+}
+function voiceoverSegments(spokenLines, duration) {
+    const lines = (spokenLines || []).map((line) => String(line || "").trim()).filter(Boolean);
+    const total = [7, 10, 15].includes(Number(duration)) ? Number(duration) : 15;
+    const groups = total <= 7
+        ? [[lines[0], lines[1]], [lines[2], lines[3]]]
+        : total <= 10
+            ? [[lines[0]], [lines[1], lines[2]], [lines[3]]]
+            : lines.map((line) => [line]);
+    const tones = [
+        { tone: "curious", direction: "Curious discovery — lift the hook slightly." },
+        { tone: "sincere", direction: "Sincere and helpful — warm, natural pace." },
+        { tone: "confident", direction: "Confident demonstration — clear, never pushy." },
+        { tone: "confident", direction: "Friendly CTA — let the final words land." },
+    ];
+    return groups.map((group, index) => {
+        const start = Math.round((total * index) / groups.length * 10) / 10;
+        const end = Math.round((total * (index + 1)) / groups.length * 10) / 10;
+        return {
+            id: `vo-${index + 1}`,
+            label: `Voiceover ${index + 1} of ${groups.length}`,
+            text: group.filter(Boolean).join(" "),
+            start,
+            end,
+            tone: tones[index].tone,
+            direction: tones[index].direction,
+        };
+    }).filter((item) => item.text);
 }
 function normalizeRestoredForm(value) {
     const restored = value && typeof value === "object" ? { ...EMPTY_FORM, ...value } : { ...EMPTY_FORM };
@@ -586,6 +618,7 @@ function makePackage(form) {
     const cta = availableCtas.some((item) => item.text === form.chosenCta) ? form.chosenCta : availableCtas[0].text;
     const spokenLines = spokenScriptLines(product, feature, hooks[0], cta);
     const voiceover = `${prefix}${spokenLines.join(" ")}`;
+    const voiceovers = voiceoverSegments(spokenLines, form.duration);
     const searchPhrase = String(form.searchPhrase || "").trim();
     const marks = timelineMarks(form.duration);
     const onScreenText = [
@@ -617,6 +650,7 @@ function makePackage(form) {
         form: { ...form, productName: product, verifiedFeatures: cleaned },
         hooks,
         voiceover,
+        voiceovers,
         onScreenText,
         caption,
         hashtags,
@@ -1502,7 +1536,7 @@ function DoneRiteCreatorOS() {
                     const data = Array.isArray(value) ? { quickCreateHistory: value } : value;
                     if (!data || typeof data !== "object")
                         return;
-                    const looksLikeCreatorData = ["saved", "products", "quickCreateHistory", "gapRows", "hookLog"].some((field) => Array.isArray(data[field]))
+                    const looksLikeCreatorData = ["saved", "savedPackages", "creations", "products", "productVault", "quickCreateHistory", "history", "gapRows", "contentGapRows", "contentGaps", "hookLog"].some((field) => Array.isArray(data[field]))
                         || (data.form && typeof data.form === "object" && data.form.productName);
                     if (looksLikeCreatorData)
                         candidates.push({ key, data });
@@ -1515,32 +1549,45 @@ function DoneRiteCreatorOS() {
                 const key = localStorage.key(index);
                 if (!key || key === STORAGE_KEY || key === PRODUCT_HISTORY_KEY)
                     continue;
-                if (/done.?rite|creator.?os|gadget.?guru/i.test(key))
-                    addCandidate(key, localStorage.getItem(key));
+                addCandidate(key, localStorage.getItem(key));
             }
             const primary = candidates.find((item) => item.key === STORAGE_KEY);
             const sources = primary ? [primary, ...candidates.filter((item) => item !== primary)] : candidates;
-            const mergeRecords = (field, keyFor) => {
+            const mergeRecords = (fields, keyFor) => {
                 const out = [];
                 const seen = new Set();
                 sources.forEach(({ data }) => {
-                    (Array.isArray(data[field]) ? data[field] : []).forEach((item, index) => {
+                    const records = fields.flatMap((field) => Array.isArray(data[field]) ? data[field] : []);
+                    records.forEach((item, index) => {
                         if (!item || typeof item !== "object")
                             return;
-                        const key = String(keyFor(item, index) || "").toLowerCase();
+                        const normalized = item.productName ? item : {
+                            ...item,
+                            productName: item.name || item.product || item.productTitle || (item.form && item.form.productName) || "",
+                            verifiedFeatures: item.verifiedFeatures || item.features || (item.form && item.form.verifiedFeatures) || "",
+                            category: item.category || (item.form && item.form.category),
+                        };
+                        const key = String(keyFor(normalized, index) || "").toLowerCase();
                         if (!key || seen.has(key))
                             return;
                         seen.add(key);
-                        out.push(item);
+                        out.push(normalized);
                     });
                 });
                 return out;
             };
-            const savedRecovered = mergeRecords("saved", (item, index) => item.id || `${item.productName || ""}|${item.createdAt || index}`);
-            const productsRecovered = mergeRecords("products", (item, index) => item.id || item.productName || index);
-            const historyRecovered = mergeRecords("quickCreateHistory", (item, index) => item.productName || item.id || index);
-            const gapsRecovered = mergeRecords("gapRows", (item, index) => item.id || item.phrase || index);
-            const hooksRecovered = mergeRecords("hookLog", (item, index) => item.id || `${item.text || ""}|${index}`);
+            const savedRecovered = mergeRecords(["saved", "savedPackages", "creations"], (item, index) => item.id || `${item.productName || ""}|${item.createdAt || index}`);
+            const productsRecovered = mergeRecords(["products", "productVault", "productRows"], (item, index) => item.productName || item.id || index);
+            const historyRecovered = mergeRecords(["quickCreateHistory", "history", "productHistory"], (item, index) => item.productName || item.id || index);
+            const gapsRecovered = mergeRecords(["gapRows", "contentGapRows", "contentGaps"], (item, index) => item.phrase || item.searchPhrase || item.id || index)
+                .map((item) => item.phrase ? item : { ...item, phrase: item.searchPhrase || item.query || item.text || "" });
+            const hooksRecovered = mergeRecords(["hookLog"], (item, index) => item.id || `${item.text || ""}|${index}`);
+            const inferredProducts = [...productsRecovered];
+            [...savedRecovered, ...historyRecovered].forEach((item) => {
+                const name = String(item.productName || "").trim();
+                if (!name || inferredProducts.some((product) => String(product.productName || "").trim().toLowerCase() === name.toLowerCase())) return;
+                inferredProducts.push({ id: item.id || uid(), productName: name, category: item.category || "Electronics & Gadgets", verifiedFeatures: item.verifiedFeatures || "", acquisition: item.acquisition || "none", sampleReceived: !!item.sampleReceived, status: "Recovered", updatedAt: item.updatedAt || item.createdAt || new Date().toISOString() });
+            });
             const chosen = sources.map((item) => item.data).find((data) =>
                 (data.form && data.form.productName)
                 || (Array.isArray(data.products) && data.products.length)
@@ -1549,7 +1596,7 @@ function DoneRiteCreatorOS() {
             ) || (sources[0] && sources[0].data);
             if (sources.length) {
                 setSaved(savedRecovered);
-                setProducts(productsRecovered);
+                setProducts(inferredProducts);
                 setQuickCreateHistory(historyRecovered);
                 if (chosen && chosen.form && typeof chosen.form === "object")
                     setForm(normalizeRestoredForm(chosen.form));
@@ -1564,7 +1611,7 @@ function DoneRiteCreatorOS() {
                 if (chosen && typeof chosen.hookSpin === "number")
                     setHookSpin(chosen.hookSpin);
                 if (candidates.some((item) => item.key !== STORAGE_KEY)
-                    && (productsRecovered.length || savedRecovered.length || historyRecovered.length))
+                    && (inferredProducts.length || savedRecovered.length || historyRecovered.length || gapsRecovered.length))
                     setImportStatus("Previous Creator OS product history was found and recovered.");
             }
         }
@@ -1679,12 +1726,13 @@ function DoneRiteCreatorOS() {
         const stopWords = new Set(["and", "the", "for", "with", "this", "that", "from", "your"]);
         const productWords = new Set(`${productName} ${draft.verifiedFeatures || ""}`.toLowerCase().match(/[a-z0-9]+/g) || []);
         const rankedGaps = sanitizeContentGapRows(gapRows)
+            .filter((item) => Number(item.searches || 0) >= MIN_CONTENT_GAP_SEARCHES)
             .map((item) => {
                 const words = String(item.phrase || "").toLowerCase().match(/[a-z0-9]+/g) || [];
                 const hits = words.filter((word) => word.length > 2 && !stopWords.has(word) && productWords.has(word)).length;
-                return { phrase: item.phrase, score: hits + (item.category === draft.category ? 0.25 : 0) };
+                return { phrase: item.phrase, searches: Number(item.searches || 0), score: hits + (item.category === draft.category ? 0.25 : 0) };
             })
-            .sort((a, b) => b.score - a.score);
+            .sort((a, b) => b.score - a.score || Number(b.searches || 0) - Number(a.searches || 0));
         rankedGaps.forEach((item) => push(item.phrase));
         return out;
     };
@@ -1823,6 +1871,10 @@ function DoneRiteCreatorOS() {
         const winners = hookLog.filter((entry) => entry.winner);
         const next = makePackage({ ...effectiveForm, hookWinners: winners, hookSpin: spin });
         setPkg(next);
+        try {
+            localStorage.setItem(VOICEOVER_QUEUE_KEY, JSON.stringify({ version: 1, productName: next.productName, duration: next.form.duration, createdAt: next.createdAt, segments: next.voiceovers }));
+        }
+        catch { }
         window.setTimeout(() => { var _a; return (_a = resultsRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60);
         setProducts((current) => {
             const existing = current.find((item) => item.productName.toLowerCase() === effectiveForm.productName.trim().toLowerCase());
@@ -2007,6 +2059,7 @@ function DoneRiteCreatorOS() {
         ["Hooks", pkg.hooks.map((hook, index) => `${index + 1}. ${hook}`).join("\n")],
         ...(pkg.shotList ? [["Shot list — hands in frame, no face", pkg.shotList]] : []),
         ["Voiceover", pkg.voiceover],
+        ...(pkg.voiceovers && pkg.voiceovers.length ? [["Voiceover recording queue", pkg.voiceovers.map((item) => `${item.label} · ${item.start}–${item.end}s · ${item.direction}\n${item.text}`).join("\n\n")]] : []),
         ["On-screen text", pkg.onScreenText],
         ["Caption", pkg.caption],
         ["Hashtags", pkg.hashtags],
@@ -2195,6 +2248,10 @@ function DoneRiteCreatorOS() {
                             React.createElement("button", { className: `dr-button ${copiedKey === "Everything" ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(flattenScript(pkg), "Everything") }, copiedKey === "Everything" ? "Copied ✓" : "Copy Everything"),
                             React.createElement("button", { className: `dr-copy ${copiedKey === "AI prompt" ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(pkg.aiVideoPrompt, "AI prompt") }, copiedKey === "AI prompt" ? "Copied ✓" : "Copy AI Prompt"),
                             React.createElement("span", { className: "dr-pill" }, "Saved automatically"))),
+                    React.createElement(Card, null,
+                        React.createElement("h3", null, `Record ${pkg.voiceovers && pkg.voiceovers.length || 1} voiceover part${pkg.voiceovers && pkg.voiceovers.length === 1 ? "" : "s"}`),
+                        React.createElement("p", { className: "dr-help" }, "Every part of this script is loaded into one teleprompter dropdown with its delivery tone and time window."),
+                        React.createElement("a", { className: "dr-button", href: "./teleprompter.html", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 12 } }, "Open Voiceover Queue")),
                     sections.map(([title, text]) => React.createElement(OutputCard, { key: title, title: title, text: text, onCopy: notifyCopy, copiedKey: copiedKey })))))),
             tab === "check" && (React.createElement(React.Fragment, null,
                 React.createElement(Card, null,

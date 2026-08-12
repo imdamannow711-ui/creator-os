@@ -17,6 +17,13 @@
  <h1>Extra-Slow Teleprompter</h1>
  <div class="card">
   <p class="help">Paste or type your voiceover. Your script and reading settings save automatically on this iPhone.</p>
+  <div id="queueBox" class="coach" hidden>
+   <strong>Voiceover Queue</strong>
+   <label class="label" for="voicePart">Part needed for this script</label>
+   <select id="voicePart" class="select"></select>
+   <p id="queueMeta" class="toneNote"></p>
+   <div class="row"><button id="previousPart" class="btn secondary">← Previous Part</button><button id="nextPart" class="btn">Next Part →</button></div>
+  </div>
   <label class="label" for="script">Voiceover script</label>
   <textarea id="script" class="script">Your phone audio needs this. The Hollyland LARK A1 is a compact wireless mic kit with a convenient charging case. See it in the product link.</textarea>
   <div class="coach">
@@ -64,12 +71,14 @@
  <div id="countdown" class="countdown">3</div>
 </section>
 <script>
-const KEY='done-rite-teleprompter:v1',VOICE_KEY='done-rite-voiceover-next:v1',$=id=>document.getElementById(id);
-let offset=0,running=false,last=0,raf=0,videoUrl='',recorder=null,recorded=[],recordingBlob=null,recordingName='Voiceover_1.m4a',currentVoiceNumber=1;
+const KEY='done-rite-teleprompter:v1',VOICE_KEY='done-rite-voiceover-next:v1',QUEUE_KEY='done-rite-voiceover-queue:v1',$=id=>document.getElementById(id);
+let offset=0,running=false,last=0,raf=0,videoUrl='',recorder=null,recorded=[],recordingBlob=null,recordingName='Voiceover_1.m4a',currentVoiceNumber=1,voiceQueue=null,currentPart=0;
 function save(){localStorage.setItem(KEY,JSON.stringify({script:$('script').value,speed:$('speed').value,font:$('font').value,countdown:$('countdownToggle').checked,mirror:$('mirror').checked,tone:$('tone').value}))}
 function nextVoiceNumber(){const n=parseInt(localStorage.getItem(VOICE_KEY)||'1',10);return Number.isFinite(n)&&n>0?n:1}
 function showNextName(){$('nextName').textContent='Voiceover '+nextVoiceNumber()}
-function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'{}');if(d.script)$('script').value=d.script;if(d.speed)$('speed').value=d.speed;if(d.font)$('font').value=d.font;if(typeof d.countdown==='boolean')$('countdownToggle').checked=d.countdown;if(typeof d.mirror==='boolean')$('mirror').checked=d.mirror;if(d.tone)$('tone').value=d.tone}catch(e){}updateReadouts();updateTone();showNextName()}
+function applyVoicePart(index){if(!voiceQueue||!voiceQueue.segments.length)return;currentPart=Math.max(0,Math.min(index,voiceQueue.segments.length-1));const part=voiceQueue.segments[currentPart];$('voicePart').value=String(currentPart);$('script').value=part.text||'';$('tone').value=TONES[part.tone]?part.tone:'sincere';$('queueMeta').textContent=`${voiceQueue.productName} · ${voiceQueue.duration}s video · ${part.start}–${part.end}s · ${part.direction}`;$('previousPart').disabled=currentPart===0;$('nextPart').disabled=currentPart===voiceQueue.segments.length-1;updateTone();save()}
+function loadQueue(){try{const q=JSON.parse(localStorage.getItem(QUEUE_KEY)||'null');if(!q||!Array.isArray(q.segments)||!q.segments.length)return;voiceQueue=q;$('queueBox').hidden=false;$('voicePart').innerHTML='';q.segments.forEach((part,index)=>{const option=document.createElement('option');option.value=String(index);option.textContent=`${part.label} · ${part.start}–${part.end}s`;$('voicePart').appendChild(option)});applyVoicePart(0)}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'{}');if(d.script)$('script').value=d.script;if(d.speed)$('speed').value=d.speed;if(d.font)$('font').value=d.font;if(typeof d.countdown==='boolean')$('countdownToggle').checked=d.countdown;if(typeof d.mirror==='boolean')$('mirror').checked=d.mirror;if(d.tone)$('tone').value=d.tone}catch(e){}loadQueue();updateReadouts();updateTone();showNextName()}
 const TONES={sincere:{rate:.82,pitch:.96,note:'Warm, calm and trustworthy. Smile slightly and let the last phrase land.'},curious:{rate:.88,pitch:1.08,note:'Sound like you just discovered something useful. Lift your voice slightly on the hook.'},confident:{rate:.91,pitch:.92,note:'Clear and steady. Emphasize the product benefit without sounding pushy.'},cautious:{rate:.72,pitch:.94,note:'Slower and thoughtful. Use gentle pauses and avoid sounding alarmed.'},excited:{rate:1.0,pitch:1.12,note:'Bright and enthusiastic with a smile. Keep every word clear.'},energetic:{rate:1.08,pitch:1.04,note:'Quick and punchy. Strong opening, clean finish, no false urgency.'}};
 function updateTone(){$('toneNote').textContent=TONES[$('tone').value].note}
 function spokenScript(){return $('script').value.replace(/\[[^\]]*\]/g,'').replace(/\s*\/\s*/g,', ... ').replace(/\*\*/g,'').trim()}
@@ -84,6 +93,7 @@ async function beginRecording(){try{if(!navigator.mediaDevices||!window.MediaRec
 async function openStage(auto,recordMode=false,needsVideo=false){const text=$('script').value.trim();if(!text){$('script').focus();return}const file=prepareVideo();if(recordMode&&needsVideo&&!file){alert('Choose the video you want to read over first.');return}save();offset=0;$('prompt').textContent=text;$('prompt').style.fontSize=$('font').value+'px';$('prompt').classList.toggle('mirror',$('mirror').checked);applyOffset();$('setup').hidden=true;$('stage').classList.add('active');$('exit').textContent=recordMode?'■ Stop & Save':'← Edit Script';document.documentElement.requestFullscreen?.().catch(()=>{});setRunning(false);if(recordMode&&!await beginRecording()){closeStage();return}if(auto){await countIn();if(file){$('backVideo').currentTime=0;await $('backVideo').play().catch(()=>{})}setRunning(true)}}
 function closeStage(){setRunning(false);if(recorder&&recorder.state!=='inactive')recorder.stop();$('backVideo').pause();$('stage').classList.remove('active');$('setup').hidden=false;$('exit').textContent='← Edit Script';document.exitFullscreen?.().catch(()=>{});window.scrollTo(0,0)}
 $('start').onclick=()=>openStage(true);$('recordOnly').onclick=()=>openStage(true,true,false);$('record').onclick=()=>openStage(true,true,true);$('practice').onclick=()=>openStage(false);$('play').onclick=()=>{setRunning(!running);if(videoUrl){if(running)$('backVideo').play().catch(()=>{});else $('backVideo').pause()}};$('exit').onclick=closeStage;
+$('voicePart').onchange=()=>applyVoicePart(Number($('voicePart').value));$('previousPart').onclick=()=>applyVoicePart(currentPart-1);$('nextPart').onclick=()=>applyVoicePart(currentPart+1);
 $('back').onclick=()=>{offset=Math.max(0,offset-innerHeight*.28);applyOffset()};$('forward').onclick=()=>{offset+=innerHeight*.28;applyOffset()};
 $('hide').onclick=()=>{$('stage').classList.toggle('hide-ui');$('hide').textContent=$('stage').classList.contains('hide-ui')?'Show Controls':'Hide Controls'};
 $('resetSettings').onclick=()=>{$('speed').value=5;$('font').value=58;$('countdownToggle').checked=true;$('mirror').checked=false;updateReadouts();save()};

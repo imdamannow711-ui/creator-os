@@ -138,8 +138,7 @@ $('run').onclick=async()=>{
  if(!files.length){$('status').textContent='Choose one or more screenshots first.';$('status').className='status bad';return;}
  $('run').disabled=true;$('preview').innerHTML='';$('status').className='status';$('bar').style.width='2%';let worker=null;
  try{
-  const cleanup=cleanupExisting();
-  $('status').textContent=`Old imported data cleaned (${cleanup.removed} removed). Loading reader…`;
+  $('status').textContent='Existing Content Gap data preserved. Loading reader…';
   const T=await loadOCR();
   worker=await T.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text'&&window.__drCurrent){const c=window.__drCurrent,fp=Number(m.progress||0);$('bar').style.width=Math.round(((c.index+fp)/c.total)*100)+'%';$('status').textContent=`Screenshot ${c.index+1} of ${c.total} — ${Math.round(fp*100)}% read`;}}});
   const all=[];
