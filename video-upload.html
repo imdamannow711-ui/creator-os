@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080a0e">
+<title>DONE RITE Video Upload</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{width:min(760px,100%);margin:auto;padding:18px 14px calc(80px + env(safe-area-inset-bottom))}.card{background:#11151c;border:1px solid #2a3442;border-radius:18px;padding:16px;margin:12px 0;overflow:hidden}.brand{font-weight:900;letter-spacing:.1em;color:#58a6ff}h1{font-size:24px;margin:7px 0 4px}.help,.status,.meta{overflow-wrap:anywhere;word-break:break-word}.help{color:#9aa7b6;line-height:1.5;margin:8px 0}.label{display:block;font-weight:800;margin:12px 0 6px}.picker,.field,.select{width:100%;min-height:48px;padding:12px;background:#171c25;color:#eef3f8;border:1px solid #2a3442;border-radius:12px;font:inherit}.picker{padding:13px}.field::placeholder{color:#6f7b89}.btn{width:100%;min-height:50px;border:1px solid #58a6ff;border-radius:12px;background:#1e7bff;color:#fff;font:inherit;font-weight:900;margin-top:12px}.btn.secondary{background:#171c25;color:#58a6ff;border-color:#2a3442}.btn:disabled{opacity:.5}.status{margin-top:10px;color:#c4ccd6;line-height:1.45}.ok{color:#2bd97c}.bad{color:#ff6673}.count{margin-top:9px;color:#58a6ff;font-weight:800}.grid{display:grid;gap:12px;margin-top:12px}.clip{background:#171c25;border:1px solid #2a3442;border-radius:14px;padding:10px}.clip video{display:block;width:100%;max-height:340px;background:#000;border-radius:10px;object-fit:contain}.meta{font-size:14px;line-height:1.45;color:#c4ccd6;margin-top:8px}.clip .btn{min-height:44px;margin-top:8px}.privacy{font-size:13px;color:#8793a1;line-height:1.45}a{color:inherit;text-decoration:none}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:440px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">⚡ DONE RITE CREATOR OS</div>
+  <h1>Video Clips — Send for Ad Creation</h1>
+
+  <div class="card">
+    <p class="help">Choose your original product clips. You can preview them here, then use your iPhone Share sheet to send the selected files to ChatGPT.</p>
+    <label class="label" for="product">Product name</label>
+    <input id="product" class="field" value="Hollyland LARK A1" autocomplete="off">
+    <div class="two">
+      <div>
+        <label class="label" for="length">Ad length</label>
+        <select id="length" class="select"><option>7 seconds</option><option selected>10 seconds</option><option>15 seconds</option></select>
+      </div>
+      <div>
+        <label class="label" for="style">Format</label>
+        <select id="style" class="select"><option selected>Product-only / faceless</option><option>Hands-only</option><option>Voiceover + product</option></select>
+      </div>
+    </div>
+    <label class="label" for="notes">Notes for the ad</label>
+    <input id="notes" class="field" placeholder="Example: strongest clip first, electric-blue text">
+  </div>
+
+  <div class="card">
+    <label class="label" for="files">Select video files</label>
+    <input id="files" class="picker" type="file" accept="video/*,.mov,.mp4,.m4v" multiple>
+    <div id="selected" class="count">No videos selected.</div>
+    <div id="status" class="status">Choose one or more original clips above.</div>
+    <button id="shareAll" class="btn" disabled>Share All Clips to ChatGPT</button>
+    <button id="copyBrief" class="btn secondary">Copy Ad Instructions</button>
+    <p class="privacy">Your clips stay on your device until you tap Share. On the iPhone Share sheet, choose ChatGPT. If iOS will not share several large clips together, use the “Share This Clip” buttons below one at a time.</p>
+  </div>
+
+  <div id="previewCard" class="card" hidden>
+    <strong>Selected clips</strong>
+    <div id="preview" class="grid"></div>
+  </div>
+
+  <a href="./"><button class="btn secondary">Return to Creator OS</button></a>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let selectedFiles=[];
+let objectUrls=[];
+const sizeLabel=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(1)+' MB';
+const durationLabel=n=>Number.isFinite(n)?Math.floor(n/60)+':'+String(Math.round(n%60)).padStart(2,'0'):'Loading…';
+function brief(){
+ const notes=$('notes').value.trim();
+ return `DONE RITE Creator OS ad request\nProduct: ${$('product').value.trim()||'Not entered'}\nLength: ${$('length').value}\nFormat: ${$('style').value}\nClips: ${selectedFiles.length}\nInstructions: Create a complete 9:16 TikTok Shop ad with compliant hook, on-screen text, CTA, caption, cover text and five hashtags including #ad.${notes?'\nCreator notes: '+notes:''}`;
+}
+function releaseUrls(){objectUrls.forEach(URL.revokeObjectURL);objectUrls=[]}
+function setStatus(message,type=''){$('status').textContent=message;$('status').className='status '+type}
+async function shareFiles(files,title){
+ if(!files.length)return;
+ const payload={files,title,text:brief()};
+ try{
+   if(!navigator.share)throw new Error('The Share sheet is not available in this browser.');
+   if(navigator.canShare&&!navigator.canShare({files}))throw new Error('This browser cannot share these video files together.');
+   await navigator.share(payload);
+   setStatus('Share sheet opened. Choose ChatGPT to send the clip'+(files.length===1?'':'s')+'.','ok');
+ }catch(e){
+   if(e&&e.name==='AbortError'){setStatus('Sharing was canceled. Your clips are still selected.');return}
+   setStatus(((e&&e.message)||'The clips could not be shared.')+' Use the + button in this ChatGPT conversation and select the same videos.','bad');
+ }
+}
+function render(){
+ releaseUrls();$('preview').innerHTML='';
+ const total=selectedFiles.reduce((sum,f)=>sum+f.size,0);
+ $('selected').textContent=selectedFiles.length?`${selectedFiles.length} video${selectedFiles.length===1?'':'s'} selected · ${sizeLabel(total)} total`:'No videos selected.';
+ $('shareAll').disabled=!selectedFiles.length;$('previewCard').hidden=!selectedFiles.length;
+ selectedFiles.forEach((file,index)=>{
+   const url=URL.createObjectURL(file);objectUrls.push(url);
+   const box=document.createElement('div');box.className='clip';
+   const video=document.createElement('video');video.src=url;video.controls=true;video.playsInline=true;video.preload='metadata';
+   const meta=document.createElement('div');meta.className='meta';meta.textContent=`Clip ${index+1}: ${file.name} · ${sizeLabel(file.size)} · Loading…`;
+   video.onloadedmetadata=()=>{meta.textContent=`Clip ${index+1}: ${file.name} · ${sizeLabel(file.size)} · ${durationLabel(video.duration)}`};
+   const button=document.createElement('button');button.className='btn secondary';button.textContent='Share This Clip';button.onclick=()=>shareFiles([file],`DONE RITE clip ${index+1}`);
+   box.append(video,meta,button);$('preview').appendChild(box);
+ });
+ if(selectedFiles.length)setStatus('Preview the clips, then tap Share All Clips to ChatGPT.','ok');else setStatus('Choose one or more original clips above.');
+}
+$('files').addEventListener('change',()=>{selectedFiles=Array.from($('files').files||[]).filter(f=>String(f.type||'').startsWith('video/')||/\.(mov|mp4|m4v)$/i.test(f.name));render()});
+$('shareAll').onclick=()=>shareFiles(selectedFiles,`DONE RITE — ${$('product').value.trim()||'video ad clips'}`);
+$('copyBrief').onclick=async()=>{try{await navigator.clipboard.writeText(brief());setStatus('Ad instructions copied. Paste them with your clips in ChatGPT.','ok')}catch(e){setStatus('Copy was blocked. Select and share the clips first.','bad')}};
+window.addEventListener('pagehide',releaseUrls);
+</script>
+</body>
+</html>
