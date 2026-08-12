@@ -227,7 +227,19 @@ const CSS = `
   .dr-review-item { padding:12px; border:1px solid ${COLORS.line}; border-radius:12px; background:${COLORS.panel2}; }
   .dr-review-top { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:9px; }
   .dr-review-item .dr-danger { width:auto; min-height:38px; padding:7px 11px; font-size:13px; }
-  .dr-review-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .dr-review-actions, .dr-gap-actions { display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:7px; }
+  .dr-review-actions { margin-top:10px; }
+  .dr-review-actions button, .dr-gap-actions button {
+    width:auto; min-height:36px; padding:7px 10px; font-size:12px; flex:0 0 auto; touch-action:pan-y;
+  }
+  .dr-gap-menu { align-self:flex-end; margin-top:10px; }
+  .dr-gap-menu summary {
+    width:max-content; margin-left:auto; list-style:none; min-height:36px; padding:8px 11px;
+    border:1px solid ${COLORS.line}; border-radius:10px; background:${COLORS.panel}; color:${COLORS.blueGlow};
+    font-size:12px; font-weight:850; cursor:pointer; touch-action:pan-y;
+  }
+  .dr-gap-menu summary::-webkit-details-marker { display:none; }
+  .dr-gap-menu[open] summary { margin-bottom:8px; }
   .dr-nav {
     position:fixed; left:0; right:0; bottom:0; z-index:25;
     border-top:1px solid ${COLORS.line}; background:rgba(17,21,28,.97);
@@ -2502,7 +2514,9 @@ function DoneRiteCreatorOS() {
                                     matches.length
                                         ? `Possible match: ${matches.map((m) => m.product.productName).join(", ")}`
                                         : "No product in your vault matches this. Worth requesting a sample, or skip it."),
-                                React.createElement("div", { className: "dr-row", style: { marginTop: 10 } },
+                                React.createElement("details", { className: "dr-gap-menu" },
+                                    React.createElement("summary", null, "Actions"),
+                                    React.createElement("div", { className: "dr-gap-actions" },
                                     React.createElement("button", { className: "dr-copy", type: "button", onClick: () => {
                                         setForm((current) => ({
                                             ...current,
@@ -2515,7 +2529,9 @@ function DoneRiteCreatorOS() {
                                         setCopyStatus("Loaded into Quick Create.");
                                     } }, "Use in Quick Create"),
                                     React.createElement("button", { className: "dr-copy", type: "button", onClick: () => setGapRows((c) => c.map((x) => x.id === row.id ? { ...x, status: filmed ? "queued" : "filmed" } : x)) }, filmed ? "Reopen" : "Mark filmed"),
-                                    React.createElement("button", { className: "dr-danger", type: "button", onClick: () => setGapRows((c) => c.filter((x) => x.id !== row.id)) }, "Remove")));
+                                    React.createElement("button", { className: "dr-danger", type: "button", onClick: () => {
+                                        if (window.confirm("Remove this Content Gap phrase?")) setGapRows((c) => c.filter((x) => x.id !== row.id));
+                                    } }, "Remove"))));
                         })))
             )),
             tab === "products" && (React.createElement(Card, null,
