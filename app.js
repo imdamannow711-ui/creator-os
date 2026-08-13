@@ -2666,7 +2666,7 @@ function DoneRiteCreatorOS() {
                     React.createElement("p", { className: "dr-help" }, "Record voiceovers, practice delivery, preview clips, and import Content Gap screenshots from one place.")),
                 React.createElement(Card, null,
                     React.createElement("h3", null, "Teleprompter & Voice Coach"),
-                    React.createElement("p", { className: "dr-help" }, "Hear synthesized tone examples, practice without pressure, record with the iPhone or Hollyland LARK A1, and automatically save recordings as Voiceover 1, Voiceover 2, Voiceover 3, and onward."),
+                    React.createElement("p", { className: "dr-help" }, "Hear synthesized tone examples, practice without pressure, record with the iPhone or Hollyland LARK A1, and automatically organize reusable recordings in your searchable Voiceover Library."),
                     React.createElement("a", { className: "dr-button", href: "./teleprompter.html", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 14 } }, "Open Teleprompter & Voice Coach")),
                 React.createElement(Card, null,
                     React.createElement("h3", null, "Video Upload & Clip Preview"),
@@ -2699,7 +2699,7 @@ function DoneRiteCreatorOS() {
                     React.createElement("div", { className: "dr-output", style: { marginTop: 10 } }, "No pricing or discount language. No competitor comparisons. No unsupported claims. Health content uses support language only. Every affiliate hashtag set includes #ad. Hands-on demo by default \u2014 hands in frame, face never in frame, product moving throughout. Confirm Sample Received before publish-ready first-person content.")),
                 React.createElement(Card, null,
                     React.createElement("h3", null, "App Status"),
-                    React.createElement("p", { className: "dr-help" }, `Clean build 2026.08.11 · ${products.length} product${products.length === 1 ? "" : "s"} · ${saved.length} saved creation${saved.length === 1 ? "" : "s"} · ${gapRows.length} Content Gap phrase${gapRows.length === 1 ? "" : "s"}.`))))),
+                    React.createElement("p", { className: "dr-help" }, `Clean build 2026.08.13 · ${products.length} product${products.length === 1 ? "" : "s"} · ${saved.length} saved creation${saved.length === 1 ? "" : "s"} · ${gapRows.length} Content Gap phrase${gapRows.length === 1 ? "" : "s"}.`))))),
         React.createElement("nav", { className: "dr-nav", "aria-label": "Bottom navigation" },
             React.createElement("div", { className: "dr-nav-inner" }, tabs.map(([id, label]) => React.createElement("button", { key: id, type: "button", "aria-current": tab === id ? "page" : undefined, onClick: () => setTab(id) }, label))))));
 }
