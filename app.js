@@ -81,12 +81,14 @@ const EMPTY_FORM = {
     chosenCta: "",
     chosenPattern: "",
     searchPhrase: "",
+    searchIncreasePct: 0,
     batteryPowered: false,
 };
 
 /* A logged Content Gap phrase, before anything is filled in. */
 const EMPTY_GAP = {
     phrase: "",
+    searchIncreasePct: "",
     category: "Electronics & Gadgets",
     gapLevel: "High",
     note: "",
@@ -395,7 +397,20 @@ function loadGapOcrLibrary() {
     return gapOcrLibraryPromise;
 }
 
-const MIN_CONTENT_GAP_SEARCHES = 1000;
+const MIN_CONTENT_GAP_GROWTH_PERCENT = 1000;
+function parseContentGapGrowthPercent(value) {
+    const text = String(value || "").replace(/,/g, "").replace(/\s+/g, " ").trim();
+    const match = text.match(/(?:\+|↑|up\s*)?(\d+(?:\.\d+)?)\s*%\s*\+?/i);
+    if (!match) return 0;
+    const percent = Number(match[1]);
+    return Number.isFinite(percent) ? Math.round(percent) : 0;
+}
+function contentGapGrowthPercent(row) {
+    if (!row || typeof row !== "object") return 0;
+    const direct = Number(row.searchIncreasePct || row.growthPercent || row.increasePct || row.searchGrowth || 0);
+    if (Number.isFinite(direct) && direct > 0) return Math.round(direct);
+    return parseContentGapGrowthPercent([row.growthLabel, row.rawMetric, row.note].filter(Boolean).join(" "));
+}
 function parseContentGapSearchCount(value) {
     const line = String(value || "").replace(/,/g, " ").replace(/\s+/g, " ").trim();
     const compact = line.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*([KkMm])\b/);
@@ -425,7 +440,7 @@ function isContentGapPhraseJunk(value) {
     const lower = phrase.toLowerCase();
     if (!phrase || phrase.length < 5 || phrase.length > 110) return true;
     if ((phrase.match(/[A-Za-z]{2,}/g) || []).length < 2) return true;
-    if (/^(content gap|creator search insights?|search insights?|all searches?|search|inspiration|analytics|recommended|followers?|following|friends?|profile|home|shop|inbox|videos?|posts?|views?|likes?|comments?|shares?|high|medium|low|all|filter|filters|back|done|cancel|today|yesterday|last 7 days|last 30 days)$/i.test(phrase)) return true;
+    if (/^(content gap|creator search insights?|search insights?|search increase|search growth|all searches?|search|inspiration|analytics|recommended|followers?|following|friends?|profile|home|shop|inbox|videos?|posts?|views?|likes?|comments?|shares?|high|medium|low|all|filter|filters|back|done|cancel|today|yesterday|last 7 days|last 30 days)$/i.test(phrase)) return true;
     if (/\b(all searches?|creator search insights?|content gap|high % gap|search popularity)\b/i.test(phrase)) return true;
     if (/^\d+(?:[.,]\d+)?\s*(?:[KMB]|%|searches?|views?)?$/i.test(phrase)) return true;
     if (/[¥€£©®™]|\uFFFD/.test(value) || /\b(?:wifi|battery|gmt)\b/i.test(lower)) return true;
@@ -435,28 +450,27 @@ function contentGapPhrasesFromText(text) {
     const lines = String(text || "").split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
     const found = [];
     for (let index = 0; index < lines.length; index += 1) {
-        const searches = parseContentGapSearchCount(lines[index]);
-        if (searches < MIN_CONTENT_GAP_SEARCHES) continue;
+        const searchIncreasePct = parseContentGapGrowthPercent(lines[index]);
+        if (searchIncreasePct < MIN_CONTENT_GAP_GROWTH_PERCENT) continue;
         let phrase = "";
         for (let distance = 1; distance <= 3 && !phrase; distance += 1) {
             const candidate = cleanContentGapPhrase(lines[index - distance] || "");
-            if (!isContentGapPhraseJunk(candidate) && !parseContentGapSearchCount(candidate)) phrase = candidate;
+            if (!isContentGapPhraseJunk(candidate) && !parseContentGapSearchCount(candidate) && !parseContentGapGrowthPercent(candidate)) phrase = candidate;
         }
         for (let distance = 1; distance <= 2 && !phrase; distance += 1) {
             const candidate = cleanContentGapPhrase(lines[index + distance] || "");
-            if (!isContentGapPhraseJunk(candidate) && !parseContentGapSearchCount(candidate)) phrase = candidate;
+            if (!isContentGapPhraseJunk(candidate) && !parseContentGapSearchCount(candidate) && !parseContentGapGrowthPercent(candidate)) phrase = candidate;
         }
-        if (phrase) found.push({ phrase, searches, rawMetric: lines[index] });
+        if (phrase) found.push({ phrase, searchIncreasePct, growthLabel: `${searchIncreasePct}%`, rawMetric: lines[index] });
     }
     const best = new Map();
     found.forEach((item) => {
         const key = item.phrase.toLowerCase();
-        if (!best.has(key) || best.get(key).searches < item.searches) best.set(key, item);
+        if (!best.has(key) || best.get(key).searchIncreasePct < item.searchIncreasePct) best.set(key, item);
     });
-    return [...best.values()].sort((a, b) => b.searches - a.searches).slice(0, 20);
+    return [...best.values()].sort((a, b) => b.searchIncreasePct - a.searchIncreasePct).slice(0, 20);
 }
 function sanitizeContentGapRows(rows) {
-    const seen = new Set();
     const cleaned = [];
     (Array.isArray(rows) ? rows : []).forEach((row) => {
         if (!row || typeof row !== "object") return;
@@ -464,14 +478,15 @@ function sanitizeContentGapRows(rows) {
         const source = String(row.source || "").toLowerCase();
         const note = String(row.note || "").toLowerCase();
         const searches = Number(row.searches || 0);
-        const key = phrase.toLowerCase();
-        if (isContentGapPhraseJunk(phrase) || seen.has(key)) return;
-        seen.add(key);
+        const searchIncreasePct = contentGapGrowthPercent(row);
+        if (!phrase) return;
         cleaned.push({
             ...row,
             phrase,
             searches: searches || undefined,
-            needsSearchCountReview: (!searches && (source.includes("screenshot") || note.includes("imported from screenshot"))) || undefined,
+            searchIncreasePct: searchIncreasePct || undefined,
+            growthLabel: searchIncreasePct ? `${searchIncreasePct}%` : row.growthLabel,
+            needsGrowthReview: (!searchIncreasePct && (source.includes("screenshot") || note.includes("imported from screenshot"))) || undefined,
         });
     });
     return cleaned;
@@ -509,6 +524,7 @@ function normalizeRestoredForm(value) {
     restored.productName = normalizeProductName(restored.productName);
     restored.duration = ["7", "10", "15"].includes(String(restored.duration)) ? String(restored.duration) : "15";
     restored.searchPhrase = isContentGapPhraseJunk(restored.searchPhrase) ? "" : cleanContentGapPhrase(restored.searchPhrase);
+    restored.searchIncreasePct = Number(restored.searchIncreasePct || 0);
     return restored;
 }
 function scanCompliance(text, form = {}) {
@@ -575,7 +591,11 @@ function flattenScript(pkg) {
     return [
         `DONE RITE CONTENT PACKAGE — ${pkg.productName}`,
         "",
-        ...(pkg.searchPhrase ? [`TARGET SEARCH PHRASE: ${pkg.searchPhrase}`, ""] : []),
+        ...(pkg.searchPhrase ? [
+            `TARGET SEARCH PHRASE: ${pkg.searchPhrase}`,
+            `SEARCH INCREASE: ${pkg.searchIncreasePct ? `${pkg.searchIncreasePct}%` : "Not verified"}`,
+            "",
+        ] : []),
         "HOOKS",
         ...pkg.hooks.map((hook, index) => `${index + 1}. ${hook}`),
         "",
@@ -643,6 +663,7 @@ function makePackage(form) {
     const voiceover = `${prefix}${spokenLines.join(" ")}`;
     const voiceovers = voiceoverSegments(spokenLines, form.duration);
     const searchPhrase = String(form.searchPhrase || "").trim();
+    const searchIncreasePct = Number(form.searchIncreasePct || 0);
     const marks = timelineMarks(form.duration);
     const onScreenText = [
         `${marks[0]}–${marks[1]}s: ${searchPhrase ? searchPhrase.toUpperCase() : hooks[0].toUpperCase()}`,
@@ -681,6 +702,7 @@ function makePackage(form) {
         cta,
         thumbnail,
         searchPhrase,
+        searchIncreasePct,
         shotList,
         patternId: pattern.id,
         patternName: pattern.name,
@@ -1735,31 +1757,33 @@ function DoneRiteCreatorOS() {
         }));
         return out.slice(0, 12);
     }, [products]);
-    const buildTargetPhraseChoices = (draft) => {
+    const buildTargetPhraseMatches = (draft) => {
         const out = [];
         const seen = new Set();
-        const push = (value) => {
-            const phrase = String(value || "").trim();
+        const push = (item) => {
+            const phrase = String(item && item.phrase || "").trim();
             const key = phrase.toLowerCase();
             if (!phrase || seen.has(key))
                 return;
             seen.add(key);
-            out.push(phrase);
+            out.push(item);
         };
         const productName = String(draft.productName || "").trim();
         const stopWords = new Set(["and", "the", "for", "with", "this", "that", "from", "your"]);
         const productWords = new Set(`${productName} ${draft.verifiedFeatures || ""}`.toLowerCase().match(/[a-z0-9]+/g) || []);
         const rankedGaps = sanitizeContentGapRows(gapRows)
-            .filter((item) => Number(item.searches || 0) >= MIN_CONTENT_GAP_SEARCHES)
+            .filter((item) => contentGapGrowthPercent(item) >= MIN_CONTENT_GAP_GROWTH_PERCENT && !isContentGapPhraseJunk(item.phrase))
             .map((item) => {
                 const words = String(item.phrase || "").toLowerCase().match(/[a-z0-9]+/g) || [];
                 const hits = words.filter((word) => word.length > 2 && !stopWords.has(word) && productWords.has(word)).length;
-                return { phrase: item.phrase, searches: Number(item.searches || 0), score: hits + (item.category === draft.category ? 0.25 : 0) };
+                return { phrase: item.phrase, searchIncreasePct: contentGapGrowthPercent(item), hits, score: hits + (item.category === draft.category ? 0.25 : 0) };
             })
-            .sort((a, b) => b.score - a.score || Number(b.searches || 0) - Number(a.searches || 0));
-        rankedGaps.forEach((item) => push(item.phrase));
+            .filter((item) => item.hits > 0)
+            .sort((a, b) => b.score - a.score || b.searchIncreasePct - a.searchIncreasePct);
+        rankedGaps.forEach(push);
         return out;
     };
+    const buildTargetPhraseChoices = (draft) => buildTargetPhraseMatches(draft).map((item) => item.phrase);
     const targetPhraseChoices = useMemo(() => buildTargetPhraseChoices(form), [form.productName, form.category, form.verifiedFeatures, form.funnel, gapRows]);
     const addFeature = (text) => {
         setForm((current) => {
@@ -1862,6 +1886,7 @@ function DoneRiteCreatorOS() {
             category: draft.category,
             verifiedFeatures: safeFeatureText(draft.verifiedFeatures),
             searchPhrase: String(draft.searchPhrase || "").trim(),
+            searchIncreasePct: Number(draft.searchIncreasePct || 0),
             acquisition: draft.acquisition,
             sampleReceived: draft.acquisition === "sample",
             updatedAt: new Date().toISOString(),
@@ -1883,10 +1908,12 @@ function DoneRiteCreatorOS() {
         }
         setNeedsName(false);
         const correctedForm = { ...form, productName: normalizeProductName(form.productName) };
+        const bestGap = buildTargetPhraseMatches(correctedForm)[0];
+        const selectedGap = buildTargetPhraseMatches(correctedForm).find((item) => item.phrase.toLowerCase() === correctedForm.searchPhrase.trim().toLowerCase());
         const effectiveForm = correctedForm.searchPhrase.trim()
-            ? correctedForm
-            : { ...correctedForm, searchPhrase: buildTargetPhraseChoices(correctedForm)[0] || "" };
-        if (effectiveForm.searchPhrase !== form.searchPhrase || effectiveForm.productName !== form.productName)
+            ? { ...correctedForm, searchIncreasePct: selectedGap ? selectedGap.searchIncreasePct : Number(correctedForm.searchIncreasePct || 0) }
+            : { ...correctedForm, searchPhrase: bestGap ? bestGap.phrase : "", searchIncreasePct: bestGap ? bestGap.searchIncreasePct : 0 };
+        if (effectiveForm.searchPhrase !== form.searchPhrase || effectiveForm.productName !== form.productName || effectiveForm.searchIncreasePct !== form.searchIncreasePct)
             setForm(effectiveForm);
         rememberQuickCreateProduct(effectiveForm);
         // Rotate the hook angles and hand the generator any proven winners.
@@ -1908,6 +1935,7 @@ function DoneRiteCreatorOS() {
                 category: effectiveForm.category,
                 verifiedFeatures: safeFeatureText(effectiveForm.verifiedFeatures),
                 searchPhrase: effectiveForm.searchPhrase,
+                searchIncreasePct: Number(effectiveForm.searchIncreasePct || 0),
                 sampleReceived: effectiveForm.acquisition === "sample",
                 acquisition: effectiveForm.acquisition,
                 status: effectiveForm.acquisition === "none" ? "Waiting for product" : "Ready to create",
@@ -1980,8 +2008,7 @@ function DoneRiteCreatorOS() {
         let worker = null;
         let currentIndex = 0;
         let failedImages = 0;
-        const detected = [];
-        const detectedKeys = new Set();
+        const detectedByPhrase = new Map();
         try {
             const Tesseract = await loadGapOcrLibrary();
             worker = await Tesseract.createWorker("eng", 1, {
@@ -2001,10 +2028,9 @@ function DoneRiteCreatorOS() {
                     const ocrText = String((result && result.data && result.data.text) || "").trim();
                     contentGapPhrasesFromText(ocrText).forEach((item) => {
                         const key = item.phrase.toLowerCase();
-                        if (detectedKeys.has(key))
-                            return;
-                        detectedKeys.add(key);
-                        detected.push(item);
+                        const previous = detectedByPhrase.get(key);
+                        if (!previous || item.searchIncreasePct > previous.searchIncreasePct)
+                            detectedByPhrase.set(key, item);
                     });
                 }
                 catch {
@@ -2012,6 +2038,7 @@ function DoneRiteCreatorOS() {
                 }
                 setGapScanProgress(0.05 + ((currentIndex + 1) / files.length) * 0.93);
             }
+            const detected = [...detectedByPhrase.values()].sort((a, b) => b.searchIncreasePct - a.searchIncreasePct);
             if (detected.length) {
                 setGapScanResults(detected.map((item) => ({ ...item, phrase: cleanContentGapPhrase(item.phrase), id: uid() })));
                 const failureNote = failedImages ? ` ${failedImages} image${failedImages === 1 ? "" : "s"} could not be read.` : "";
@@ -2020,7 +2047,7 @@ function DoneRiteCreatorOS() {
             }
             else {
                 const failureNote = failedImages ? ` ${failedImages} image${failedImages === 1 ? "" : "s"} could not be read.` : "";
-                setGapScanStatus(`No trustworthy 1,000+ search phrases were found.${failureNote} Try tighter screenshots that show each phrase and its search count together. Nothing was saved, and all images were discarded.`);
+                setGapScanStatus(`No trustworthy 1,000%+ growth phrases were found.${failureNote} Try tighter screenshots that show each phrase and its search-increase percentage together. Nothing was saved, and all images were discarded.`);
             }
             setGapScanProgress(1);
         }
@@ -2041,7 +2068,7 @@ function DoneRiteCreatorOS() {
     const saveReviewedGapResults = () => {
         const reviewed = gapScanResults
             .map((item) => ({ ...item, phrase: cleanContentGapPhrase(item.phrase) }))
-            .filter((item) => item.searches >= MIN_CONTENT_GAP_SEARCHES && !isContentGapPhraseJunk(item.phrase));
+            .filter((item) => item.searchIncreasePct >= MIN_CONTENT_GAP_GROWTH_PERCENT && !isContentGapPhraseJunk(item.phrase));
         if (!reviewed.length) {
             setCopyStatus("No valid reviewed phrases are ready to save.");
             return;
@@ -2050,12 +2077,12 @@ function DoneRiteCreatorOS() {
         setGapRows((current) => sanitizeContentGapRows([
             ...reviewed.map((item) => ({
                 phrase: item.phrase,
-                searches: item.searches,
-                searchVolumeLabel: item.searches >= 1000000 ? `${Number((item.searches / 1000000).toFixed(1))}M` : `${Number((item.searches / 1000).toFixed(1))}K`,
+                searchIncreasePct: item.searchIncreasePct,
+                growthLabel: `${item.searchIncreasePct}%`,
                 rawMetric: item.rawMetric,
                 category: gapDraft.category,
                 gapLevel: gapDraft.gapLevel,
-                note: `Reviewed screenshot import · ${item.searches.toLocaleString()} searches`,
+                note: `Reviewed screenshot import · ${item.searchIncreasePct.toLocaleString()}% search increase`,
                 id: uid(),
                 status: "queued",
                 source: "qualified screenshot import",
@@ -2189,9 +2216,11 @@ function DoneRiteCreatorOS() {
                                         category: found.category || current.category,
                                         verifiedFeatures: found.verifiedFeatures || current.verifiedFeatures,
                                         searchPhrase: "",
+                                        searchIncreasePct: 0,
                                         acquisition: found.acquisition || (found.sampleReceived ? "sample" : current.acquisition),
                                     };
-                                    return { ...loaded, searchPhrase: buildTargetPhraseChoices(loaded)[0] || "" };
+                                    const best = buildTargetPhraseMatches(loaded)[0];
+                                    return { ...loaded, searchPhrase: best ? best.phrase : "", searchIncreasePct: best ? best.searchIncreasePct : 0 };
                                 });
                                 setCopyStatus(`Loaded ${entry.name}.`);
                             } },
@@ -2207,14 +2236,16 @@ function DoneRiteCreatorOS() {
                         React.createElement("select", { className: "dr-select", value: form.category, onChange: (event) => setValue("category", event.target.value) }, CATEGORIES.map((category) => React.createElement("option", { key: category }, category)))),
                     React.createElement(Field, { label: "Choose a target search phrase", help: "Only phrases saved in Content Gap appear here. The closest match for the selected product is listed first." },
                         React.createElement("select", { className: "dr-select", value: "", onChange: (event) => {
-                                if (event.target.value)
-                                    setValue("searchPhrase", event.target.value);
+                                if (event.target.value) {
+                                    const selected = buildTargetPhraseMatches(form).find((item) => item.phrase === event.target.value);
+                                    setForm((current) => ({ ...current, searchPhrase: event.target.value, searchIncreasePct: selected ? selected.searchIncreasePct : 0 }));
+                                }
                             } },
-                            React.createElement("option", { value: "" }, targetPhraseChoices.length ? "Select a Content Gap phrase" : "Save a Content Gap phrase first"),
+                            React.createElement("option", { value: "" }, targetPhraseChoices.length ? "Select a 1000%+ Content Gap phrase" : "Save a 1000%+ Content Gap phrase first"),
                             targetPhraseChoices.length > 0 && React.createElement("optgroup", { label: "Saved Content Gap phrases" },
-                                targetPhraseChoices.map((phrase, index) => React.createElement("option", { key: `gap-${phrase}`, value: phrase }, index === 0 ? `Best match: ${phrase}` : phrase))))),
+                                buildTargetPhraseMatches(form).map((item, index) => React.createElement("option", { key: `gap-${item.phrase}`, value: item.phrase }, `${index === 0 ? "Best match: " : ""}${item.phrase} — ${item.searchIncreasePct}%`))))),
                     React.createElement(Field, { label: "Target search phrase", help: "The selected phrase appears here. You can also type or edit your own phrase." },
-                        React.createElement("input", { className: "dr-input", value: form.searchPhrase, onChange: (event) => setValue("searchPhrase", event.target.value), placeholder: "Choose from the list above or type your own" })),
+                        React.createElement("input", { className: "dr-input", value: form.searchPhrase, onChange: (event) => setForm((current) => ({ ...current, searchPhrase: event.target.value, searchIncreasePct: 0 })), placeholder: "Choose from the list above or type your own" })),
                     React.createElement(Field, { label: "Verified features", help: "Do not paste seller hype, prices, discounts, unsupported specifications, or medical claims." },
                         React.createElement("textarea", { className: "dr-textarea", value: form.verifiedFeatures, onChange: (event) => setValue("verifiedFeatures", event.target.value), placeholder: "One verified feature per line" })),
                     React.createElement("p", { className: "dr-help", style: { marginTop: 4 } }, "Tap to add. Only add what you have actually confirmed on the product \u2014 these are wordings, not facts."),
@@ -2478,7 +2509,7 @@ function DoneRiteCreatorOS() {
             tab === "gap" && (React.createElement(React.Fragment, null,
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Content Gap"),
-                    React.createElement("p", { className: "dr-help" }, "Upload TikTok Creator Search Insights screenshots. Creator OS now saves only phrases it can pair with a visible search count of 1,000 or more. Labels, broken symbols, percentages, and other OCR junk are discarded."),
+                    React.createElement("p", { className: "dr-help" }, "Upload TikTok Creator Search Insights screenshots. Creator OS preserves your existing phrases and qualifies phrases showing a search increase of 1,000% or more. Search counts are not used for this rule."),
                     React.createElement("div", { className: "dr-output", style: { marginTop: 12 } }, [
                         "1. Open TikTok, go to your profile",
                         "2. Creator Tools → Creator Search Insights",
@@ -2487,7 +2518,7 @@ function DoneRiteCreatorOS() {
                         "4. Filter to High % Gap",
                         "5. Take all needed screenshots, then select and upload them together",
                     ].join("\n")),
-                    React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "Keep each phrase and its search count visible in the same screenshot. The first scan needs internet to load the on-device reader. Images are discarded after reading.")),
+                    React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "Keep each phrase and its search-increase percentage visible in the same screenshot. The first scan needs internet to load the on-device reader. Images are discarded after reading.")),
 
                 React.createElement(Card, null,
                     React.createElement("h3", null, "Upload Content Gap Screenshots"),
@@ -2501,7 +2532,7 @@ function DoneRiteCreatorOS() {
                         React.createElement("p", { className: "dr-help", style: { color: COLORS.amber, margin: 0 } }, "These are not saved yet. Correct any OCR spelling or discard the phrase."),
                         gapScanResults.map((item) => React.createElement("div", { className: "dr-review-item", key: item.id },
                             React.createElement("div", { className: "dr-review-top" },
-                                React.createElement("span", { className: "dr-pill" }, `${item.searches.toLocaleString()} searches`),
+                                React.createElement("span", { className: "dr-pill" }, `${item.searchIncreasePct.toLocaleString()}% increase`),
                                 React.createElement("button", { className: "dr-danger", type: "button", onClick: () => setGapScanResults((current) => current.filter((row) => row.id !== item.id)) }, "Discard")),
                             React.createElement("input", { className: "dr-input", value: item.phrase, onChange: (event) => setGapScanResults((current) => current.map((row) => row.id === item.id ? { ...row, phrase: event.target.value } : row)), "aria-label": "Review detected Content Gap phrase" }))),
                         React.createElement("div", { className: "dr-review-actions" },
@@ -2513,6 +2544,8 @@ function DoneRiteCreatorOS() {
                     React.createElement("div", { style: { height: 12 } }),
                     React.createElement(Field, { label: "Search phrase", help: "Type it exactly as TikTok shows it. Exact wording is the whole point." },
                         React.createElement("input", { className: "dr-input", value: gapDraft.phrase, onChange: (e) => setGapDraft({ ...gapDraft, phrase: e.target.value }), placeholder: "e.g. best neck phone holder for reading in bed" })),
+                    React.createElement(Field, { label: "Search increase percentage", help: "Enter the percentage TikTok shows. Creator OS automatically uses phrases at 1000% or higher." },
+                        React.createElement("input", { className: "dr-input", type: "number", min: "0", inputMode: "numeric", value: gapDraft.searchIncreasePct, onChange: (e) => setGapDraft({ ...gapDraft, searchIncreasePct: e.target.value }), placeholder: "1000" })),
                     React.createElement("div", { className: "dr-row" },
                         React.createElement(Field, { label: "Category" },
                             React.createElement("select", { className: "dr-select", value: gapDraft.category, onChange: (e) => setGapDraft({ ...gapDraft, category: e.target.value }) }, CATEGORIES.map((c) => React.createElement("option", { key: c }, c)))),
@@ -2527,7 +2560,8 @@ function DoneRiteCreatorOS() {
                         const phrase = cleanContentGapPhrase(gapDraft.phrase);
                         if (!phrase) { setCopyStatus("Type the search phrase first."); return; }
                         if (isContentGapPhraseJunk(phrase)) { setCopyStatus("That looks like a label or broken OCR text. Type only the exact search phrase."); return; }
-                        setGapRows((current) => sanitizeContentGapRows([{ ...gapDraft, phrase, note: gapDraft.note.trim(), id: uid(), status: "queued", source: "manual", createdAt: new Date().toISOString() }, ...current]));
+                        const searchIncreasePct = Number(gapDraft.searchIncreasePct || 0);
+                        setGapRows((current) => sanitizeContentGapRows([{ ...gapDraft, phrase, searchIncreasePct, growthLabel: searchIncreasePct ? `${searchIncreasePct}%` : "", note: gapDraft.note.trim(), id: uid(), status: "queued", source: "manual", createdAt: new Date().toISOString() }, ...current]));
                         setGapDraft({ ...EMPTY_GAP, category: gapDraft.category, gapLevel: gapDraft.gapLevel });
                         setCopyStatus("Phrase logged.");
                     } }, "Log This Phrase")),
@@ -2538,11 +2572,10 @@ function DoneRiteCreatorOS() {
                         React.createElement("span", { className: "dr-pill" }, `${gapRows.filter((r) => r.status !== "filmed").length} waiting`)),
                     React.createElement("button", { className: "dr-copy", type: "button", style: { width: "100%", marginBottom: 12 }, onClick: () => {
                         const cleaned = sanitizeContentGapRows(gapRows);
-                        const removed = gapRows.length - cleaned.length;
                         setGapRows(cleaned);
                         if (form.searchPhrase && isContentGapPhraseJunk(form.searchPhrase)) setValue("searchPhrase", "");
-                        setCopyStatus(removed ? `${removed} bad or duplicate Content Gap row${removed === 1 ? "" : "s"} removed.` : "Content Gap queue is already clean.");
-                    } }, "Clean Bad Imported Rows"),
+                        setCopyStatus("Content Gap rows preserved and percentage fields upgraded where possible.");
+                    } }, "Preserve & Upgrade Saved Rows"),
                     React.createElement("p", { className: "dr-help" }, "Products you already own are matched by keyword. A match is a suggestion, not a verdict — you decide whether the phrase honestly describes the product."),
                     React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
                         gapRows.length === 0 && React.createElement("p", { className: "dr-help" }, "Nothing logged yet. Open Creator Search Insights and bring back five phrases."),
@@ -2551,7 +2584,7 @@ function DoneRiteCreatorOS() {
                             const filmed = row.status === "filmed";
                             return React.createElement("div", { className: "dr-item", key: row.id, style: { flexDirection: "column", alignItems: "stretch", opacity: filmed ? 0.55 : 1 } },
                                 React.createElement("div", { className: "dr-item-title", style: { color: filmed ? COLORS.dim : row.gapLevel === "High" ? COLORS.green : COLORS.chrome, textDecoration: filmed ? "line-through" : "none" } }, row.phrase),
-                                React.createElement("div", { className: "dr-help", style: { marginTop: 4 } }, `${row.gapLevel} gap · ${row.category}${row.searchVolumeLabel ? " · " + row.searchVolumeLabel + " searches" : ""}${row.note ? " · " + row.note : ""}`),
+                                React.createElement("div", { className: "dr-help", style: { marginTop: 4 } }, `${row.gapLevel} gap · ${row.category}${contentGapGrowthPercent(row) ? " · " + contentGapGrowthPercent(row).toLocaleString() + "% increase" : " · percentage not recorded"}${row.note ? " · " + row.note : ""}`),
                                 React.createElement("div", { className: "dr-help", style: { marginTop: 8, color: matches.length ? COLORS.blueGlow : COLORS.amber } },
                                     matches.length
                                         ? `Possible match: ${matches.map((m) => m.product.productName).join(", ")}`
@@ -2563,6 +2596,7 @@ function DoneRiteCreatorOS() {
                                         setForm((current) => ({
                                             ...current,
                                             searchPhrase: row.phrase,
+                                            searchIncreasePct: contentGapGrowthPercent(row),
                                             category: row.category || current.category,
                                             productName: matches.length ? matches[0].product.productName : current.productName,
                                             verifiedFeatures: matches.length ? (matches[0].product.verifiedFeatures || current.verifiedFeatures) : current.verifiedFeatures,
