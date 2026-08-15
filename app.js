@@ -44,7 +44,7 @@ const COLORS = {
     amber: "#ffb020",
     red: "#ff4d5a",
 };
-const APP_BUILD = "2026.08.14-clean";
+const APP_BUILD = "2026.08.15-product-reset";
 const LAST_TAB_KEY = "done-rite-last-tab:v1";
 const STORAGE_KEY = "done-rite-creator-os:v1";
 const PRODUCT_HISTORY_KEY = "done-rite-product-history:v1";
@@ -428,6 +428,37 @@ function correctKnownProductNames(text) {
 }
 function normalizeProductName(text) {
     return correctKnownProductNames(text).trim();
+}
+function namesLookLikeSameProduct(previous, next) {
+    const left = String(previous || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
+    const right = String(next || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
+    if (!left || !right)
+        return false;
+    const previousNumbers = String(previous || "").match(/\d+/g) || [];
+    const nextNumbers = String(next || "").match(/\d+/g) || [];
+    if (previousNumbers.length && nextNumbers.length && previousNumbers.join("|") !== nextNumbers.join("|"))
+        return false;
+    if (left.includes(right) || right.includes(left))
+        return true;
+    const previousWords = new Set(String(previous || "").toLowerCase().match(/[a-z0-9]+/g) || []);
+    const nextWords = new Set(String(next || "").toLowerCase().match(/[a-z0-9]+/g) || []);
+    const union = new Set([...previousWords, ...nextWords]);
+    const overlap = [...previousWords].filter((word) => nextWords.has(word)).length;
+    if (union.size && overlap / union.size >= 0.6)
+        return true;
+    const rows = Array.from({ length: right.length + 1 }, (_, index) => index);
+    for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+        let diagonal = rows[0];
+        rows[0] = leftIndex;
+        for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+            const above = rows[rightIndex];
+            rows[rightIndex] = left[leftIndex - 1] === right[rightIndex - 1]
+                ? diagonal
+                : Math.min(diagonal, rows[rightIndex - 1], above) + 1;
+            diagonal = above;
+        }
+    }
+    return rows[right.length] <= Math.max(2, Math.floor(Math.max(left.length, right.length) * 0.2));
 }
 function splitVerifiedFeatures(text) {
     return String(text || "")
@@ -1629,6 +1660,7 @@ function DoneRiteCreatorOS() {
     const [aiProduct, setAiProduct] = useState("");
     const [needsName, setNeedsName] = useState(false);
     const nameRef = useRef(null);
+    const productContextNameRef = useRef(null);
     const resultsRef = useRef(null);
     const clickerRef = useRef(null);
     const boomerRef = useRef(null); // lightning strike for feature chips
@@ -1784,6 +1816,10 @@ function DoneRiteCreatorOS() {
             setReady(true);
         }
     }, []);
+    useEffect(() => {
+        if (ready && productContextNameRef.current === null)
+            productContextNameRef.current = String(form.productName || "").trim();
+    }, [ready]);
     useEffect(() => {
         if (!ready)
             return;
@@ -2000,10 +2036,44 @@ function DoneRiteCreatorOS() {
     const completedTasks = tasks.filter((task) => task.done).length;
     const sampleCount = products.filter((product) => product.acquisition === "sample" || product.acquisition === "purchased" || product.sampleReceived).length;
     const setValue = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+    const clearProductSpecificFields = (current, productName = "") => ({
+        ...current,
+        productName,
+        verifiedFeatures: "",
+        searchPhrase: "",
+        chosenHook: "",
+        chosenCta: "",
+        chosenPattern: "",
+        batteryPowered: false,
+    });
+    const startNewProduct = () => {
+        productContextNameRef.current = "";
+        setForm((current) => clearProductSpecificFields(current));
+        setPkg(null);
+        setNeedsName(false);
+        setCopyStatus("Ready for a new product. Previous verified features were cleared.");
+        window.setTimeout(() => { var _a; return (_a = nameRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 0);
+    };
+    const changeProductName = (value) => {
+        const nextName = String(value || "");
+        const contextName = String(productContextNameRef.current === null ? form.productName : productContextNameRef.current).trim();
+        const clearlyNew = !nextName.trim()
+            || (contextName && nextName.trim().length >= 3 && !namesLookLikeSameProduct(contextName, nextName));
+        setNeedsName(!nextName.trim());
+        if (clearlyNew) {
+            productContextNameRef.current = nextName.trim();
+            if (form.verifiedFeatures || form.searchPhrase)
+                setCopyStatus("New product detected. Previous verified features and search phrase were cleared.");
+        }
+        setForm((current) => clearlyNew
+            ? clearProductSpecificFields(current, nextName)
+            : { ...current, productName: nextName });
+    };
     const rememberQuickCreateProduct = (draft = form) => {
         const name = String(draft.productName || "").trim();
         if (!name)
             return;
+        productContextNameRef.current = name;
         const record = {
             productName: name,
             category: draft.category,
@@ -2033,6 +2103,7 @@ function DoneRiteCreatorOS() {
         const effectiveForm = correctedForm.searchPhrase.trim()
             ? correctedForm
             : { ...correctedForm, searchPhrase: buildTargetPhraseChoices(correctedForm)[0] || "" };
+        productContextNameRef.current = effectiveForm.productName.trim();
         if (effectiveForm.searchPhrase !== form.searchPhrase || effectiveForm.productName !== form.productName)
             setForm(effectiveForm);
         rememberQuickCreateProduct(effectiveForm);
@@ -2349,16 +2420,21 @@ function DoneRiteCreatorOS() {
                     React.createElement("div", { style: { height: 14 } }),
                     productHistory.length > 0 && (React.createElement(Field, { label: "Load a previous product", help: `${productHistory.length} product${productHistory.length === 1 ? "" : "s"} you have worked on before.` },
                         React.createElement("select", { className: "dr-select", value: "", onChange: (event) => {
+                                if (event.target.value === "__new__") {
+                                    startNewProduct();
+                                    return;
+                                }
                                 const entry = productHistory.find((item) => item.key === event.target.value);
                                 if (!entry)
                                     return;
                                 const found = entry.source;
+                                productContextNameRef.current = entry.name;
                                 setForm((current) => {
                                     const loaded = {
                                         ...current,
                                         productName: entry.name,
                                         category: found.category || current.category,
-                                        verifiedFeatures: found.verifiedFeatures || current.verifiedFeatures,
+                                        verifiedFeatures: String(found.verifiedFeatures || ""),
                                         searchPhrase: "",
                                         acquisition: found.acquisition || (found.sampleReceived ? "sample" : current.acquisition),
                                     };
@@ -2366,11 +2442,11 @@ function DoneRiteCreatorOS() {
                                 });
                                 setCopyStatus(`Loaded ${entry.name}.`);
                             } },
-                            React.createElement("option", { value: "" }, "New product"),
+                            React.createElement("option", { value: "" }, "Choose a saved product"),
+                            React.createElement("option", { value: "__new__" }, "New product — clear old features"),
                             productHistory.map((item) => (React.createElement("option", { key: item.key, value: item.key }, item.name)))))),
                     React.createElement(Field, { label: "Product name" },
-                        React.createElement("input", { ref: nameRef, className: "dr-input", style: needsName ? { borderColor: COLORS.red } : undefined, value: form.productName, onChange: (event) => { setValue("productName", event.target.value); if (event.target.value.trim())
-                                setNeedsName(false); }, onBlur: () => rememberQuickCreateProduct(), placeholder: "Example: rechargeable work light" })),
+                        React.createElement("input", { ref: nameRef, className: "dr-input", style: needsName ? { borderColor: COLORS.red } : undefined, value: form.productName, onChange: (event) => changeProductName(event.target.value), onBlur: () => rememberQuickCreateProduct(), placeholder: "Example: rechargeable work light" })),
                     needsName && (React.createElement("div", { className: "dr-savewarn", role: "alert" },
                         React.createElement("strong", null, "Nothing was generated."),
                         React.createElement("span", null, "Type the product name in the box above, then press Generate Content Package again."))),
