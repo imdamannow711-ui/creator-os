@@ -44,11 +44,23 @@ const COLORS = {
     amber: "#ffb020",
     red: "#ff4d5a",
 };
-const APP_BUILD = "2026.08.15-product-reset";
+const APP_BUILD = "2026.08.15-quick-create-sfx";
 const LAST_TAB_KEY = "done-rite-last-tab:v1";
 const STORAGE_KEY = "done-rite-creator-os:v1";
 const PRODUCT_HISTORY_KEY = "done-rite-product-history:v1";
 const VOICEOVER_QUEUE_KEY = "done-rite-voiceover-queue:v1";
+const SFX_DB_NAME = "done-rite-sfx-library:v1";
+const SFX_STORE_NAME = "sounds";
+const SFX_CUES = [
+    "Hook impact",
+    "Text pop",
+    "Feature tap",
+    "Scene transition",
+    "Build-up riser",
+    "Hero reveal",
+    "CTA accent",
+    "Custom accent",
+];
 const CATEGORIES = [
     "Electronics & Gadgets",
     "Kitchen",
@@ -242,6 +254,12 @@ const CSS = `
   }
   .dr-gap-menu summary::-webkit-details-marker { display:none; }
   .dr-gap-menu[open] summary { margin-bottom:8px; }
+  .dr-sfx-list { display:grid; gap:10px; margin-top:12px; }
+  .dr-sfx-item { padding:12px; border:1px solid ${COLORS.line}; border-radius:12px; background:${COLORS.panel}; }
+  .dr-sfx-name { font-weight:850; overflow-wrap:anywhere; }
+  .dr-sfx-controls { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; align-items:center; margin-top:10px; }
+  .dr-sfx-controls .dr-copy, .dr-sfx-controls .dr-danger { min-height:42px; padding:8px 11px; }
+  @media (max-width:540px) { .dr-sfx-controls { grid-template-columns:1fr 1fr; } .dr-sfx-controls .dr-select { grid-column:1 / -1; } }
   .dr-hook-options { display:grid; gap:9px; margin-top:12px; }
   .dr-hook-choice {
     width:100%; min-height:50px; padding:11px 13px; border:1px solid ${COLORS.line}; border-radius:12px;
@@ -742,6 +760,7 @@ function flattenScript(pkg) {
         pkg.thumbnail,
         "",
         ...(pkg.shotList ? ["SHOT LIST — HANDS IN FRAME, NO FACE", pkg.shotList, ""] : []),
+        ...(pkg.sfxPlan ? ["SOUND EFFECTS EDIT PLAN", pkg.sfxPlan, "Use only original, licensed, or commercially cleared sound effects.", ""] : []),
         "AI IMAGE PROMPT",
         pkg.aiImagePrompt,
         "",
@@ -753,6 +772,72 @@ function flattenScript(pkg) {
         "",
         pkg.complianceNote,
     ].join("\n");
+}
+function guessSfxCue(name) {
+    const value = String(name || "").toLowerCase();
+    if (/riser|rise|build/.test(value)) return "Build-up riser";
+    if (/impact|hit|boom|cinematic/.test(value)) return "Hero reveal";
+    if (/whoosh|swoosh|swish|transition/.test(value)) return "Scene transition";
+    if (/click|tap|button|ui/.test(value)) return "Feature tap";
+    if (/pop/.test(value)) return "Text pop";
+    return "Custom accent";
+}
+function buildSfxPlan(sounds, duration) {
+    const list = Array.isArray(sounds) ? sounds : [];
+    if (!list.length) return "";
+    const total = Math.max(1, Number(duration || 15));
+    const cueTimes = list.length === 1
+        ? [Math.min(0.3, total / 4)]
+        : list.map((_, index) => Math.min(total - 0.2, (index * total) / Math.max(1, list.length - 1)));
+    return list.map((sound, index) =>
+        `${cueTimes[index].toFixed(1)}s — ${sound.cue || guessSfxCue(sound.name)}: ${sound.name}`
+    ).join("\n");
+}
+function openSfxDb() {
+    return new Promise((resolve, reject) => {
+        if (!window.indexedDB) {
+            reject(new Error("This browser does not support the on-device sound library."));
+            return;
+        }
+        const request = indexedDB.open(SFX_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(SFX_STORE_NAME))
+                db.createObjectStore(SFX_STORE_NAME);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error("The sound library could not open."));
+    });
+}
+async function putSfxBlob(id, file) {
+    const db = await openSfxDb();
+    await new Promise((resolve, reject) => {
+        const transaction = db.transaction(SFX_STORE_NAME, "readwrite");
+        transaction.objectStore(SFX_STORE_NAME).put(file, id);
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error || new Error("This sound could not be saved."));
+    });
+    db.close();
+}
+async function getSfxBlob(id) {
+    const db = await openSfxDb();
+    const value = await new Promise((resolve, reject) => {
+        const request = db.transaction(SFX_STORE_NAME, "readonly").objectStore(SFX_STORE_NAME).get(id);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error || new Error("This sound could not be opened."));
+    });
+    db.close();
+    return value;
+}
+async function removeSfxBlob(id) {
+    const db = await openSfxDb();
+    await new Promise((resolve, reject) => {
+        const transaction = db.transaction(SFX_STORE_NAME, "readwrite");
+        transaction.objectStore(SFX_STORE_NAME).delete(id);
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error || new Error("This sound could not be removed."));
+    });
+    db.close();
 }
 function makePackage(rawForm) {
     // Older saved records and partial backups can be missing fields
@@ -807,7 +892,11 @@ function makePackage(rawForm) {
     const thumbnail = searchPhrase ? searchPhrase.toUpperCase() : "WORTH A CLOSER LOOK?";
     const shotList = buildShotList(pattern, product, feature, form.duration, spokenLines, form.platform);
     const aiImagePrompt = `Create a vertical 9:16 hands-on visual for ${product}. Hands may hold, open, or operate the product. Use a black, chrome, and electric-blue DONE RITE technology style. Show the product, the hands using it, and a clean feature-focused environment. No face, no head, no shoulders, no price, discount badge, competitor branding, unsupported specification, or added product claim.`;
-    const aiVideoPrompt = `Create a ${form.duration}-second vertical 9:16 hands-on ${form.funnel} demo video for ${product}, shot in the "${pattern.name}" pattern. Hands enter frame and operate the product; the camera stays above or beside the hands so no face, head, or shoulders are visible. Keep the product moving — continuous hand motion, not a slideshow of stills. Use subtle electric-blue lighting, readable safe-zone text, and ${destination.prompt}. No face, price, discount, false scarcity, competitor comparison, medical claim, absolute claim, or invented specification. Use only these verified details: ${cleaned || "No verified feature supplied; keep the presentation generic."}`;
+    const sfxPlan = buildSfxPlan(form.sfxSelections, form.duration);
+    const sfxPrompt = sfxPlan
+        ? ` Use these exact commercially cleared sound effects at the listed edit points: ${sfxPlan.replace(/\n/g, "; ")}. Keep effects beneath the voiceover.`
+        : "";
+    const aiVideoPrompt = `Create a ${form.duration}-second vertical 9:16 hands-on ${form.funnel} demo video for ${product}, shot in the "${pattern.name}" pattern. Hands enter frame and operate the product; the camera stays above or beside the hands so no face, head, or shoulders are visible. Keep the product moving — continuous hand motion, not a slideshow of stills. Use subtle electric-blue lighting, readable safe-zone text, and ${destination.prompt}.${sfxPrompt} No face, price, discount, false scarcity, competitor comparison, medical claim, absolute claim, or invented specification. Use only these verified details: ${cleaned || "No verified feature supplied; keep the presentation generic."}`;
     const crossPlatform = [
         "☐ Watch it back: no face, head, or shoulders in any frame",
         "☐ Watch it back: the product is moving throughout — no static slideshow section",
@@ -834,6 +923,8 @@ function makePackage(rawForm) {
         thumbnail,
         searchPhrase,
         shotList,
+        sfxPlan,
+        selectedSfx: Array.isArray(form.sfxSelections) ? form.sfxSelections : [],
         patternId: pattern.id,
         patternName: pattern.name,
         patternWhy: pattern.why,
@@ -1665,6 +1756,13 @@ function DoneRiteCreatorOS() {
     const clickerRef = useRef(null);
     const boomerRef = useRef(null); // lightning strike for feature chips
     const metalRef = useRef(null); // metal latch for checkboxes
+    const [sfxLibrary, setSfxLibrary] = useState([]);
+    const [selectedSfxIds, setSelectedSfxIds] = useState([]);
+    const [sfxStatus, setSfxStatus] = useState("");
+    const [playingSfxId, setPlayingSfxId] = useState("");
+    const sfxInputRef = useRef(null);
+    const sfxAudioRef = useRef(null);
+    const sfxUrlRef = useRef("");
     const [gapRows, setGapRows] = useState([]);
     const [gapDraft, setGapDraft] = useState(EMPTY_GAP);
     const [gapScanBusy, setGapScanBusy] = useState(false);
@@ -1804,6 +1902,10 @@ function DoneRiteCreatorOS() {
                 setGapRows(sanitizeContentGapRows(gapsRecovered));
                 if (chosen && typeof chosen.hookSpin === "number")
                     setHookSpin(chosen.hookSpin);
+                if (chosen && Array.isArray(chosen.sfxLibrary))
+                    setSfxLibrary(chosen.sfxLibrary);
+                if (chosen && Array.isArray(chosen.selectedSfxIds))
+                    setSelectedSfxIds(chosen.selectedSfxIds);
                 if (candidates.some((item) => item.key !== STORAGE_KEY)
                     && (inferredProducts.length || savedRecovered.length || historyRecovered.length || gapsRecovered.length))
                     setImportStatus("Previous Creator OS product history was found and recovered.");
@@ -1847,7 +1949,7 @@ function DoneRiteCreatorOS() {
                 },
             };
             localStorage.setItem(PRODUCT_HISTORY_KEY, JSON.stringify(historyMirror));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, quickCreateHistory, form: normalizeRestoredForm(form), tasks, moneyRows, gapRows: sanitizeContentGapRows(gapRows), lastTab: localStorage.getItem(LAST_TAB_KEY) || tab, clickSound, hookLog, hookSpin, version: 1 }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, quickCreateHistory, form: normalizeRestoredForm(form), tasks, moneyRows, gapRows: sanitizeContentGapRows(gapRows), sfxLibrary, selectedSfxIds, lastTab: localStorage.getItem(LAST_TAB_KEY) || tab, clickSound, hookLog, hookSpin, version: 1 }));
             setSaveBlocked("");
         }
         catch (error) {
@@ -1856,7 +1958,7 @@ function DoneRiteCreatorOS() {
                 ? "This device is out of storage space, so new changes are not being saved. Go to Settings and download a backup now, then delete some saved packages."
                 : "This browser is not allowing anything to be saved on this device. Your work is still on screen, but it will disappear if you close this page. Go to Settings and download a backup now. Private browsing mode is the usual cause.");
         }
-    }, [ready, saved, products, quickCreateHistory, form, tasks, moneyRows, gapRows, clickSound, hookLog, hookSpin]);
+    }, [ready, saved, products, quickCreateHistory, form, tasks, moneyRows, gapRows, sfxLibrary, selectedSfxIds, clickSound, hookLog, hookSpin]);
     // Which tab you were on is one short word. It used to live in the big
     // save, so every single tab tap rewrote every saved package on the phone.
     // It now has its own tiny slot and the big save leaves it alone.
@@ -1964,6 +2066,90 @@ function DoneRiteCreatorOS() {
     const videoTextResults = useMemo(() => scanCompliance(videoText), [videoText]);
     const videoShapeFlags = useMemo(() => (videoInfo ? videoFlags(videoInfo, videoMode) : []), [videoInfo, videoMode]);
     const aiResults = useMemo(() => scanCompliance(aiDraft), [aiDraft]);
+    const uploadSfxFiles = async (files) => {
+        const picked = Array.from(files || []).filter((file) => file && (String(file.type || "").startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(file.name || "")));
+        if (!picked.length) {
+            setSfxStatus("Choose one or more audio files.");
+            return;
+        }
+        setSfxStatus(`Saving ${picked.length} sound effect${picked.length === 1 ? "" : "s"} on this device…`);
+        const added = [];
+        const failed = [];
+        for (const file of picked) {
+            const id = uid();
+            try {
+                await putSfxBlob(id, file);
+                added.push({ id, name: file.name, type: file.type || "audio", size: file.size || 0, cue: guessSfxCue(file.name), addedAt: new Date().toISOString() });
+            }
+            catch {
+                failed.push(file.name);
+            }
+        }
+        if (added.length) {
+            setSfxLibrary((current) => [...current, ...added]);
+            setSelectedSfxIds((current) => [...new Set([...current, ...added.map((item) => item.id)])]);
+        }
+        setSfxStatus(failed.length
+            ? `${added.length} saved; ${failed.length} could not be saved. Try those files one at a time.`
+            : `${added.length} sound effect${added.length === 1 ? "" : "s"} saved and selected.`);
+        if (sfxInputRef.current)
+            sfxInputRef.current.value = "";
+    };
+    const previewSfx = async (item) => {
+        if (sfxAudioRef.current) {
+            try { sfxAudioRef.current.pause(); }
+            catch { }
+            sfxAudioRef.current = null;
+        }
+        if (sfxUrlRef.current) {
+            URL.revokeObjectURL(sfxUrlRef.current);
+            sfxUrlRef.current = "";
+        }
+        if (playingSfxId === item.id) {
+            setPlayingSfxId("");
+            return;
+        }
+        try {
+            const blob = await getSfxBlob(item.id);
+            if (!blob)
+                throw new Error("missing");
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            sfxUrlRef.current = url;
+            sfxAudioRef.current = audio;
+            setPlayingSfxId(item.id);
+            audio.onended = () => {
+                setPlayingSfxId("");
+                URL.revokeObjectURL(url);
+                if (sfxUrlRef.current === url)
+                    sfxUrlRef.current = "";
+            };
+            await audio.play();
+        }
+        catch {
+            setPlayingSfxId("");
+            setSfxStatus(`${item.name} is not available on this device. Re-upload the file.`);
+        }
+    };
+    const deleteSfx = async (item) => {
+        if (!window.confirm(`Remove ${item.name} from the sound library on this device?`))
+            return;
+        if (playingSfxId === item.id)
+            await previewSfx(item);
+        try { await removeSfxBlob(item.id); }
+        catch { }
+        setSfxLibrary((current) => current.filter((sound) => sound.id !== item.id));
+        setSelectedSfxIds((current) => current.filter((id) => id !== item.id));
+        setSfxStatus(`${item.name} removed.`);
+    };
+    useEffect(() => () => {
+        if (sfxAudioRef.current) {
+            try { sfxAudioRef.current.pause(); }
+            catch { }
+        }
+        if (sfxUrlRef.current)
+            URL.revokeObjectURL(sfxUrlRef.current);
+    }, []);
     const pickVideo = async (file) => {
         if (!file)
             return;
@@ -2111,7 +2297,8 @@ function DoneRiteCreatorOS() {
         const spin = hookSpin + 1;
         setHookSpin(spin);
         const winners = hookLog.filter((entry) => entry.winner);
-        const next = makePackage({ ...effectiveForm, hookWinners: winners, hookSpin: spin });
+        const sfxSelections = sfxLibrary.filter((sound) => selectedSfxIds.includes(sound.id));
+        const next = makePackage({ ...effectiveForm, sfxSelections, hookWinners: winners, hookSpin: spin });
         setPkg(next);
         try {
             localStorage.setItem(VOICEOVER_QUEUE_KEY, JSON.stringify({ version: 1, productName: next.productName, duration: next.form.duration, createdAt: next.createdAt, segments: next.voiceovers }));
@@ -2285,7 +2472,7 @@ function DoneRiteCreatorOS() {
         setGapScanStatus(`${reviewed.length} reviewed phrase${reviewed.length === 1 ? "" : "s"} saved to Content Gap.`);
         setCopyStatus("Reviewed Content Gap phrases saved.");
     };
-    const backupPayload = () => ({ version: 1, exportedAt: new Date().toISOString(), appBuild: APP_BUILD, saved, products, quickCreateHistory, form: normalizeRestoredForm(form), tasks, moneyRows, gapRows: sanitizeContentGapRows(gapRows), hookLog, hookSpin, lastTab: tab, clickSound });
+    const backupPayload = () => ({ version: 1, exportedAt: new Date().toISOString(), appBuild: APP_BUILD, saved, products, quickCreateHistory, form: normalizeRestoredForm(form), tasks, moneyRows, gapRows: sanitizeContentGapRows(gapRows), sfxLibrary, selectedSfxIds, hookLog, hookSpin, lastTab: tab, clickSound });
     const exportBackup = () => {
         try {
             const text = JSON.stringify(backupPayload(), null, 2);
@@ -2335,6 +2522,20 @@ function DoneRiteCreatorOS() {
             setTasks(Array.isArray(data.tasks) ? data.tasks : DEFAULT_TASKS);
             setMoneyRows(Array.isArray(data.moneyRows) ? data.moneyRows : []);
             setGapRows(sanitizeContentGapRows(data.gapRows));
+            if (Array.isArray(data.sfxLibrary)) {
+                const available = [];
+                for (const sound of data.sfxLibrary) {
+                    try {
+                        if (sound && sound.id && await getSfxBlob(sound.id))
+                            available.push(sound);
+                    }
+                    catch { }
+                }
+                setSfxLibrary(available);
+                setSelectedSfxIds((Array.isArray(data.selectedSfxIds) ? data.selectedSfxIds : []).filter((id) => available.some((sound) => sound.id === id)));
+                if (available.length !== data.sfxLibrary.length)
+                    setSfxStatus("Sound names were restored, but files that are not on this device must be uploaded again.");
+            }
             if (Array.isArray(data.hookLog))
                 setHookLog(data.hookLog);
             setImportStatus("Backup restored successfully.");
@@ -2345,6 +2546,7 @@ function DoneRiteCreatorOS() {
     };
     const sections = pkg ? [
         ...(pkg.shotList ? [["Shot list — hands in frame, no face", pkg.shotList]] : []),
+        ...(pkg.sfxPlan ? [["Sound effects edit plan", pkg.sfxPlan]] : []),
         ["Voiceover", pkg.voiceover],
         ...(pkg.voiceovers && pkg.voiceovers.length ? [["Voiceover recording queue", pkg.voiceovers.map((item) => `${item.label} · ${item.start}–${item.end}s · ${item.direction}\n${item.text}`).join("\n\n")]] : []),
         ["On-screen text", pkg.onScreenText],
@@ -2487,6 +2689,31 @@ function DoneRiteCreatorOS() {
                         React.createElement("div", { className: "dr-label" }, form.chosenPattern ? "Selected pattern" : "Next up on auto"),
                         React.createElement("div", { className: "dr-item-title", style: { color: COLORS.blueGlow } }, previewPattern.name),
                         React.createElement("div", { className: "dr-help", style: { marginTop: 4 } }, previewPattern.why)),
+                    React.createElement("div", { className: "dr-card", style: { background: COLORS.panel2, padding: 12, marginBottom: 14 } },
+                        React.createElement("div", { className: "dr-output-head" },
+                            React.createElement("div", null,
+                                React.createElement("div", { className: "dr-label" }, "Sound effects for this video"),
+                                React.createElement("div", { className: "dr-item-title", style: { color: COLORS.blueGlow } }, selectedSfxIds.length ? `${selectedSfxIds.length} selected` : "No effects selected")),
+                            React.createElement("span", { className: "dr-pill" }, `${sfxLibrary.length} saved`)),
+                        React.createElement("p", { className: "dr-help" }, "Upload several effects at once, preview them, and choose exactly which ones Quick Create should place in the edit plan. On iPhone: Choose Sound Effects, tap Select, pick several files, then tap Open."),
+                        React.createElement("button", { className: "dr-copy", type: "button", style: { width: "100%", marginTop: 10 }, onClick: () => { var _a; return (_a = sfxInputRef.current) === null || _a === void 0 ? void 0 : _a.click(); } }, "Choose Sound Effects"),
+                        React.createElement("input", { ref: sfxInputRef, type: "file", accept: "audio/*,.mp3,.wav,.m4a,.aac,.ogg", multiple: true, hidden: true, onChange: (event) => uploadSfxFiles(event.target.files) }),
+                        sfxStatus && React.createElement("p", { className: "dr-help", style: { marginTop: 9, color: COLORS.green } }, sfxStatus),
+                        React.createElement("p", { className: "dr-help", style: { marginTop: 9, color: COLORS.amber } }, "Use only effects you created, licensed, or confirmed for commercial use."),
+                        React.createElement("div", { className: "dr-sfx-list" },
+                            sfxLibrary.length === 0 && React.createElement("p", { className: "dr-help" }, "No effects saved yet. MP3, WAV, M4A, AAC, and OGG files are supported."),
+                            sfxLibrary.map((sound) => {
+                                const selected = selectedSfxIds.includes(sound.id);
+                                return React.createElement("div", { className: "dr-sfx-item", key: sound.id },
+                                    React.createElement("label", { className: "dr-check" },
+                                        React.createElement("input", { type: "checkbox", checked: selected, onChange: (event) => setSelectedSfxIds((current) => event.target.checked ? [...new Set([...current, sound.id])] : current.filter((id) => id !== sound.id)) }),
+                                        React.createElement("span", { className: "dr-sfx-name" }, sound.name)),
+                                    React.createElement("div", { className: "dr-sfx-controls" },
+                                        React.createElement("select", { className: "dr-select", value: sound.cue || guessSfxCue(sound.name), "aria-label": `Cue for ${sound.name}`, onChange: (event) => setSfxLibrary((current) => current.map((item) => item.id === sound.id ? { ...item, cue: event.target.value } : item)) },
+                                            SFX_CUES.map((cue) => React.createElement("option", { key: cue, value: cue }, cue))),
+                                        React.createElement("button", { className: "dr-copy", type: "button", onClick: () => previewSfx(sound) }, playingSfxId === sound.id ? "Stop" : "Preview"),
+                                        React.createElement("button", { className: "dr-danger", type: "button", onClick: () => deleteSfx(sound) }, "Remove")));
+                            }))),
                     featureHistory.length > 0 && (React.createElement(React.Fragment, null,
                         React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "Features you have used before"),
                         React.createElement("div", { className: "dr-chips" }, featureHistory.map((text) => (React.createElement("button", { className: "dr-chip", type: "button", key: text, onClick: () => addFeature(text) },
@@ -2935,7 +3162,7 @@ function DoneRiteCreatorOS() {
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Backup & Restore"),
                     React.createElement("p", { className: "dr-help" }, "This component stores data on the current device. Export regular backups before clearing browser data or changing devices."),
-                    React.createElement("p", { className: "dr-help" }, "Backups include saved packages, products, Quick Create history, tasks, money records, hook results, settings, and cleaned Content Gap phrases. Screenshot images are never saved."),
+                    React.createElement("p", { className: "dr-help" }, "Backups include saved packages, products, Quick Create history, tasks, money records, hook results, settings, cleaned Content Gap phrases, and sound-library names. Audio files stay in this device’s on-device sound library and may need to be uploaded again after moving to another phone."),
                     React.createElement("div", { className: "dr-row", style: { marginTop: 14 } },
                         React.createElement("button", { className: "dr-button", type: "button", onClick: exportBackup }, "Export Backup"),
                         React.createElement("button", { className: "dr-copy", type: "button", onClick: () => { var _a; return (_a = importRef.current) === null || _a === void 0 ? void 0 : _a.click(); } }, "Restore Backup"),
