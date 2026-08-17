@@ -5,7 +5,7 @@
    connection. That means a bad upload can never get stuck on the phone
    the way it did before. */
 
-const CACHE_NAME = "done-rite-v15-floating-creator-return";
+const CACHE_NAME = "done-rite-v16-media-organizer-audio-editor";
 
 const FILES = ["./", "./index.html", "./app.js", "./teleprompter.html", "./video-upload.html", "./content-gap-import.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
