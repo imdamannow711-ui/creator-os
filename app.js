@@ -44,7 +44,7 @@ const COLORS = {
     amber: "#ffb020",
     red: "#ff4d5a",
 };
-const APP_BUILD = "2026.08.15-quick-create-sfx";
+const APP_BUILD = "2026.08.16-teleprompter-video-guide";
 const LAST_TAB_KEY = "done-rite-last-tab:v1";
 const STORAGE_KEY = "done-rite-creator-os:v1";
 const PRODUCT_HISTORY_KEY = "done-rite-product-history:v1";
@@ -935,6 +935,28 @@ function makePackage(rawForm) {
         issues,
         removedFeatureLines: cleanResult.removed,
         publishReady: inHand && !issues.some((item) => item.severity === "block"),
+    };
+}
+function makeVoiceoverQueue(pkg) {
+    return {
+        version: 2,
+        productName: pkg.productName,
+        duration: pkg.form.duration,
+        createdAt: pkg.createdAt,
+        segments: pkg.voiceovers,
+        videoGuide: {
+            duration: pkg.form.duration,
+            format: `Vertical 9:16 · ${pkg.form.platform} · ${pkg.form.funnel}`,
+            angle: [pkg.patternName, pkg.patternWhy].filter(Boolean).join(" — "),
+            direction: (pkg.voiceovers || []).map((item) => `${item.start}–${item.end}s: ${item.direction}`).join("\n"),
+            shots: pkg.shotList,
+            onScreenText: pkg.onScreenText,
+            sfx: pkg.sfxPlan,
+            caption: pkg.caption,
+            hashtags: pkg.hashtags,
+            cover: pkg.thumbnail,
+            compliance: pkg.complianceNote,
+        },
     };
 }
 function copyFallback(text) {
@@ -2301,7 +2323,7 @@ function DoneRiteCreatorOS() {
         const next = makePackage({ ...effectiveForm, sfxSelections, hookWinners: winners, hookSpin: spin });
         setPkg(next);
         try {
-            localStorage.setItem(VOICEOVER_QUEUE_KEY, JSON.stringify({ version: 1, productName: next.productName, duration: next.form.duration, createdAt: next.createdAt, segments: next.voiceovers }));
+            localStorage.setItem(VOICEOVER_QUEUE_KEY, JSON.stringify(makeVoiceoverQueue(next)));
         }
         catch { }
         window.setTimeout(() => { var _a; return (_a = resultsRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60);
@@ -2337,7 +2359,7 @@ function DoneRiteCreatorOS() {
         setForm((current) => ({ ...current, chosenHook: hook }));
         setPkg(next);
         try {
-            localStorage.setItem(VOICEOVER_QUEUE_KEY, JSON.stringify({ version: 1, productName: next.productName, duration: next.form.duration, createdAt: next.createdAt, segments: next.voiceovers }));
+            localStorage.setItem(VOICEOVER_QUEUE_KEY, JSON.stringify(makeVoiceoverQueue(next)));
         }
         catch { }
         const number = hookOptions.findIndex((item) => item === hook) + 1;
@@ -2778,8 +2800,8 @@ function DoneRiteCreatorOS() {
                         }))),
                     React.createElement(Card, null,
                         React.createElement("h3", null, `Record ${pkg.voiceovers && pkg.voiceovers.length || 1} voiceover part${pkg.voiceovers && pkg.voiceovers.length === 1 ? "" : "s"}`),
-                        React.createElement("p", { className: "dr-help" }, "Every part of this script is loaded into one teleprompter dropdown with its delivery tone and time window."),
-                        React.createElement("a", { className: "dr-button", href: "./teleprompter.html", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 12 } }, "Open Voiceover Queue")),
+                        React.createElement("p", { className: "dr-help" }, "The Teleprompter now carries the script, delivery tone, timing, shot list, on-screen text, sound plan, caption, hashtags, cover, compliance note, and finished-video Share-to-ChatGPT button."),
+                        React.createElement("a", { className: "dr-button", href: "./teleprompter.html", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 12 } }, "Open Teleprompter + Video Guide")),
                     sections.map(([title, text]) => React.createElement(OutputCard, { key: title, title: title, text: text, onCopy: notifyCopy, copiedKey: copiedKey })))))),
             tab === "check" && (React.createElement(React.Fragment, null,
                 React.createElement(Card, null,
