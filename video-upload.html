@@ -36,6 +36,7 @@
     </div>
     <label class="label" for="notes">Notes for the ad</label>
     <input id="notes" class="field" placeholder="Example: strongest clip first, electric-blue text">
+    <div id="gapStatus" class="status">Checking saved 1,000%+ Content Gap phrases…</div>
   </div>
 
   <div class="card">
@@ -57,13 +58,47 @@
 </div>
 <script>
 const $=id=>document.getElementById(id);
+const STORAGE_KEY='done-rite-creator-os:v1';
+const MIN_GROWTH_PERCENT=1000;
 let selectedFiles=[];
 let objectUrls=[];
 const sizeLabel=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(1)+' MB';
 const durationLabel=n=>Number.isFinite(n)?Math.floor(n/60)+':'+String(Math.round(n%60)).padStart(2,'0'):'Loading…';
+function parseGrowthPercent(value){const m=String(value||'').replace(/,/g,'').match(/(?:▲|△|▴|↑|\+|up\s*)?\s*(\d+(?:\.\d+)?)\s*%\s*\+?/i);return m&&Number.isFinite(Number(m[1]))?Number(m[1]):''}
+function rowGrowthPercent(row){const direct=row&&(row.searchIncreasePct??row.growthPercent??row.increasePct??row.searchGrowth);if(direct!==''&&direct!=null&&Number.isFinite(Number(direct))&&Number(direct)>0)return Number(direct);return parseGrowthPercent([row&&row.growthLabel,row&&row.rawGrowth,row&&row.rawMetric,row&&row.note].filter(Boolean).join(' '))}
+function words(value){return String(value||'').toLowerCase().match(/[a-z0-9]+/g)||[]}
+const STOP_WORDS=new Set(['and','the','for','with','this','that','from','your','mini','review','setup','test','best','how','use']);
+const TOPIC_FAMILIES={
+ audio:['audio','mic','microphone','lavalier','wireless mic','recording','recorder','voiceover','podcast','creator audio','transmitter','receiver','lark','hollyland'],
+ video:['camera','video','filming','creator gear','gimbal','stabilizer','tripod','phone mount','selfie'],
+ power:['charger','charging','power bank','battery','dock','usb','lightning','magsafe'],
+ lighting:['light','lighting','ring light','led','lamp'],
+ kitchen:['kitchen','cooking','air fryer','blender','mixer','grater','knife'],
+ outdoor:['outdoor','camping','hiking','flashlight','lantern','scooter'],
+ wellness:['wellness','supplement','vitamin','gummy','sleep support']
+};
+function topicFamilies(value){const text=' '+String(value||'').toLowerCase()+' ';return Object.entries(TOPIC_FAMILIES).filter(([,terms])=>terms.some(term=>text.includes(' '+term+' ')||text.includes(term))).map(([family])=>family)}
+function relevance(product,phrase){
+ const productWords=new Set(words(product).filter(word=>word.length>2&&!STOP_WORDS.has(word)));
+ const exactHits=words(phrase).filter(word=>word.length>2&&!STOP_WORDS.has(word)&&productWords.has(word)).length;
+ const productTopics=new Set(topicFamilies(product));
+ const topicHits=topicFamilies(phrase).filter(topic=>productTopics.has(topic)).length;
+ return exactHits*4+topicHits*3;
+}
+function bestGap(){
+ let data={};try{data=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){}
+ const product=$('product').value.trim();
+ return (Array.isArray(data.gapRows)?data.gapRows:[])
+  .map(row=>({phrase:String(row&&row.phrase||'').trim(),searchIncreasePct:rowGrowthPercent(row),score:relevance(product,row&&row.phrase),needsGrowthReview:Boolean(row&&row.needsGrowthReview)}))
+  .filter(item=>item.phrase&&item.searchIncreasePct!==''&&item.searchIncreasePct>=MIN_GROWTH_PERCENT&&!item.needsGrowthReview&&item.score>0)
+  .sort((a,b)=>b.score-a.score||b.searchIncreasePct-a.searchIncreasePct)[0]||null;
+}
+function refreshGapSelection(){const gap=bestGap();$('gapStatus').textContent=gap?`Content Gap selected: ${gap.phrase} — ${gap.searchIncreasePct.toLocaleString()}% increase`:'No relevant saved phrase with a verified 1,000%+ increase was found for this product.';$('gapStatus').className='status '+(gap?'ok':'bad')}
 function brief(){
  const notes=$('notes').value.trim();
- return `DONE RITE Creator OS ad request\nProduct: ${$('product').value.trim()||'Not entered'}\nLength: ${$('length').value}\nFormat: ${$('style').value}\nClips: ${selectedFiles.length}\nInstructions: Create a complete 9:16 TikTok Shop ad with compliant hook, on-screen text, CTA, caption, cover text and five hashtags including #ad.${notes?'\nCreator notes: '+notes:''}`;
+ const gap=bestGap();
+ const gapLines=gap?`\nSelected Content Gap phrase: ${gap.phrase}\nSearch increase: ${gap.searchIncreasePct}%\nContent Gap instruction: Use the exact phrase naturally. Do not alter or invent its percentage.`:`\nSelected Content Gap phrase: None verified for this product\nSearch increase: Not available\nContent Gap instruction: Do not claim that a 1,000%+ phrase was used.`;
+ return `DONE RITE Creator OS ad request\nProduct: ${$('product').value.trim()||'Not entered'}\nLength: ${$('length').value}\nFormat: ${$('style').value}\nClips: ${selectedFiles.length}${gapLines}\nInstructions: Create a complete 9:16 TikTok Shop ad with a compliant hook, shot-by-shot edit plan, voiceover lines and timing, on-screen text, sound-effect cues, CTA, caption, cover text and five hashtags including #ad.${notes?'\nCreator notes: '+notes:''}`;
 }
 function releaseUrls(){objectUrls.forEach(URL.revokeObjectURL);objectUrls=[]}
 function setStatus(message,type=''){$('status').textContent=message;$('status').className='status '+type}
@@ -97,9 +132,11 @@ function render(){
  if(selectedFiles.length)setStatus('Preview the clips, then tap Share All Clips to ChatGPT.','ok');else setStatus('Choose one or more original clips above.');
 }
 $('files').addEventListener('change',()=>{selectedFiles=Array.from($('files').files||[]).filter(f=>String(f.type||'').startsWith('video/')||/\.(mov|mp4|m4v)$/i.test(f.name));render()});
+$('product').addEventListener('input',refreshGapSelection);
 $('shareAll').onclick=()=>shareFiles(selectedFiles,`DONE RITE — ${$('product').value.trim()||'video ad clips'}`);
 $('copyBrief').onclick=async()=>{try{await navigator.clipboard.writeText(brief());setStatus('Ad instructions copied. Paste them with your clips in ChatGPT.','ok')}catch(e){setStatus('Copy was blocked. Select and share the clips first.','bad')}};
 window.addEventListener('pagehide',releaseUrls);
+refreshGapSelection();
 </script>
 </body>
 </html>
