@@ -44,7 +44,7 @@ const COLORS = {
     amber: "#ffb020",
     red: "#ff4d5a",
 };
-const APP_BUILD = "2026.08.16-teleprompter-video-guide";
+const APP_BUILD = "2026.08.16-media-organizer-audio-editor";
 const LAST_TAB_KEY = "done-rite-last-tab:v1";
 const STORAGE_KEY = "done-rite-creator-os:v1";
 const PRODUCT_HISTORY_KEY = "done-rite-product-history:v1";
@@ -3159,7 +3159,13 @@ function DoneRiteCreatorOS() {
             tab === "tools" && (React.createElement(React.Fragment, null,
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Creator Tools"),
-                    React.createElement("p", { className: "dr-help" }, "Record voiceovers, practice delivery, preview clips, and import Content Gap screenshots from one place.")),
+                    React.createElement("p", { className: "dr-help" }, "Record voiceovers, remove audio gaps, organize media, preview clips, and import Content Gap screenshots from one place.")),
+                React.createElement(Card, null,
+                    React.createElement("h3", null, "Media Organizer & Gap Remover"),
+                    React.createElement("p", { className: "dr-help" }, "Organize photos, videos, and sounds. The audio editor trims silence at the beginning, end, and between words while keeping the untouched original available as a backup."),
+                    React.createElement("div", { className: "dr-row", style: { marginTop: 14 } },
+                        React.createElement("a", { className: "dr-button", href: "https://done-rite-media-organizer.im-da-man-now-711.chatgpt.site/audio-editor", style: { display: "block", flex: "1 1 190px", textAlign: "center", textDecoration: "none" } }, "Open Gap Remover"),
+                        React.createElement("a", { className: "dr-copy", href: "https://done-rite-media-organizer.im-da-man-now-711.chatgpt.site", style: { display: "block", flex: "1 1 190px", textAlign: "center", textDecoration: "none" } }, "Open Media Organizer"))),
                 React.createElement(Card, null,
                     React.createElement("h3", null, "Teleprompter & Voice Coach"),
                     React.createElement("p", { className: "dr-help" }, "Hear synthesized tone examples, practice without pressure, record with the iPhone or Hollyland LARK A1, and automatically organize reusable recordings in your searchable Voiceover Library."),
