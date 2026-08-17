@@ -21,14 +21,14 @@
   <h1>Content Gap — Qualified Multi-Screenshot Import</h1>
 
   <div class="card">
-    <strong>Repair Existing Content Gap Data</strong>
-    <p class="help">This keeps anything you typed manually. It removes old screenshot-imported rows that were saved without a trustworthy search count, plus duplicates and obvious OCR junk. Qualified imported rows with 1,000+ searches are kept.</p>
-    <button id="cleanup" class="btn warn">Clean Existing Imported Data</button>
+    <strong>Review Existing Content Gap Data</strong>
+    <p class="help">This preserves every saved row. It marks legacy screenshot rows with an unverified percentage or an impossible M-range volume so Creator OS will not treat bad data as qualified.</p>
+    <button id="cleanup" class="btn warn">Flag Legacy Data for Review</button>
     <div id="cleanupStatus" class="status">Nothing has been changed yet.</div>
   </div>
 
   <div class="card">
-    <p class="help">Select several TikTok Creator Search Insights screenshots. Creator OS now pairs each search phrase with its nearby search-volume line and saves it only when the detected volume is <strong>1,000+ searches</strong>. UI labels, percentages, volume-only lines and OCR garbage are discarded.</p>
+    <p class="help">Select TikTok Creator Search Insights list-view screenshots. Each row is read as phrase, K-range search volume and blue search-increase percentage. Only rows with a verified <strong>1,000%+</strong> increase are shown and saved.</p>
     <input id="files" class="picker" type="file" accept="image/*" multiple>
     <div id="selected" class="count">No screenshots selected.</div>
     <button id="run" class="btn">Import Qualified Screenshots</button>
@@ -44,7 +44,7 @@
 </div>
 <script>
 const STORAGE_KEY='done-rite-creator-os:v1';
-const MIN_SEARCHES=1000;
+const MIN_GROWTH_PERCENT=1000;
 let libPromise=null;
 const $=id=>document.getElementById(id);
 function uid(){return Date.now()+'-'+Math.random().toString(36).slice(2,8)}
@@ -52,14 +52,22 @@ function clean(v){return String(v||'').replace(/\s+/g,' ').trim()}
 function loadData(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return {}}}
 function saveData(data){localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
 function isAutoImported(row){const s=String(row&&row.source||'').toLowerCase(),n=String(row&&row.note||'').toLowerCase();return s.includes('screenshot')||s.includes('multi-screenshot')||n.includes('imported from screenshot')||n.includes('multi-screenshot')}
-function parseSearchCount(line){
- const s=clean(line).replace(/,/g,'');
- const m=s.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*([KkMm])\b/);
- if(!m)return 0;
- const n=Number(m[1]);if(!Number.isFinite(n))return 0;
- return Math.round(n*(m[2].toLowerCase()==='m'?1000000:1000));
+function parseGrowthPercent(line){
+ const m=clean(line).replace(/,/g,'').match(/(?:▲|△|▴|↑|\+|up\s*)?\s*(\d+(?:\.\d+)?)\s*%\s*\+?/i);
+ if(!m)return '';
+ const n=Number(m[1]);return Number.isFinite(n)?n:'';
 }
-function looksMetric(line){return parseSearchCount(line)>0||/\b\d+(?:\.\d+)?\s*%\+?\b/.test(line)}
+function growthLabel(value){return value===''?'':`${Number(value).toLocaleString()}%${Number(value)>=1000?'+':''}`}
+function parseSearchVolume(line){
+ const s=clean(line).replace(/,/g,'');
+ if(/%/.test(s))return{searches:'',label:'',bad:false};
+ const m=s.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*([KkMm])\b/);
+ if(!m)return{searches:'',label:'',bad:false};
+ const n=Number(m[1]);if(!Number.isFinite(n))return{searches:'',label:'',bad:false};
+ if(m[2].toLowerCase()==='m')return{searches:'',label:m[1]+'M',bad:true};
+ return{searches:Math.round(n*1000),label:Number(n.toFixed(1))+'K',bad:false};
+}
+function looksMetric(line){const volume=parseSearchVolume(line);return volume.searches!==''||volume.bad||parseGrowthPercent(line)!==''}
 function stripPhraseNoise(v){
  let s=clean(v);
  s=s.replace(/^[\{\[|]+\s*/,'');
@@ -72,60 +80,64 @@ function isUiOrJunk(line){
  const s=clean(line).toLowerCase();
  if(!s||s.length<4||s.length>100)return true;
  if(/^[\d\W_]+$/.test(s)||looksMetric(s))return true;
- if(/^(creator search insights|content gap|all searches|all content gap searches|suggested|trending|tiktok shop|search|views?|posts?|likes?|filters?|high % gap|recommended|related searches?|today|yesterday|7d|custom|following|for you)$/i.test(s))return true;
+ if(/^(creator search insights|content gap|all searches|all content gap searches|suggested|trending|tiktok shop|search|search increase|search growth|sparkline|views?|posts?|likes?|filters?|high % gap|recommended|related searches?|today|yesterday|7d|custom|following|for you)$/i.test(s))return true;
  if(/^(\d{1,2}:\d{2}|gmt|battery|wifi)/i.test(s))return true;
  if((s.match(/[a-z]/g)||[]).length<3)return true;
  return false;
 }
-function extractQualified(text){
+function extractRows(text){
  const lines=String(text||'').split(/\r?\n/).map(clean).filter(Boolean);
  const out=[];
  for(let i=0;i<lines.length;i++){
-   const searches=parseSearchCount(lines[i]);
-   if(searches<MIN_SEARCHES)continue;
-   let phrase='';
-   for(let back=1;back<=3;back++){
-     const candidate=stripPhraseNoise(lines[i-back]||'');
-     if(candidate&&!isUiOrJunk(candidate)){phrase=candidate;break;}
+   const phrase=stripPhraseNoise(lines[i]);
+   if(isUiOrJunk(phrase))continue;
+   let volume={searches:'',label:'',bad:false},searchIncreasePct='',rawGrowth='';
+   for(let fwd=1;fwd<=5&&i+fwd<lines.length;fwd++){
+     const next=stripPhraseNoise(lines[i+fwd]);
+     if(!isUiOrJunk(next)&&!looksMetric(next))break;
+     const parsedVolume=parseSearchVolume(lines[i+fwd]);
+     if(volume.searches===''&&!volume.bad&&(parsedVolume.searches!==''||parsedVolume.bad))volume=parsedVolume;
+     const parsedGrowth=parseGrowthPercent(lines[i+fwd]);
+     if(searchIncreasePct===''&&parsedGrowth!==''){searchIncreasePct=parsedGrowth;rawGrowth=lines[i+fwd]}
    }
-   if(!phrase){
-     for(let fwd=1;fwd<=2;fwd++){
-       const candidate=stripPhraseNoise(lines[i+fwd]||'');
-       if(candidate&&!isUiOrJunk(candidate)){phrase=candidate;break;}
-     }
-   }
-   if(phrase)out.push({phrase,searches,rawMetric:lines[i]});
+   out.push({phrase,searches:volume.searches,searchVolumeLabel:volume.label,searchIncreasePct,growthLabel:growthLabel(searchIncreasePct),rawGrowth,needsVolumeReview:volume.bad||undefined});
  }
- const seen=new Set();
- return out.filter(x=>{const k=x.phrase.toLowerCase();if(seen.has(k))return false;seen.add(k);return true});
+ const best=new Map();
+ out.forEach(x=>{const k=x.phrase.toLowerCase(),previous=best.get(k);if(!previous||Number(x.searchIncreasePct||-1)>Number(previous.searchIncreasePct||-1))best.set(k,x)});
+ return[...best.values()];
+}
+function extractQualified(text){
+ return extractRows(text).filter(item=>item.searchIncreasePct!==''&&Number(item.searchIncreasePct)>=MIN_GROWTH_PERCENT).sort((a,b)=>Number(b.searchIncreasePct)-Number(a.searchIncreasePct));
 }
 function cleanupExisting(){
  const data=loadData();const rows=Array.isArray(data.gapRows)?data.gapRows:[];
- const kept=[],seen=new Set();let removed=0,preservedManual=0;
- rows.forEach(row=>{
+ let flaggedGrowth=0,flaggedVolume=0;
+ data.gapRows=rows.map(row=>{
    const phrase=stripPhraseNoise(row&&row.phrase||'');
    const auto=isAutoImported(row);
-   const searches=Number(row&&row.searches||0);
-   if(auto){
-     if(searches<MIN_SEARCHES||isUiOrJunk(phrase)){removed++;return;}
-   }else preservedManual++;
-   const key=phrase.toLowerCase();if(!phrase||seen.has(key)){removed++;return;}seen.add(key);
-   kept.push({...row,phrase});
+   const directGrowth=row&&row.searchIncreasePct!==''&&row&&row.searchIncreasePct!=null&&Number.isFinite(Number(row.searchIncreasePct))?Number(row.searchIncreasePct):'';
+   const parsedGrowth=parseGrowthPercent([row&&row.growthLabel,row&&row.rawGrowth,row&&row.rawMetric,row&&row.note].filter(Boolean).join(' '));
+   const searchIncreasePct=directGrowth!==''?directGrowth:parsedGrowth;
+   const badVolume=Number(row&&row.searches||0)>=1000000||/\b\d+(?:\.\d+)?\s*M\b/i.test([row&&row.searchVolumeLabel,row&&row.rawMetric,row&&row.note].filter(Boolean).join(' '));
+   const needsGrowthReview=auto&&searchIncreasePct==='';
+   if(needsGrowthReview)flaggedGrowth++;if(badVolume)flaggedVolume++;
+   return{...row,phrase,searchIncreasePct,growthLabel:growthLabel(searchIncreasePct)||row.growthLabel||'',needsGrowthReview:needsGrowthReview||undefined,needsVolumeReview:badVolume||row.needsVolumeReview||undefined,legacyVolumeBad:badVolume||undefined};
  });
- data.gapRows=kept;saveData(data);
- return{before:rows.length,after:kept.length,removed,preservedManual};
+ saveData(data);
+ return{preserved:rows.length,flaggedGrowth,flaggedVolume};
 }
 function saveQualified(items){
  const data=loadData();const rows=Array.isArray(data.gapRows)?data.gapRows:[];
- const existing=new Set(rows.map(r=>clean(r.phrase).toLowerCase()));
- const createdAt=new Date().toISOString();const additions=[];
+ const existing=new Map(rows.map((r,i)=>[clean(r.phrase).toLowerCase(),i]));
+ const createdAt=new Date().toISOString();const saved=[];let added=0,updated=0;
  items.forEach(item=>{
-   const phrase=stripPhraseNoise(item.phrase),searches=Number(item.searches||0),key=phrase.toLowerCase();
-   if(searches<MIN_SEARCHES||!phrase||isUiOrJunk(phrase)||existing.has(key))return;
-   existing.add(key);
-   additions.push({phrase,searches,searchVolumeLabel:searches>=1000000?(searches/1000000).toFixed(1).replace(/\.0$/,'')+'M':(searches/1000).toFixed(1).replace(/\.0$/,'')+'K',rawMetric:item.rawMetric||'',category:'Electronics & Gadgets',gapLevel:'High',note:`Qualified screenshot import · ${searches.toLocaleString()} searches`,id:uid(),status:'queued',source:'qualified multi-screenshot import',createdAt});
+   const phrase=stripPhraseNoise(item.phrase),searchIncreasePct=item.searchIncreasePct===''?'':Number(item.searchIncreasePct),key=phrase.toLowerCase();
+   if(searchIncreasePct===''||searchIncreasePct<MIN_GROWTH_PERCENT||!phrase||isUiOrJunk(phrase))return;
+   const record={phrase,searches:item.searches===''?'':Number(item.searches),searchVolumeLabel:item.searchVolumeLabel||'',searchIncreasePct,growthLabel:growthLabel(searchIncreasePct),rawGrowth:item.rawGrowth||'',category:'Electronics & Gadgets',gapLevel:'High',note:`Qualified screenshot import · ${growthLabel(searchIncreasePct)} search increase${item.searchVolumeLabel?' · '+item.searchVolumeLabel+' searches':''}`,status:'queued',source:'qualified multi-screenshot import',createdAt,needsGrowthReview:undefined,needsVolumeReview:item.needsVolumeReview||undefined};
+   if(existing.has(key)){const index=existing.get(key);rows[index]={...rows[index],...record,id:rows[index].id||uid()};updated++;saved.push(rows[index]);}
+   else{const created={...record,id:uid()};rows.unshift(created);existing.set(key,0);added++;saved.push(created);}
  });
- data.gapRows=[...additions,...rows];data.version=data.version||1;saveData(data);return additions;
+ data.gapRows=rows;data.version=data.version||1;saveData(data);return{saved,added,updated};
 }
 function loadOCR(){
  if(window.Tesseract)return Promise.resolve(window.Tesseract);
@@ -136,7 +148,7 @@ async function loadImage(file){const url=URL.createObjectURL(file);try{const img
 async function prepareImage(file){const img=await loadImage(file);const maxW=1400,scale=Math.min(1,maxW/img.naturalWidth);if(scale===1)return file;const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);return await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not prepare screenshot.')),'image/jpeg',0.9))}
 
 $('cleanup').onclick=()=>{
- try{const r=cleanupExisting();$('cleanupStatus').textContent=`Cleaned: ${r.removed} bad/duplicate imported row${r.removed===1?'':'s'} removed. ${r.preservedManual} manual row${r.preservedManual===1?'':'s'} preserved. ${r.after} total Content Gap rows remain.`;$('cleanupStatus').className='status ok'}catch(e){$('cleanupStatus').textContent='Cleanup could not run: '+((e&&e.message)||e);$('cleanupStatus').className='status bad'}
+ try{const r=cleanupExisting();$('cleanupStatus').textContent=`Review complete. ${r.preserved} row${r.preserved===1?'':'s'} preserved; ${r.flaggedGrowth} missing a verified increase percentage and ${r.flaggedVolume} flagged for legacy M-range volume. Nothing was deleted.`;$('cleanupStatus').className='status ok'}catch(e){$('cleanupStatus').textContent='Review could not run: '+((e&&e.message)||e);$('cleanupStatus').className='status bad'}
 };
 $('files').addEventListener('change',()=>{const n=Array.from($('files').files||[]).filter(f=>String(f.type||'').startsWith('image/')).length;$('selected').textContent=n?`${n} screenshot${n===1?'':'s'} selected.`:'No screenshots selected.'});
 $('run').onclick=async()=>{
@@ -156,11 +168,11 @@ $('run').onclick=async()=>{
     $('bar').style.width=Math.round(((i+1)/files.length)*100)+'%';
     await new Promise(resolve=>setTimeout(resolve,30));
   }
-  const best=new Map();all.forEach(x=>{const k=x.phrase.toLowerCase(),prev=best.get(k);if(!prev||x.searches>prev.searches)best.set(k,x)});
-  const qualified=[...best.values()].sort((a,b)=>b.searches-a.searches);
-  const saved=saveQualified(qualified);
-  $('bar').style.width='100%';$('status').textContent=`Done — ${files.length} screenshot${files.length===1?'':'s'} processed. ${qualified.length} qualified 1,000+ Content Gap${qualified.length===1?'':'s'} detected; ${saved.length} new saved.`;$('status').className='status ok';
-  saved.forEach(x=>{const d=document.createElement('div');d.className='row';d.innerHTML=`<strong>${x.searchVolumeLabel}</strong> · ${x.phrase}`;$('preview').appendChild(d)});
+  const best=new Map();all.forEach(x=>{const k=x.phrase.toLowerCase(),prev=best.get(k);if(!prev||Number(x.searchIncreasePct)>Number(prev.searchIncreasePct))best.set(k,x)});
+  const qualified=[...best.values()].sort((a,b)=>Number(b.searchIncreasePct)-Number(a.searchIncreasePct));
+  const result=saveQualified(qualified);
+  $('bar').style.width='100%';$('status').textContent=`Done — ${files.length} screenshot${files.length===1?'':'s'} processed. ${qualified.length} verified 1,000%+ row${qualified.length===1?'':'s'} detected; ${result.added} new and ${result.updated} updated.`;$('status').className='status ok';
+  result.saved.forEach(x=>{const d=document.createElement('div');d.className='row';d.innerHTML=`<strong>${x.growthLabel}</strong>${x.searchVolumeLabel?' · '+x.searchVolumeLabel:''} · ${x.phrase}`;$('preview').appendChild(d)});
   $('files').value='';$('selected').textContent='No screenshots selected.';
  }catch(e){$('status').textContent=((e&&e.message)||'Batch import failed.')+' Try 3–5 screenshots at a time.';$('status').className='status bad';$('bar').style.width='0%'}finally{window.__drCurrent=null;if(worker){try{await worker.terminate()}catch(e){}}$('run').disabled=false}
 };
