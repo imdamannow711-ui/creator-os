@@ -44,7 +44,7 @@ const COLORS = {
     amber: "#ffb020",
     red: "#ff4d5a",
 };
-const APP_BUILD = "2026.08.16-media-organizer-audio-editor";
+const APP_BUILD = "2026.08.24-outcome-hook-framework";
 const LAST_TAB_KEY = "done-rite-last-tab:v1";
 const STORAGE_KEY = "done-rite-creator-os:v1";
 const PRODUCT_HISTORY_KEY = "done-rite-product-history:v1";
@@ -86,6 +86,7 @@ const EMPTY_FORM = {
     productName: "",
     category: "Electronics & Gadgets",
     verifiedFeatures: "",
+    viewerOutcome: "",
     funnel: "BOF",
     duration: "15",
     platform: "TikTok Shop",
@@ -845,19 +846,22 @@ function makePackage(rawForm) {
     const form = { ...EMPTY_FORM, ...(rawForm && typeof rawForm === "object" ? rawForm : {}) };
     form.productName = String(form.productName || "");
     form.verifiedFeatures = String(form.verifiedFeatures || "");
+    form.viewerOutcome = String(form.viewerOutcome || "");
     form.searchPhrase = String(form.searchPhrase || "");
     form.platform = CTA_LIBRARY.some((item) => item.platforms.indexOf(form.platform) !== -1) ? form.platform : "TikTok Shop";
     form.duration = ["7", "10", "15"].includes(String(form.duration)) ? String(form.duration) : "15";
     const product = normalizeProductName(form.productName);
     const cleanResult = cleanFeatureClauses(form.verifiedFeatures);
     const cleaned = cleanResult.kept.join("\n");
+    const outcomeResult = cleanFeatureClauses(form.viewerOutcome);
+    const viewerOutcome = outcomeResult.kept[0] || "";
     const features = rankVerifiedFeatures(splitVerifiedFeatures(cleaned));
     const hookFeatures = hookWorthyFeatures(features);
     const feature = hookFeatures[0] || "";
     const displayFeature = naturalFeatureText(feature) || "the hands-on setup";
     const inHand = form.acquisition === "sample" || form.acquisition === "purchased";
     const planning = !inHand;
-    const issues = scanCompliance(`${product}\n${form.verifiedFeatures}`, form);
+    const issues = scanCompliance(`${product}\n${form.verifiedFeatures}\n${form.viewerOutcome}`, form);
     if (cleanResult.removed.length) {
         issues.unshift({
             id: "rewritten",
@@ -867,7 +871,7 @@ function makePackage(rawForm) {
         });
     }
     const prefix = planning ? "PLANNING DRAFT — SAMPLE NOT CONFIRMED\n\n" : "";
-    let hooks = pickHooks(product, features, form.platform, form.hookWinners || [], form.hookSpin || 0);
+    let hooks = pickHooks(product, features, form.platform, form.hookWinners || [], form.hookSpin || 0, viewerOutcome);
     if (form.chosenHook) {
         const chosenHook = correctKnownProductNames(form.chosenHook);
         hooks = [chosenHook].concat(hooks.filter((h) => h !== chosenHook)).slice(0, 3);
@@ -1078,8 +1082,18 @@ const HOOK_LIBRARY = [
   { angle: "Contrarian", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Stop checking the wrong thing when you look at ${p}.` },
   { angle: "Contrarian", platforms: ["YouTube Shorts", "Facebook"], make: (p, f) => `Everyone looks at the wrong part of ${p} first.` },
 
-  // Result-first. Showing the finished product in the opening frame is the
-  // single strongest documented pattern, and it suits a no-face format.
+  // --- Outcome Hook Framework (added Aug 24, 2026).
+  // These appear when Quick Create has a verified viewer outcome. Sentence one
+  // states that outcome; sentence two points to a verified product detail.
+  // No prices, unsupported numbers, absolute promises, or first-person claims.
+  { angle: "Outcome", needsOutcome: true, platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook"], make: (p, f, o) => `${o}. Now watch ${f} on ${p}.` },
+  { angle: "Outcome", needsOutcome: true, platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f, o) => `${o}. Here is the detail on ${p} designed to support it: ${f}.` },
+  { angle: "Outcome", needsOutcome: true, platforms: ["TikTok Shop", "YouTube Shorts", "Pinterest"], make: (p, f, o) => `Start with the result: ${o}. Then look at ${f} on ${p}.` },
+  { angle: "Outcome", needsOutcome: true, platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f, o) => `${o}. One product, one detail: ${f} on ${p}.` },
+  { angle: "Outcome", needsOutcome: true, platforms: ["TikTok Shop", "Facebook", "Pinterest"], make: (p, f, o) => `${o}. Here is ${p} showing the part that matters: ${f}.` },
+
+  // Result-first. Showing the finished product in the opening frame is a
+  // strong visual pattern, and it suits a no-face format.
   { angle: "Result first", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `This is ${p} set up and ready. Now here is how it got there.` },
   { angle: "Result first", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `Finished result first: ${p} with ${f}.` },
   { angle: "Result first", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `Start at the end. This is what ${p} looks like in place.` },
@@ -1120,8 +1134,9 @@ const HOOK_LIBRARY = [
    same product does not produce the same three twice in a row. Anything the
    user has marked as a proven winner is offered first — their own sales data
    beats any generic list. */
-function pickHooks(product, features, platform, winners, spin) {
+function pickHooks(product, features, platform, winners, spin, viewerOutcome) {
   const ranked = rankVerifiedFeatures(features);
+  const outcomeText = naturalFeatureText(String(viewerOutcome || "").trim());
   const hookFeatures = hookWorthyFeatures(ranked);
   const lowPriority = ranked.filter((text) => featurePriority(text) < 0).map((text) => text.toLowerCase());
   const proven = (winners || [])
@@ -1134,13 +1149,26 @@ function pickHooks(product, features, platform, winners, spin) {
   const usable = pool.length ? pool : HOOK_LIBRARY;
   const byAngle = {};
   usable.forEach((h) => {
-    const usesFeature = h.make(product, "__DETAIL__").includes("__DETAIL__");
+    if (h.needsOutcome && !outcomeText) return;
+    const usesFeature = h.make(product, "__DETAIL__", outcomeText || "__OUTCOME__").includes("__DETAIL__");
     if (!hookFeatures.length && usesFeature) return;
     if (!byAngle[h.angle]) byAngle[h.angle] = [];
     byAngle[h.angle].push(h);
   });
   const angles = Object.keys(byAngle);
   const out = proven.slice();
+
+  // When a verified outcome is supplied, make an Outcome hook the first fresh
+  // suggestion. A previously proven winner still keeps priority.
+  if (!out.length && outcomeText && byAngle.Outcome && byAngle.Outcome.length) {
+    const bucket = byAngle.Outcome;
+    const choice = bucket[spin % bucket.length];
+    const detail = hookFeatures.length
+      ? naturalFeatureText(hookFeatures[spin % hookFeatures.length])
+      : "";
+    out.push(choice.make(product, detail, outcomeText));
+  }
+
   let attempts = 0;
   while (out.length < 3 && attempts < Math.max(angles.length * 4, 12)) {
     const angle = angles[(spin + attempts) % angles.length];
@@ -1149,7 +1177,7 @@ function pickHooks(product, features, platform, winners, spin) {
     const detail = hookFeatures.length
       ? naturalFeatureText(hookFeatures[(spin + out.length + attempts) % hookFeatures.length])
       : "";
-    const text = choice.make(product, detail);
+    const text = choice.make(product, detail, outcomeText);
     if (out.indexOf(text) === -1) out.push(text);
     attempts += 1;
   }
@@ -1206,20 +1234,22 @@ const CTA_LIBRARY = [
 
 /* Every hook the library can produce for a given platform, already filled in
    with this product and feature — used to populate the Quick Create dropdown. */
-function hookOptions(product, features, platform) {
+function hookOptions(product, features, platform, viewerOutcome) {
   const pool = HOOK_LIBRARY.filter((h) => h.platforms.indexOf(platform) !== -1);
+  const outcomeText = naturalFeatureText(String(viewerOutcome || "").trim());
   const usable = pool.length ? pool : HOOK_LIBRARY;
   const hookFeatures = hookWorthyFeatures(features);
   const seen = {};
   const out = [];
   let detailIndex = 0;
   usable.forEach((h) => {
-    const usesFeature = h.make(product, "__DETAIL__").includes("__DETAIL__");
+    if (h.needsOutcome && !outcomeText) return;
+    const usesFeature = h.make(product, "__DETAIL__", outcomeText || "__OUTCOME__").includes("__DETAIL__");
     if (usesFeature && !hookFeatures.length) return;
     const detail = usesFeature
       ? naturalFeatureText(hookFeatures[detailIndex++ % hookFeatures.length])
       : "";
-    const text = h.make(product, detail);
+    const text = h.make(product, detail, outcomeText);
     if (seen[text]) return;
     seen[text] = true;
     out.push({ angle: h.angle, text });
@@ -1965,6 +1995,7 @@ function DoneRiteCreatorOS() {
                     productName: form.productName,
                     category: form.category,
                     verifiedFeatures: form.verifiedFeatures,
+                    viewerOutcome: form.viewerOutcome,
                     acquisition: form.acquisition,
                     sampleReceived: form.sampleReceived,
                     updatedAt: new Date().toISOString(),
@@ -2079,8 +2110,8 @@ function DoneRiteCreatorOS() {
     const hookChoices = useMemo(() => {
         const productName = normalizeProductName(form.productName) || "this product";
         const features = rankVerifiedFeatures(splitVerifiedFeatures(safeFeatureText(form.verifiedFeatures)));
-        return hookOptions(productName, features, form.platform);
-    }, [form.productName, form.verifiedFeatures, form.platform]);
+        return hookOptions(productName, features, form.platform, safeFeatureText(form.viewerOutcome));
+    }, [form.productName, form.verifiedFeatures, form.viewerOutcome, form.platform]);
     const ctaChoices = useMemo(() => ctaOptions(form.platform), [form.platform]);
     const patternChoices = useMemo(() => patternOptions(form.platform), [form.platform]);
     const previewPattern = useMemo(() => pickPattern(form.platform, form.chosenPattern, hookSpin + 1), [form.platform, form.chosenPattern, hookSpin]);
@@ -2248,6 +2279,7 @@ function DoneRiteCreatorOS() {
         ...current,
         productName,
         verifiedFeatures: "",
+        viewerOutcome: "",
         searchPhrase: "",
         chosenHook: "",
         chosenCta: "",
@@ -2286,6 +2318,7 @@ function DoneRiteCreatorOS() {
             productName: name,
             category: draft.category,
             verifiedFeatures: safeFeatureText(draft.verifiedFeatures),
+            viewerOutcome: safeFeatureText(draft.viewerOutcome),
             searchPhrase: String(draft.searchPhrase || "").trim(),
             acquisition: draft.acquisition,
             sampleReceived: draft.acquisition === "sample",
@@ -2659,6 +2692,7 @@ function DoneRiteCreatorOS() {
                                         productName: entry.name,
                                         category: found.category || current.category,
                                         verifiedFeatures: String(found.verifiedFeatures || ""),
+                                        viewerOutcome: String(found.viewerOutcome || ""),
                                         searchPhrase: "",
                                         acquisition: found.acquisition || (found.sampleReceived ? "sample" : current.acquisition),
                                     };
@@ -2689,6 +2723,8 @@ function DoneRiteCreatorOS() {
                     React.createElement(Field, { label: "Verified features", help: "Do not paste seller hype, prices, discounts, unsupported specifications, or medical claims." },
                         React.createElement("textarea", { className: "dr-textarea", value: form.verifiedFeatures, onChange: (event) => setValue("verifiedFeatures", event.target.value), placeholder: "One verified feature per line" })),
                     React.createElement("p", { className: "dr-help", style: { marginTop: 4 } }, "Tap to add. Only add what you have actually confirmed on the product \u2014 these are wordings, not facts."),
+                    React.createElement(Field, { label: "Viewer outcome (optional)", help: "Write one verified result the viewer should understand. Quick Create will put it in the first sentence. Avoid promises, prices, and unverified numbers." },
+                        React.createElement("input", { className: "dr-input", value: form.viewerOutcome, onChange: (event) => setValue("viewerOutcome", event.target.value), placeholder: "Example: Keep the phone powered while recording" })),
                     React.createElement("div", { className: "dr-chips" }, (FEATURE_LIBRARY[form.category] || []).map((text) => (React.createElement("button", { className: "dr-chip", type: "button", key: text, onClick: () => addFeature(text) },
                         "+ ",
                         text)))),
