@@ -44,23 +44,7 @@ const COLORS = {
     amber: "#ffb020",
     red: "#ff4d5a",
 };
-const APP_BUILD = "2026.08.24-outcome-hook-framework";
-const LAST_TAB_KEY = "done-rite-last-tab:v1";
 const STORAGE_KEY = "done-rite-creator-os:v1";
-const PRODUCT_HISTORY_KEY = "done-rite-product-history:v1";
-const VOICEOVER_QUEUE_KEY = "done-rite-voiceover-queue:v1";
-const SFX_DB_NAME = "done-rite-sfx-library:v1";
-const SFX_STORE_NAME = "sounds";
-const SFX_CUES = [
-    "Hook impact",
-    "Text pop",
-    "Feature tap",
-    "Scene transition",
-    "Build-up riser",
-    "Hero reveal",
-    "CTA accent",
-    "Custom accent",
-];
 const CATEGORIES = [
     "Electronics & Gadgets",
     "Kitchen",
@@ -86,7 +70,6 @@ const EMPTY_FORM = {
     productName: "",
     category: "Electronics & Gadgets",
     verifiedFeatures: "",
-    viewerOutcome: "",
     funnel: "BOF",
     duration: "15",
     platform: "TikTok Shop",
@@ -238,40 +221,6 @@ const CSS = `
   .dr-upload-box { border:1px dashed ${COLORS.blueGlow}; border-radius:14px; padding:14px; background:rgba(30,123,255,.08); }
   .dr-progress { height:9px; overflow:hidden; border-radius:999px; background:${COLORS.panel2}; border:1px solid ${COLORS.line}; }
   .dr-progress > span { display:block; height:100%; background:linear-gradient(90deg, ${COLORS.blue}, ${COLORS.green}); transition:width .18s ease; }
-  .dr-review-list { display:grid; gap:10px; margin-top:12px; }
-  .dr-review-item { padding:12px; border:1px solid ${COLORS.line}; border-radius:12px; background:${COLORS.panel2}; }
-  .dr-review-top { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:9px; }
-  .dr-review-item .dr-danger { width:auto; min-height:38px; padding:7px 11px; font-size:13px; }
-  .dr-review-actions, .dr-gap-actions { display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:7px; }
-  .dr-review-actions { margin-top:10px; }
-  .dr-review-actions button, .dr-gap-actions button {
-    width:auto; min-height:36px; padding:7px 10px; font-size:12px; flex:0 0 auto; touch-action:pan-y;
-  }
-  .dr-gap-menu { align-self:flex-end; margin-top:10px; }
-  .dr-gap-menu summary {
-    width:max-content; margin-left:auto; list-style:none; min-height:36px; padding:8px 11px;
-    border:1px solid ${COLORS.line}; border-radius:10px; background:${COLORS.panel}; color:${COLORS.blueGlow};
-    font-size:12px; font-weight:850; cursor:pointer; touch-action:pan-y;
-  }
-  .dr-gap-menu summary::-webkit-details-marker { display:none; }
-  .dr-gap-menu[open] summary { margin-bottom:8px; }
-  .dr-sfx-list { display:grid; gap:10px; margin-top:12px; }
-  .dr-sfx-item { padding:12px; border:1px solid ${COLORS.line}; border-radius:12px; background:${COLORS.panel}; }
-  .dr-sfx-name { font-weight:850; overflow-wrap:anywhere; }
-  .dr-sfx-controls { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; align-items:center; margin-top:10px; }
-  .dr-sfx-controls .dr-copy, .dr-sfx-controls .dr-danger { min-height:42px; padding:8px 11px; }
-  @media (max-width:540px) { .dr-sfx-controls { grid-template-columns:1fr 1fr; } .dr-sfx-controls .dr-select { grid-column:1 / -1; } }
-  .dr-hook-options { display:grid; gap:9px; margin-top:12px; }
-  .dr-hook-choice {
-    width:100%; min-height:50px; padding:11px 13px; border:1px solid ${COLORS.line}; border-radius:12px;
-    background:${COLORS.panel2}; color:${COLORS.text}; text-align:left; font:inherit; font-size:14px;
-    line-height:1.4; cursor:pointer; touch-action:manipulation;
-  }
-  .dr-hook-choice strong { color:${COLORS.blueGlow}; margin-right:7px; }
-  .dr-hook-choice[aria-pressed="true"] {
-    border-color:${COLORS.green}; background:rgba(43,217,124,.12); box-shadow:0 0 0 2px rgba(43,217,124,.14);
-  }
-  .dr-hook-choice[aria-pressed="true"] strong { color:${COLORS.green}; }
   .dr-nav {
     position:fixed; left:0; right:0; bottom:0; z-index:25;
     border-top:1px solid ${COLORS.line}; background:rgba(17,21,28,.97);
@@ -290,281 +239,17 @@ function uid() {
 function money(value) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
 }
-/* RISK RULES — ONE LIST, USED BY BOTH THE CHECKER AND THE CLEANER
-   ------------------------------------------------------------------
-   Before Aug 14 there were two separate lists. The Compliance tab
-   blocked words the cleaner never removed, so a package could be built
-   containing wording the app itself called a violation. There is now
-   one list. scanCompliance reads it to raise flags; the cleaner reads
-   the same list to decide which wording must not reach a script.
-
-   The cleaner also no longer deletes single words out of the middle of
-   a sentence. Deleting "treated" out of "heat-treated steel" produced
-   "Heat- steel" and that went straight into the voiceover. A line that
-   trips a block rule is now removed WHOLE and reported back, so you can
-   reword it yourself instead of finding broken English in your script. */
-
-/* Ordinary manufacturing and product wording that happens to contain a
-   risky word. These are masked before scanning and put back afterwards,
-   so honest gadget and tool descriptions survive. */
-const PROTECTED_WORDINGS = [
-    /\bheat[- ]treated\b/gi,
-    /\bsurface[- ]treated\b/gi,
-    /\bpre[- ]treated\b/gi,
-    /\bpowder[- ]coated\b/gi,
-    /\bfixed[- ](?:mount|base|angle|blade|focus)\b/gi,
-    /\bfixture\b/gi,
-];
-function maskProtectedWordings(text) {
-    let out = String(text || "");
-    const stash = [];
-    PROTECTED_WORDINGS.forEach((pattern) => {
-        out = out.replace(pattern, (match) => {
-            stash.push(match);
-            return `\u0000${stash.length - 1}\u0000`;
-        });
-    });
-    return { masked: out, stash };
-}
-function unmaskProtectedWordings(text, stash) {
-    return String(text || "").replace(/\u0000(\d+)\u0000/g, (whole, index) => stash[Number(index)] !== undefined ? stash[Number(index)] : whole);
-}
-
-const RISK_RULES = [
-    {
-        id: "pricing",
-        severity: "block",
-        test: /\$\s?\d|\b(price|pricing|discount|discounted|sale|on sale|cheapest|lowest price|coupon|save money|savings|deal of)\b/i,
-        label: "Pricing or promotional language detected.",
-        safer: "Remove the price or promotion and direct viewers to product details.",
-    },
-    {
-        id: "absolute",
-        severity: "block",
-        test: /\b(guaranteed|guarantee|instantly|100\s?%|100 percent|perfect|flawless|never fails)\b/i,
-        label: "Absolute performance claim detected.",
-        safer: "Use “designed to,” “built for,” or a verified feature statement.",
-    },
-    {
-        id: "health",
-        severity: "block",
-        test: /\b(cure|cures|cured|curing|treat|treats|treated|treating|prevent|prevents|prevented|preventing|heal|heals|healed|healing|remedy|remedies|reverse|reverses|reversed|reversing|relieve|relieves|relieved|relieving|alleviate|alleviates|diagnose|diagnoses|detox|detoxes|antibacterial|anti[- ]bacterial|antiviral|anti[- ]viral|antifungal|anti[- ]fungal|clinically proven|doctor recommended|medical grade|pharmaceutical grade|disease|diseases|weight loss|lose weight|burn fat|immune boosting)\b/i,
-        label: "Health or medical claim detected.",
-        safer: "Remove the treatment, cure, or outcome wording and describe only verified product features.",
-    },
-    {
-        id: "condition",
-        severity: "block",
-        test: /\b(arthritis|anxiety|depression|diabetes|diabetic|cancer|tumor|tumour|asthma|eczema|psoriasis|acne|migraine|migraines|insomnia|adhd|autism|alzheimer'?s|dementia|blood pressure|hypertension|cholesterol|inflammation|inflammatory|infection|infections|fungal|joint pain|back pain|nerve pain|neuropathy|hair loss|erectile|menopause|acid reflux|vertigo|tinnitus|covid|influenza)\b/i,
-        label: "A medical condition is named.",
-        safer: "Naming a health condition implies a medical claim. Remove the condition and describe only what the product is designed to do.",
-    },
-    {
-        id: "before-after",
-        severity: "block",
-        test: /\b(before and after|before\s*\/\s*after)\b/i,
-        label: "Before-and-after implication detected.",
-        safer: "Describe only verified product features without promising a personal outcome.",
-    },
-    {
-        id: "earnings",
-        severity: "block",
-        test: /\b(earnings?|income|make money|financial freedom|get rich)\b/i,
-        label: "Income or earnings claim detected.",
-        safer: "Remove the financial outcome claim and describe only the creator workflow or verified product facts.",
-    },
-    {
-        id: "scarcity",
-        severity: "block",
-        test: /\b(only \d+ left|ends tonight|last chance)\b/i,
-        label: "Scarcity or deadline language detected.",
-        safer: "Remove it unless the exact claim is verified as current.",
-    },
-    {
-        id: "unrealistic",
-        severity: "block",
-        test: /\b(life[- ]changing|miracle|magic|effortless|no effort|overnight|transform your life|works every time|will fix|solves everything|game changer)\b/i,
-        label: "Unrealistic expectation language detected.",
-        safer: "Describe one verified thing the product is designed to do instead of promising a transformation.",
-    },
-    {
-        id: "comparison",
-        severity: "review",
-        test: /\b(better than|beats|superior to|versus|vs\.)\b/i,
-        label: "Promotional comparison language detected.",
-        safer: "Remove the competitor comparison and describe the promoted product's verified features on their own.",
-    },
-    {
-        id: "authority",
-        severity: "review",
-        test: /\b(as seen on|official partner|endorsed by|certified by|FDA[- ]approved|patented|award[- ]winning)\b/i,
-        label: "Endorsement, certification, or award claim detected.",
-        safer: "Remove it unless you can verify the exact claim for this exact product.",
-    },
-    {
-        id: "ip",
-        severity: "review",
-        test: /\b(lyrics|song by|soundtrack|movie clip|trademark|™|®)\b/i,
-        label: "Possible third-party or trademarked content referenced.",
-        safer: "Use only sounds, footage, and wording you have the right to use.",
-    },
-];
-
-/* Splits the verified-features box into lines, then keeps or drops each
-   line WHOLE. Returns what survived and a plain-language reason for each
-   line that did not, so nothing disappears silently. */
-function cleanFeatureClauses(text) {
-    const raw = String(text || "");
-    const lines = raw
-        .replace(/([.!?])\s+/g, "$1\n")
-        .split(/[\n;]+/)
-        .map((part) => part.replace(/\s{2,}/g, " ").trim())
-        .filter(Boolean);
-    const kept = [];
-    const removed = [];
-    lines.forEach((line) => {
-        const { masked } = maskProtectedWordings(line);
-        const hit = RISK_RULES.find((rule) => rule.severity === "block" && rule.test.test(masked));
-        if (hit) {
-            removed.push({ text: line.replace(/[.]+$/, ""), ruleId: hit.id, reason: hit.label });
-            return;
-        }
-        kept.push(line.replace(/[.]+$/, "").trim());
-    });
-    return { kept, removed };
-}
-
-/* Kept for every existing caller. Returns only the wording that is safe
-   to put in front of viewers. */
 function safeFeatureText(text) {
-    return cleanFeatureClauses(text).kept.join("\n");
-}
-
-function correctKnownProductNames(text) {
     return String(text || "")
-        .replace(/\bhollayland\b/gi, "Hollyland")
-        .replace(/\bhollyland\s+lark\s+a1\b/gi, "Hollyland LARK A1");
-}
-function normalizeProductName(text) {
-    return correctKnownProductNames(text).trim();
-}
-function namesLookLikeSameProduct(previous, next) {
-    const left = String(previous || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
-    const right = String(next || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
-    if (!left || !right)
-        return false;
-    const previousNumbers = String(previous || "").match(/\d+/g) || [];
-    const nextNumbers = String(next || "").match(/\d+/g) || [];
-    if (previousNumbers.length && nextNumbers.length && previousNumbers.join("|") !== nextNumbers.join("|"))
-        return false;
-    if (left.includes(right) || right.includes(left))
-        return true;
-    const previousWords = new Set(String(previous || "").toLowerCase().match(/[a-z0-9]+/g) || []);
-    const nextWords = new Set(String(next || "").toLowerCase().match(/[a-z0-9]+/g) || []);
-    const union = new Set([...previousWords, ...nextWords]);
-    const overlap = [...previousWords].filter((word) => nextWords.has(word)).length;
-    if (union.size && overlap / union.size >= 0.6)
-        return true;
-    const rows = Array.from({ length: right.length + 1 }, (_, index) => index);
-    for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
-        let diagonal = rows[0];
-        rows[0] = leftIndex;
-        for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
-            const above = rows[rightIndex];
-            rows[rightIndex] = left[leftIndex - 1] === right[rightIndex - 1]
-                ? diagonal
-                : Math.min(diagonal, rows[rightIndex - 1], above) + 1;
-            diagonal = above;
-        }
-    }
-    return rows[right.length] <= Math.max(2, Math.floor(Math.max(left.length, right.length) * 0.2));
-}
-function splitVerifiedFeatures(text) {
-    return String(text || "")
-        .split(/[\n.;]+/)
-        .map((part) => part.trim())
-        .filter(Boolean);
-}
-function featurePriority(text) {
-    const value = String(text || "").toLowerCase();
-    if (/\b(rechargeable battery|battery-powered|battery powered|cordless)\b/.test(value))
-        return -50;
-    if (/\b(lightning|noise cancellation|noise canceling|noise cancelling|charging case|compact|foldable|carrying case)\b/.test(value))
-        return 50;
-    if (/\b(compatible|connector|microphone|transmitter|receiver|wireless|range|adapter|mount|magnetic|brightness|usb-c)\b/.test(value))
-        return 25;
-    return 10;
-}
-function rankVerifiedFeatures(features) {
-    return (features || [])
-        .map((text, index) => ({ text, index, priority: featurePriority(text) }))
-        .sort((a, b) => b.priority - a.priority || a.index - b.index)
-        .map((item) => item.text);
-}
-function hookWorthyFeatures(features) {
-    const ranked = rankVerifiedFeatures(features);
-    const stronger = ranked.filter((text) => featurePriority(text) >= 10);
-    return stronger.length ? stronger : [];
-}
-function naturalFeatureText(text) {
-    const value = String(text || "").trim().replace(/[.]+$/, "");
-    if (!value)
-        return "";
-    return /^[A-Z]{2,}(?:\b|-)/.test(value)
-        ? value
-        : value.charAt(0).toLowerCase() + value.slice(1);
-}
-function timelineMarks(duration) {
-    const total = [7, 10, 15].includes(Number(duration)) ? Number(duration) : 15;
-    return [
-        0,
-        Math.max(2, Math.round(total * 0.18)),
-        Math.round(total * 0.48),
-        Math.round(total * 0.76),
-        total,
-    ];
-}
-function spokenScriptLines(product, feature, hook, cta) {
-    const detail = naturalFeatureText(feature);
-    const hookMentionsProduct = String(hook || "").toLowerCase().includes(String(product || "").toLowerCase());
-    return [
-        correctKnownProductNames(hook),
-        hookMentionsProduct ? (detail ? `Designed with ${detail}.` : "Here it is in one take.") : `Meet ${product}.`,
-        detail ? (hookMentionsProduct ? "Watch it in use." : `Designed with ${detail}.`) : "Watch the hands-on demo.",
-        cta,
-    ];
-}
-function platformDestination(platform) {
-    if (platform === "YouTube Shorts") return {
-        target: "the channel profile",
-        caption: "Follow for more gadget reviews. My TikTok is linked on my channel profile.",
-        prompt: "a follow-or-channel-profile call to action with no cart or product-link wording",
-        checklist: "☐ YouTube Short: growth-only mode; channel profile points to TikTok; no cart, product-link, or Amazon CTA yet",
-        hashtags: "#ad #YouTubeShorts #GadgetReview #ProductDemo #DoneRite",
-    };
-    if (platform === "Pinterest") return {
-        target: "the product page",
-        caption: "Product details are available through the product page.",
-        prompt: "a product-page call to action",
-        checklist: "☐ Pinterest: vertical format, destination link checked, affiliate disclosure included",
-        hashtags: "#ad #PinterestFinds #GadgetReview #ProductDemo #DoneRite",
-    };
-    if (platform === "Facebook" || platform === "Instagram Reels") return {
-        target: "the product link",
-        caption: "Product details are available through the product link.",
-        prompt: "a product-link call to action",
-        checklist: `☐ ${platform}: vertical format, product link checked, paid-partnership or affiliate disclosure enabled when required`,
-        hashtags: platform === "Instagram Reels"
-            ? "#ad #InstagramReels #GadgetReview #ProductDemo #DoneRite"
-            : "#ad #FacebookReels #GadgetReview #ProductDemo #DoneRite",
-    };
-    return {
-        target: "the cart",
-        caption: "Product details are available in the cart.",
-        prompt: "a cart-directed call to action",
-        checklist: "☐ TikTok Shop: 9:16, product link/cart selected, content disclosure enabled",
-        hashtags: "#ad #TikTokShop #GadgetFinds #ProductDemo #DoneRite",
-    };
+        .replace(/\$\s?\d+(?:\.\d{1,2})?/gi, "")
+        .replace(/\b(discount|sale|cheapest|lowest price|coupon|save money)\b/gi, "")
+        .replace(/\b(guaranteed|guarantee|instantly|instant|perfect|flawless|never fails)\b/gi, "")
+        .replace(/\b100\s?%|\b100 percent\b/gi, "")
+        .replace(/\b(cure|cures|cured|curing|treat|treats|treated|treating|prevent|prevents|prevented|preventing|heal|heals|healed|healing|reverse|reverses|reversed|reversing|fix|fixes|fixed|fixing|detox|detoxes|relieve|relieves|relieved|relieving|alleviate|alleviates|remedy|remedies)\b/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .replace(/\s+([,.;:])/g, "$1")
+        .replace(/^[\s,;:.\-]+/, "")
+        .trim();
 }
 
 let gapOcrLibraryPromise = null;
@@ -584,136 +269,65 @@ function loadGapOcrLibrary() {
     return gapOcrLibraryPromise;
 }
 
-const MIN_CONTENT_GAP_SEARCHES = 1000;
-function parseContentGapSearchCount(value) {
-    const line = String(value || "").replace(/,/g, " ").replace(/\s+/g, " ").trim();
-    const compact = line.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*([KkMm])\b/);
-    if (compact) {
-        const number = Number(compact[1]);
-        if (!Number.isFinite(number)) return 0;
-        return Math.round(number * (compact[2].toLowerCase() === "m" ? 1000000 : 1000));
-    }
-    const labelled = line.match(/(?:^|\s)(\d{1,3}(?:[ ,]\d{3})+)\s*(?:searches?|views?)\b/i);
-    return labelled ? Number(labelled[1].replace(/\D/g, "")) : 0;
-}
-function cleanContentGapPhrase(value) {
-    return String(value || "")
-        .replace(/[|•●■►]+/g, " ")
-        .replace(/^\s*\d+[.)]\s*/, "")
-        .replace(/^\s*(?:content gap|creator search insights?|all searches?|searches?)\s*[:\-–—]*\s*/i, "")
-        .replace(/\s+\d+(?:[.,]\d+)?\s*[KMB]?\s*(?:views?|searches?|posts?|videos?|%)\b.*$/i, "")
-        .replace(/\s+(?:0|O)\s*(?:C(?:om|m)?|BC|B6|Cm|Com|om)\b.*$/i, "")
-        .replace(/\s+[Y¥]{1,2}\s*C\s*$/i, "")
-        .replace(/[¥€£©®™]+/g, " ")
-        .replace(/^[\s,;:.\-–—_[\]{}]+|[\s,;:.\-–—_[\]{}]+$/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-}
-function isContentGapPhraseJunk(value) {
-    const phrase = cleanContentGapPhrase(value);
-    const lower = phrase.toLowerCase();
-    if (!phrase || phrase.length < 5 || phrase.length > 110) return true;
-    if ((phrase.match(/[A-Za-z]{2,}/g) || []).length < 2) return true;
-    if (/^(content gap|creator search insights?|search insights?|all searches?|search|inspiration|analytics|recommended|followers?|following|friends?|profile|home|shop|inbox|videos?|posts?|views?|likes?|comments?|shares?|high|medium|low|all|filter|filters|back|done|cancel|today|yesterday|last 7 days|last 30 days)$/i.test(phrase)) return true;
-    if (/\b(all searches?|creator search insights?|content gap|high % gap|search popularity)\b/i.test(phrase)) return true;
-    if (/^\d+(?:[.,]\d+)?\s*(?:[KMB]|%|searches?|views?)?$/i.test(phrase)) return true;
-    if (/[¥€£©®™]|\uFFFD/.test(value) || /\b(?:wifi|battery|gmt)\b/i.test(lower)) return true;
-    return false;
-}
 function contentGapPhrasesFromText(text) {
-    const lines = String(text || "").split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
-    const found = [];
-    for (let index = 0; index < lines.length; index += 1) {
-        const searches = parseContentGapSearchCount(lines[index]);
-        if (searches < MIN_CONTENT_GAP_SEARCHES) continue;
-        let phrase = "";
-        for (let distance = 1; distance <= 3 && !phrase; distance += 1) {
-            const candidate = cleanContentGapPhrase(lines[index - distance] || "");
-            if (!isContentGapPhraseJunk(candidate) && !parseContentGapSearchCount(candidate)) phrase = candidate;
-        }
-        for (let distance = 1; distance <= 2 && !phrase; distance += 1) {
-            const candidate = cleanContentGapPhrase(lines[index + distance] || "");
-            if (!isContentGapPhraseJunk(candidate) && !parseContentGapSearchCount(candidate)) phrase = candidate;
-        }
-        if (phrase) found.push({ phrase, searches, rawMetric: lines[index] });
-    }
-    const best = new Map();
-    found.forEach((item) => {
-        const key = item.phrase.toLowerCase();
-        if (!best.has(key) || best.get(key).searches < item.searches) best.set(key, item);
-    });
-    return [...best.values()].sort((a, b) => b.searches - a.searches).slice(0, 20);
-}
-function sanitizeContentGapRows(rows) {
+    const ignored = /^(content gap|creator search insights|search insights|search|inspiration|analytics|recommended|followers?|following|friends?|profile|home|shop|inbox|videos?|posts?|views?|likes?|comments?|shares?|high|medium|low|all|filter|filters|back|done|cancel|today|yesterday|last 7 days|last 30 days)$/i;
     const seen = new Set();
-    const cleaned = [];
-    (Array.isArray(rows) ? rows : []).forEach((row) => {
-        if (!row || typeof row !== "object") return;
-        const phrase = cleanContentGapPhrase(row.phrase);
-        const source = String(row.source || "").toLowerCase();
-        const note = String(row.note || "").toLowerCase();
-        const searches = Number(row.searches || 0);
-        const key = phrase.toLowerCase();
-        if (isContentGapPhraseJunk(phrase) || seen.has(key)) return;
-        seen.add(key);
-        cleaned.push({
-            ...row,
-            phrase,
-            searches: searches || undefined,
-            needsSearchCountReview: (!searches && (source.includes("screenshot") || note.includes("imported from screenshot"))) || undefined,
-        });
-    });
-    return cleaned;
-}
-function voiceoverSegments(spokenLines, duration) {
-    const lines = (spokenLines || []).map((line) => String(line || "").trim()).filter(Boolean);
-    const total = [7, 10, 15].includes(Number(duration)) ? Number(duration) : 15;
-    const groups = total <= 7
-        ? [[lines[0], lines[1]], [lines[2], lines[3]]]
-        : total <= 10
-            ? [[lines[0]], [lines[1], lines[2]], [lines[3]]]
-            : lines.map((line) => [line]);
-    const tones = [
-        { tone: "curious", direction: "Curious discovery — lift the hook slightly." },
-        { tone: "sincere", direction: "Sincere and helpful — warm, natural pace." },
-        { tone: "confident", direction: "Confident demonstration — clear, never pushy." },
-        { tone: "confident", direction: "Friendly CTA — let the final words land." },
-    ];
-    return groups.map((group, index) => {
-        const start = Math.round((total * index) / groups.length * 10) / 10;
-        const end = Math.round((total * (index + 1)) / groups.length * 10) / 10;
-        return {
-            id: `vo-${index + 1}`,
-            label: `Voiceover ${index + 1} of ${groups.length}`,
-            text: group.filter(Boolean).join(" "),
-            start,
-            end,
-            tone: tones[index].tone,
-            direction: tones[index].direction,
-        };
-    }).filter((item) => item.text);
-}
-function normalizeRestoredForm(value) {
-    const restored = value && typeof value === "object" ? { ...EMPTY_FORM, ...value } : { ...EMPTY_FORM };
-    restored.productName = normalizeProductName(restored.productName);
-    restored.duration = ["7", "10", "15"].includes(String(restored.duration)) ? String(restored.duration) : "15";
-    restored.searchPhrase = isContentGapPhraseJunk(restored.searchPhrase) ? "" : cleanContentGapPhrase(restored.searchPhrase);
-    return restored;
+    return String(text || "")
+        .split(/\r?\n/)
+        .map((line) => line.replace(/[|•●■►]+/g, " ").replace(/\s+/g, " ").trim())
+        .map((line) => line.replace(/^\d+[.)]\s*/, "").replace(/\s+\d+(?:[.,]\d+)?[KMB]?\s*(?:views?|searches?|posts?|videos?|%)?.*$/i, "").trim())
+        .filter((line) => line.length >= 5 && line.length <= 110)
+        .filter((line) => !ignored.test(line) && !/^\d+(?:[.,]\d+)?%?$/.test(line))
+        .filter((line) => (line.match(/[A-Za-z]{2,}/g) || []).length >= 2)
+        .filter((line) => {
+            const key = line.toLowerCase();
+            if (seen.has(key))
+                return false;
+            seen.add(key);
+            return true;
+        })
+        .slice(0, 20);
 }
 function scanCompliance(text, form = {}) {
     const source = String(text || "");
-    const { masked } = maskProtectedWordings(source);
     const issues = [];
     const add = (id, severity, label, safer) => {
         if (!issues.some((item) => item.id === id))
             issues.push({ id, severity, label, safer });
     };
-    // Every wording rule comes from the single shared list, so the checker
-    // and the cleaner can never disagree again.
-    RISK_RULES.forEach((rule) => {
-        if (rule.test.test(masked))
-            add(rule.id, rule.severity, rule.label, rule.safer);
-    });
+    if (/\$\s?\d|\b(price|discount|sale|cheapest|lowest price|coupon|save money)\b/i.test(source)) {
+        add("pricing", "block", "Pricing or promotional language detected.", "Remove the price or promotion and direct viewers to product details.");
+    }
+    if (/\b(guaranteed|instantly|100%|perfect|never fails)\b/i.test(source)) {
+        add("absolute", "block", "Absolute performance claim detected.", "Use “designed to,” “built for,” or a verified feature statement.");
+    }
+    if (/\b(cure|cures|cured|curing|treat|treats|treated|treating|prevent|prevents|prevented|preventing|heal|heals|healed|healing|remedy|remedies|reverse|reverses|reversed|reversing|relieve|relieves|relieved|relieving|alleviate|alleviates|diagnose|diagnoses|detox|detoxes|antibacterial|antiviral|antifungal|clinically proven|doctor recommended|medical grade|pharmaceutical grade|disease|diseases|weight loss|lose weight|burn fat|immune boosting)\b/i.test(source)) {
+        add("health", "block", "Health or medical claim detected.", "Remove the treatment, cure, or outcome wording and describe only verified product features.");
+    }
+    if (/\b(arthritis|anxiety|depression|diabetes|diabetic|cancer|tumor|tumour|asthma|eczema|psoriasis|acne|migraine|migraines|insomnia|adhd|autism|alzheimer'?s|dementia|blood pressure|hypertension|cholesterol|inflammation|inflammatory|infection|infections|fungal|joint pain|back pain|nerve pain|neuropathy|hair loss|erectile|menopause|acid reflux|vertigo|tinnitus|covid|influenza)\b/i.test(source)) {
+        add("condition", "block", "A medical condition is named.", "Naming a health condition implies a medical claim. Remove the condition and describe only what the product is designed to do.");
+    }
+    if (/\b(before and after|before\s*\/\s*after)\b/i.test(source)) {
+        add("before-after", "block", "Before-and-after implication detected.", "Describe only verified product features without promising a personal outcome.");
+    }
+    if (/\b(earnings?|income|make money|financial freedom|get rich)\b/i.test(source)) {
+        add("earnings", "block", "Income or earnings claim detected.", "Remove the financial outcome claim and describe only the creator workflow or verified product facts.");
+    }
+    if (/\b(better than|beats|superior to|versus|vs\.)\b/i.test(source)) {
+        add("comparison", "review", "Promotional comparison language detected.", "Remove the competitor comparison and describe the promoted product's verified features on their own.");
+    }
+    if (/\b(only \d+ left|ends tonight|last chance)\b/i.test(source)) {
+        add("scarcity", "block", "Scarcity or deadline language detected.", "Remove it unless the exact claim is verified as current.");
+    }
+    if (/\b(life[- ]changing|miracle|magic|effortless|no effort|overnight|transform your life|works every time|will fix|solves everything|game changer)\b/i.test(source)) {
+        add("unrealistic", "block", "Unrealistic expectation language detected.", "Describe one verified thing the product is designed to do instead of promising a transformation.");
+    }
+    if (/\b(as seen on|official partner|endorsed by|certified by|FDA[- ]approved|patented|award[- ]winning)\b/i.test(source)) {
+        add("authority", "review", "Endorsement, certification, or award claim detected.", "Remove it unless you can verify the exact claim for this exact product.");
+    }
+    if (/\b(lyrics|song by|soundtrack|movie clip|trademark|™|®)\b/i.test(source)) {
+        add("ip", "review", "Possible third-party or trademarked content referenced.", "Use only sounds, footage, and wording you have the right to use.");
+    }
     if (form.acquisition === "sample") {
         add("sample-disclosure", "review", "Free seller sample — disclosure is required.", "Keep #ad in the hashtags and say the product was provided when the platform asks.");
     }
@@ -761,7 +375,6 @@ function flattenScript(pkg) {
         pkg.thumbnail,
         "",
         ...(pkg.shotList ? ["SHOT LIST — HANDS IN FRAME, NO FACE", pkg.shotList, ""] : []),
-        ...(pkg.sfxPlan ? ["SOUND EFFECTS EDIT PLAN", pkg.sfxPlan, "Use only original, licensed, or commercially cleared sound effects.", ""] : []),
         "AI IMAGE PROMPT",
         pkg.aiImagePrompt,
         "",
@@ -774,137 +387,50 @@ function flattenScript(pkg) {
         pkg.complianceNote,
     ].join("\n");
 }
-function guessSfxCue(name) {
-    const value = String(name || "").toLowerCase();
-    if (/riser|rise|build/.test(value)) return "Build-up riser";
-    if (/impact|hit|boom|cinematic/.test(value)) return "Hero reveal";
-    if (/whoosh|swoosh|swish|transition/.test(value)) return "Scene transition";
-    if (/click|tap|button|ui/.test(value)) return "Feature tap";
-    if (/pop/.test(value)) return "Text pop";
-    return "Custom accent";
-}
-function buildSfxPlan(sounds, duration) {
-    const list = Array.isArray(sounds) ? sounds : [];
-    if (!list.length) return "";
-    const total = Math.max(1, Number(duration || 15));
-    const cueTimes = list.length === 1
-        ? [Math.min(0.3, total / 4)]
-        : list.map((_, index) => Math.min(total - 0.2, (index * total) / Math.max(1, list.length - 1)));
-    return list.map((sound, index) =>
-        `${cueTimes[index].toFixed(1)}s — ${sound.cue || guessSfxCue(sound.name)}: ${sound.name}`
-    ).join("\n");
-}
-function openSfxDb() {
-    return new Promise((resolve, reject) => {
-        if (!window.indexedDB) {
-            reject(new Error("This browser does not support the on-device sound library."));
-            return;
-        }
-        const request = indexedDB.open(SFX_DB_NAME, 1);
-        request.onupgradeneeded = () => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains(SFX_STORE_NAME))
-                db.createObjectStore(SFX_STORE_NAME);
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error || new Error("The sound library could not open."));
-    });
-}
-async function putSfxBlob(id, file) {
-    const db = await openSfxDb();
-    await new Promise((resolve, reject) => {
-        const transaction = db.transaction(SFX_STORE_NAME, "readwrite");
-        transaction.objectStore(SFX_STORE_NAME).put(file, id);
-        transaction.oncomplete = resolve;
-        transaction.onerror = () => reject(transaction.error || new Error("This sound could not be saved."));
-    });
-    db.close();
-}
-async function getSfxBlob(id) {
-    const db = await openSfxDb();
-    const value = await new Promise((resolve, reject) => {
-        const request = db.transaction(SFX_STORE_NAME, "readonly").objectStore(SFX_STORE_NAME).get(id);
-        request.onsuccess = () => resolve(request.result || null);
-        request.onerror = () => reject(request.error || new Error("This sound could not be opened."));
-    });
-    db.close();
-    return value;
-}
-async function removeSfxBlob(id) {
-    const db = await openSfxDb();
-    await new Promise((resolve, reject) => {
-        const transaction = db.transaction(SFX_STORE_NAME, "readwrite");
-        transaction.objectStore(SFX_STORE_NAME).delete(id);
-        transaction.oncomplete = resolve;
-        transaction.onerror = () => reject(transaction.error || new Error("This sound could not be removed."));
-    });
-    db.close();
-}
-function makePackage(rawForm) {
-    // Older saved records and partial backups can be missing fields
-    // entirely. Fill the gaps first so generating never throws.
-    const form = { ...EMPTY_FORM, ...(rawForm && typeof rawForm === "object" ? rawForm : {}) };
-    form.productName = String(form.productName || "");
-    form.verifiedFeatures = String(form.verifiedFeatures || "");
-    form.viewerOutcome = String(form.viewerOutcome || "");
-    form.searchPhrase = String(form.searchPhrase || "");
-    form.platform = CTA_LIBRARY.some((item) => item.platforms.indexOf(form.platform) !== -1) ? form.platform : "TikTok Shop";
-    form.duration = ["7", "10", "15"].includes(String(form.duration)) ? String(form.duration) : "15";
-    const product = normalizeProductName(form.productName);
-    const cleanResult = cleanFeatureClauses(form.verifiedFeatures);
-    const cleaned = cleanResult.kept.join("\n");
-    const outcomeResult = cleanFeatureClauses(form.viewerOutcome);
-    const viewerOutcome = outcomeResult.kept[0] || "";
-    const features = rankVerifiedFeatures(splitVerifiedFeatures(cleaned));
-    const hookFeatures = hookWorthyFeatures(features);
-    const feature = hookFeatures[0] || "";
-    const displayFeature = naturalFeatureText(feature) || "the hands-on setup";
+function makePackage(form) {
+    const product = form.productName.trim();
+    const cleaned = safeFeatureText(form.verifiedFeatures);
+    const feature = cleaned.split(/[\n.;]/).map((part) => part.trim()).filter(Boolean)[0] || "a simpler everyday routine";
     const inHand = form.acquisition === "sample" || form.acquisition === "purchased";
     const planning = !inHand;
-    const issues = scanCompliance(`${product}\n${form.verifiedFeatures}\n${form.viewerOutcome}`, form);
-    if (cleanResult.removed.length) {
+    const issues = scanCompliance(`${form.productName}\n${form.verifiedFeatures}`, form);
+    const changed = safeFeatureText(form.verifiedFeatures) !== form.verifiedFeatures.trim();
+    if (changed) {
         issues.unshift({
             id: "rewritten",
             severity: "review",
-            label: `${cleanResult.removed.length} verified-feature line${cleanResult.removed.length === 1 ? " was" : "s were"} left out of this script: ${cleanResult.removed.map((item) => `“${item.text}” (${item.reason.replace(/\.$/, "").toLowerCase()})`).join("; ")}`,
-            safer: "Reword those lines using only what the product physically is or does, then generate again.",
+            label: "Risky wording was removed from the verified-features field.",
+            safer: "Review the cleaned wording before publishing.",
         });
     }
     const prefix = planning ? "PLANNING DRAFT — SAMPLE NOT CONFIRMED\n\n" : "";
-    let hooks = pickHooks(product, features, form.platform, form.hookWinners || [], form.hookSpin || 0, viewerOutcome);
+    let hooks = pickHooks(product, feature, form.platform, form.hookWinners || [], form.hookSpin || 0);
     if (form.chosenHook) {
-        const chosenHook = correctKnownProductNames(form.chosenHook);
-        hooks = [chosenHook].concat(hooks.filter((h) => h !== chosenHook)).slice(0, 3);
+        hooks = [form.chosenHook].concat(hooks.filter((h) => h !== form.chosenHook)).slice(0, 3);
     }
     const pattern = pickPattern(form.platform, form.chosenPattern, form.hookSpin || 0);
-    const destination = platformDestination(form.platform);
-    const availableCtas = ctaOptions(form.platform);
-    const cta = availableCtas.some((item) => item.text === form.chosenCta) ? form.chosenCta : availableCtas[0].text;
-    const spokenLines = spokenScriptLines(product, feature, hooks[0], cta);
-    const voiceover = `${prefix}${spokenLines.join(" ")}`;
-    const voiceovers = voiceoverSegments(spokenLines, form.duration);
+    const voiceover = `${prefix}${hooks[0]} This is ${product}, built around ${feature}. Watch it work rather than listen to me describe it. Product details are in the cart.`;
     const searchPhrase = String(form.searchPhrase || "").trim();
-    const marks = timelineMarks(form.duration);
     const onScreenText = [
-        `${marks[0]}–${marks[1]}s: ${searchPhrase ? searchPhrase.toUpperCase() : hooks[0].toUpperCase()}`,
-        `${marks[1]}–${marks[2]}s: ${product.toUpperCase()}`,
-        `${marks[2]}–${marks[3]}s: ${displayFeature.toUpperCase()}`,
-        `${marks[3]}–${marks[4]}s: ${cta.toUpperCase()}`,
+        `0–2s: ${searchPhrase ? searchPhrase.toUpperCase() : "WORTH A CLOSER LOOK?"}`,
+        `2–6s: ${product.toUpperCase()}`,
+        `6–11s: ${feature.toUpperCase()}`,
+        `11–${form.duration}s: CHECK PRODUCT DETAILS`,
     ].join("\n");
-    const caption = `${planning ? "Planning draft: " : ""}${searchPhrase ? searchPhrase + ". " : ""}A closer look at ${product} and the verified features it was designed around. ${destination.caption}`;
-    const hashtags = destination.hashtags;
-    const thumbnail = searchPhrase ? searchPhrase.toUpperCase() : "WORTH A CLOSER LOOK?";
-    const shotList = buildShotList(pattern, product, feature, form.duration, spokenLines, form.platform);
+    const caption = `${planning ? "Planning draft: " : ""}${searchPhrase ? searchPhrase + ". " : ""}A closer look at ${product} and the verified features it was designed around. Product details are available in the cart.`;
+    const hashtags = "#ad #TikTokShop #GadgetFinds #ProductDemo #DoneRite";
+    const cta = form.chosenCta || ctaOptions(form.platform)[0].text;
+    const thumbnail = "WORTH A CLOSER LOOK?";
+    const shotList = buildShotList(pattern, product, feature, form.duration, hooks[0], cta);
     const aiImagePrompt = `Create a vertical 9:16 hands-on visual for ${product}. Hands may hold, open, or operate the product. Use a black, chrome, and electric-blue DONE RITE technology style. Show the product, the hands using it, and a clean feature-focused environment. No face, no head, no shoulders, no price, discount badge, competitor branding, unsupported specification, or added product claim.`;
-    const sfxPlan = buildSfxPlan(form.sfxSelections, form.duration);
-    const sfxPrompt = sfxPlan
-        ? ` Use these exact commercially cleared sound effects at the listed edit points: ${sfxPlan.replace(/\n/g, "; ")}. Keep effects beneath the voiceover.`
-        : "";
-    const aiVideoPrompt = `Create a ${form.duration}-second vertical 9:16 hands-on ${form.funnel} demo video for ${product}, shot in the "${pattern.name}" pattern. Hands enter frame and operate the product; the camera stays above or beside the hands so no face, head, or shoulders are visible. Keep the product moving — continuous hand motion, not a slideshow of stills. Use subtle electric-blue lighting, readable safe-zone text, and ${destination.prompt}.${sfxPrompt} No face, price, discount, false scarcity, competitor comparison, medical claim, absolute claim, or invented specification. Use only these verified details: ${cleaned || "No verified feature supplied; keep the presentation generic."}`;
+    const aiVideoPrompt = `Create a ${form.duration}-second vertical 9:16 hands-on ${form.funnel} demo video for ${product}, shot in the "${pattern.name}" pattern. Hands enter frame and operate the product; the camera stays above or beside the hands so no face, head, or shoulders are visible. Keep the product moving — continuous hand motion, not a slideshow of stills. Use subtle electric-blue lighting, readable safe-zone text, and one cart-directed CTA. No face, price, discount, false scarcity, competitor comparison, medical claim, absolute claim, or invented specification. Use only these verified details: ${cleaned || "No verified feature supplied; keep the presentation generic."}`;
     const crossPlatform = [
         "☐ Watch it back: no face, head, or shoulders in any frame",
         "☐ Watch it back: the product is moving throughout — no static slideshow section",
-        destination.checklist,
+        "☐ TikTok: 9:16, product link/cart selected, content disclosure enabled",
+        "☐ YouTube Short: remove TikTok-only cart wording and use an approved description link",
+        "☐ Facebook/Instagram Reels: verify disclosure and link placement",
+        "☐ Pinterest: link only to the approved YouTube or Amazon destination, never TikTok",
         "☐ Confirm music is licensed for commercial use",
     ].join("\n");
     const firstIssue = issues[0];
@@ -915,11 +441,9 @@ function makePackage(rawForm) {
         id: uid(),
         createdAt: new Date().toISOString(),
         productName: product,
-        form: { ...form, productName: product, verifiedFeatures: cleaned },
+        form: { ...form, verifiedFeatures: cleaned },
         hooks,
-        selectedHook: hooks[0],
         voiceover,
-        voiceovers,
         onScreenText,
         caption,
         hashtags,
@@ -927,8 +451,6 @@ function makePackage(rawForm) {
         thumbnail,
         searchPhrase,
         shotList,
-        sfxPlan,
-        selectedSfx: Array.isArray(form.sfxSelections) ? form.sfxSelections : [],
         patternId: pattern.id,
         patternName: pattern.name,
         patternWhy: pattern.why,
@@ -937,30 +459,7 @@ function makePackage(rawForm) {
         crossPlatform,
         complianceNote,
         issues,
-        removedFeatureLines: cleanResult.removed,
         publishReady: inHand && !issues.some((item) => item.severity === "block"),
-    };
-}
-function makeVoiceoverQueue(pkg) {
-    return {
-        version: 2,
-        productName: pkg.productName,
-        duration: pkg.form.duration,
-        createdAt: pkg.createdAt,
-        segments: pkg.voiceovers,
-        videoGuide: {
-            duration: pkg.form.duration,
-            format: `Vertical 9:16 · ${pkg.form.platform} · ${pkg.form.funnel}`,
-            angle: [pkg.patternName, pkg.patternWhy].filter(Boolean).join(" — "),
-            direction: (pkg.voiceovers || []).map((item) => `${item.start}–${item.end}s: ${item.direction}`).join("\n"),
-            shots: pkg.shotList,
-            onScreenText: pkg.onScreenText,
-            sfx: pkg.sfxPlan,
-            caption: pkg.caption,
-            hashtags: pkg.hashtags,
-            cover: pkg.thumbnail,
-            compliance: pkg.complianceNote,
-        },
     };
 }
 function copyFallback(text) {
@@ -1013,7 +512,7 @@ const HOOK_LIBRARY = [
   { angle: "Curiosity", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `Watch what ${f} actually looks like in use.` },
   { angle: "Curiosity", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Here is the part of ${p} the photos do not show.` },
 
-  // --- Conversation starters (added Aug 2026 from the supplied Hook Library
+  // --- Conversation starters (added Aug 2026 from the user's Hook Library
   // screenshots). Each keeps the natural opening phrase but completes the
   // thought with the selected product and verified feature. This avoids a
   // dangling open loop while staying claim-free and usable in a 7-second ad.
@@ -1064,7 +563,7 @@ const HOOK_LIBRARY = [
   { angle: "Search", platforms: ["YouTube Shorts"], make: (p, f) => `${p} walkthrough — the parts that matter.` },
 
   // --- Contrast without naming competitors
-  { angle: "Detail", platforms: ["TikTok Shop", "YouTube Shorts", "Facebook"], make: (p, f) => `This is the detail to look at on ${p}.` },
+  { angle: "Contrast", platforms: ["TikTok Shop", "YouTube Shorts", "Facebook"], make: (p, f) => `Most of them skip this. ${p} does not.` },
   { angle: "Contrast", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `The version with ${f} is a different experience.` },
   { angle: "Contrast", platforms: ["TikTok Shop"], make: (p, f) => `Same idea, different execution. ${p}.` },
 
@@ -1082,18 +581,8 @@ const HOOK_LIBRARY = [
   { angle: "Contrarian", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Stop checking the wrong thing when you look at ${p}.` },
   { angle: "Contrarian", platforms: ["YouTube Shorts", "Facebook"], make: (p, f) => `Everyone looks at the wrong part of ${p} first.` },
 
-  // --- Outcome Hook Framework (added Aug 24, 2026).
-  // These appear when Quick Create has a verified viewer outcome. Sentence one
-  // states that outcome; sentence two points to a verified product detail.
-  // No prices, unsupported numbers, absolute promises, or first-person claims.
-  { angle: "Outcome", needsOutcome: true, platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook"], make: (p, f, o) => `${o}. Now watch ${f} on ${p}.` },
-  { angle: "Outcome", needsOutcome: true, platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f, o) => `${o}. Here is the detail on ${p} designed to support it: ${f}.` },
-  { angle: "Outcome", needsOutcome: true, platforms: ["TikTok Shop", "YouTube Shorts", "Pinterest"], make: (p, f, o) => `Start with the result: ${o}. Then look at ${f} on ${p}.` },
-  { angle: "Outcome", needsOutcome: true, platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f, o) => `${o}. One product, one detail: ${f} on ${p}.` },
-  { angle: "Outcome", needsOutcome: true, platforms: ["TikTok Shop", "Facebook", "Pinterest"], make: (p, f, o) => `${o}. Here is ${p} showing the part that matters: ${f}.` },
-
-  // Result-first. Showing the finished product in the opening frame is a
-  // strong visual pattern, and it suits a no-face format.
+  // Result-first. Showing the finished product in the opening frame is the
+  // single strongest documented pattern, and it suits a no-face format.
   { angle: "Result first", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `This is ${p} set up and ready. Now here is how it got there.` },
   { angle: "Result first", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `Finished result first: ${p} with ${f}.` },
   { angle: "Result first", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `Start at the end. This is what ${p} looks like in place.` },
@@ -1115,7 +604,8 @@ const HOOK_LIBRARY = [
   { angle: "Search", platforms: ["Pinterest", "Facebook"], make: (p, f) => `Looking at ${p}? Start with ${f}.` },
 
   // --- Hands-on (added Aug 2026 with the format change).
-  // Demonstrations make product utility easier to see. These openers make sense if
+  // Demonstrations convert far better than talking-head reviews, and static
+  // slideshows no longer earn distribution. These openers only make sense if
   // hands are actually in frame doing the thing — which is now the default.
   { angle: "Hands-on", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `Hands on ${p}. Here is what ${f} feels like.` },
   { angle: "Hands-on", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Watch my hands, not a product photo. ${p}.` },
@@ -1128,58 +618,96 @@ const HOOK_LIBRARY = [
   { angle: "Utility", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `No build-up. ${p} works like this.` },
   { angle: "Utility", platforms: ["TikTok Shop", "YouTube Shorts", "Pinterest"], make: (p, f) => `${f}, in one motion. That is ${p}.` },
   { angle: "Utility", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Whole thing, start to finish, before you can scroll.` },
+
+  // --- Screenshot hook expansion (Aug 30, 2026).
+  // Adapted from the user's 18 reference screenshots. Risky originals that
+  // relied on superiority, money outcomes, guaranteed results or pressure
+  // were rewritten into product-specific, claim-safe open loops.
+  { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "Facebook", "YouTube Shorts"], make: (p, f) => `Okay, this is actually useful. Here is ${f} on ${p}.` },
+  { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `You know that moment when one small detail changes how you use something? On ${p}, it is ${f}.` },
+  { angle: "Problem", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `I did not realize how much this bothered me until I tried ${p}.` },
+  { angle: "Curiosity", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `I thought this was just another ${p} until I noticed ${f}.` },
+  { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "Facebook", "YouTube Shorts"], make: (p, f) => `Can I show you something? Look at ${f} on ${p}.` },
+
+  // Weekly conversational prompts.
+  { angle: "Conversation", platforms: ["TikTok Shop", "Facebook", "Instagram Reels"], make: (p, f) => `Since we are already here, we might as well talk about ${f} on ${p}.` },
+  { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `If we were best friends, I would tell you to check ${f} before choosing ${p}.` },
+  { angle: "Reverse", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Whatever you do, do not save this unless you want a closer look at ${f}.` },
+  { angle: "Probing", platforms: ["TikTok Shop", "Facebook", "Instagram Reels"], make: (p, f) => `This may sound blunt, but why does everyone overlook ${f} on ${p}?` },
+  { angle: "Creator talk", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `Creator to creator: this is the shot I would use to show ${f}.` },
+
+  // Bold/opinion patterns, softened to avoid superiority and absolute claims.
+  { angle: "Opinion", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `Whoever said details do not matter was not looking at ${f}.` },
+  { angle: "Opinion", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `I may have been checking the wrong part of ${p}. Start with ${f}.` },
+  { angle: "Discovery", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `I was today years old when I noticed ${f} on ${p}.` },
+  { angle: "Opinion", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `This is a detail I will stand behind: ${f} deserves a closer look.` },
+  { angle: "Curiosity", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `This might change how you look at ${p}: ${f}.` },
+  { angle: "Opinion", platforms: ["TikTok Shop", "Facebook", "YouTube Shorts"], make: (p, f) => `My honest take on ${p}: check ${f} before anything else.` },
+  { angle: "Contrast", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `The internet talks about ${p}, but this is the detail I wanted to see: ${f}.` },
+  { angle: "Contrast", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `Here is the detail I would compare first on ${p}: ${f}.` },
+  { angle: "Direct", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `I chose the detail people skip. This is ${f} on ${p}.` },
+  { angle: "Direct", platforms: ["TikTok Shop", "YouTube Shorts", "Pinterest"], make: (p, f) => `If I were building the setup around one feature, I would start with ${f}.` },
+
+  // Reverse-psychology patterns without false scarcity or manipulation.
+  { angle: "Reverse", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Let us not even talk about the box. Watch ${f} on ${p}.` },
+  { angle: "Reverse", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `If you already know exactly what you need, this may not be for you.` },
+  { angle: "Reverse", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `Do not look at the packaging. Look at ${f}.` },
+  { angle: "Reverse", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `You might not want to watch this if ${f} does not matter to you.` },
+  { angle: "Reverse", platforms: ["TikTok Shop", "Facebook", "YouTube Shorts"], make: (p, f) => `This will make the most sense if you use ${p} for the same reason I do.` },
+  { angle: "Reverse", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `This is not for you if you do not care about ${f}.` },
+  { angle: "Reverse", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `If your current setup already works for you, keep scrolling.` },
+
+  // Probing prompts kept focused on observable product details.
+  { angle: "Probing", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `Can someone explain why ${f} gets overlooked on ${p}?` },
+  { angle: "Probing", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `I am not trying to start a debate. I want to know whether you would use ${f}.` },
+  { angle: "Probing", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `If this task feels harder than it should, check ${f}.` },
+  { angle: "Probing", platforms: ["TikTok Shop", "YouTube Shorts"], make: (p, f) => `You might not need another accessory. You might need ${f}.` },
+  { angle: "Probing", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `If you disagree, tell me which feature matters more than ${f}.` },
+  { angle: "Direct", platforms: ["TikTok Shop", "Facebook", "YouTube Shorts"], make: (p, f) => `You wanted the short version, so here it is: ${p}, with ${f}.` },
+  { angle: "Direct", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `I will not sugarcoat it: ${f} is the part I would check first.` },
+
+  // Vulnerability/open-loop phrases, used only as honest creator framing.
+  { angle: "Vulnerability", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `I am a little embarrassed I overlooked ${f} on ${p}.` },
+  { angle: "Vulnerability", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `Here goes nothing. This is the part of ${p} I wanted to test.` },
+  { angle: "Vulnerability", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `I almost did not post this, but ${f} is worth showing up close.` },
+  { angle: "Vulnerability", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `I am putting this out there before I overthink it: ${f}.` },
+  { angle: "Vulnerability", platforms: ["TikTok Shop", "Instagram Reels", "Facebook"], make: (p, f) => `This could go either way, so watch ${f} and decide for yourself.` },
+
+  // Outcome-first framework: show the payoff immediately, then explain it.
+  { angle: "Outcome first", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook"], make: (p, f) => `Here is ${p} ready to use. Now watch ${f}.` },
+  { angle: "Outcome first", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `Start with the finished setup: ${p} with ${f}.` },
+  { angle: "Outcome first", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `The useful part first: ${f}. The setup comes next.` },
+  { angle: "Outcome first", platforms: ["TikTok Shop", "Instagram Reels"], make: (p, f) => `Watch the result first, then I will show you the setup.` },
+  { angle: "Outcome first", platforms: ["YouTube Shorts", "Pinterest", "Facebook"], make: (p, f) => `${p} ready to go, with ${f} shown clearly.` },
 ];
 
 /* Picks three hooks from three DIFFERENT angles, rotating each time so the
    same product does not produce the same three twice in a row. Anything the
    user has marked as a proven winner is offered first — their own sales data
    beats any generic list. */
-function pickHooks(product, features, platform, winners, spin, viewerOutcome) {
-  const ranked = rankVerifiedFeatures(features);
-  const outcomeText = naturalFeatureText(String(viewerOutcome || "").trim());
-  const hookFeatures = hookWorthyFeatures(ranked);
-  const lowPriority = ranked.filter((text) => featurePriority(text) < 0).map((text) => text.toLowerCase());
+function pickHooks(product, feature, platform, winners, spin) {
   const proven = (winners || [])
     .filter((w) => !w.platform || w.platform === platform)
-    .map((w) => w.text)
-    .filter((text) => !lowPriority.some((detail) => String(text || "").toLowerCase().includes(detail)))
-    .slice(0, 2);
+    .slice(0, 2)
+    .map((w) => w.text);
 
   const pool = HOOK_LIBRARY.filter((h) => h.platforms.indexOf(platform) !== -1);
   const usable = pool.length ? pool : HOOK_LIBRARY;
+
   const byAngle = {};
   usable.forEach((h) => {
-    if (h.needsOutcome && !outcomeText) return;
-    const usesFeature = h.make(product, "__DETAIL__", outcomeText || "__OUTCOME__").includes("__DETAIL__");
-    if (!hookFeatures.length && usesFeature) return;
     if (!byAngle[h.angle]) byAngle[h.angle] = [];
     byAngle[h.angle].push(h);
   });
   const angles = Object.keys(byAngle);
+
   const out = proven.slice();
-
-  // When a verified outcome is supplied, make an Outcome hook the first fresh
-  // suggestion. A previously proven winner still keeps priority.
-  if (!out.length && outcomeText && byAngle.Outcome && byAngle.Outcome.length) {
-    const bucket = byAngle.Outcome;
-    const choice = bucket[spin % bucket.length];
-    const detail = hookFeatures.length
-      ? naturalFeatureText(hookFeatures[spin % hookFeatures.length])
-      : "";
-    out.push(choice.make(product, detail, outcomeText));
-  }
-
-  let attempts = 0;
-  while (out.length < 3 && attempts < Math.max(angles.length * 4, 12)) {
-    const angle = angles[(spin + attempts) % angles.length];
+  for (let i = 0; out.length < 3 && i < angles.length; i += 1) {
+    const angle = angles[(spin + i) % angles.length];
     const bucket = byAngle[angle];
-    const choice = bucket[(spin + attempts * 7) % bucket.length];
-    const detail = hookFeatures.length
-      ? naturalFeatureText(hookFeatures[(spin + out.length + attempts) % hookFeatures.length])
-      : "";
-    const text = choice.make(product, detail, outcomeText);
+    const choice = bucket[(spin + i * 7) % bucket.length];
+    const text = choice.make(product, feature);
     if (out.indexOf(text) === -1) out.push(text);
-    attempts += 1;
   }
   return out.slice(0, 3);
 }
@@ -1195,7 +723,7 @@ const CTA_LIBRARY = [
   { style: "Direct", platforms: ["TikTok Shop"], text: "Product details are in the cart." },
   { style: "Direct", platforms: ["TikTok Shop"], text: "Tap the cart to see the full listing." },
   { style: "Direct", platforms: ["TikTok Shop"], text: "Full specs are on the product page in the cart." },
-  { style: "Direct", platforms: ["TikTok Shop"], text: "More product details are in the orange cart." },
+  { style: "Direct", platforms: ["TikTok Shop"], text: "Everything you need is in the orange cart." },
   { style: "Informed", platforms: ["TikTok Shop"], text: "Check the specs in the cart before you decide." },
   { style: "Informed", platforms: ["TikTok Shop"], text: "Read the listing in the cart and see if it fits your setup." },
   { style: "Low pressure", platforms: ["TikTok Shop"], text: "Have a look at the details in the cart. No rush." },
@@ -1203,11 +731,11 @@ const CTA_LIBRARY = [
   { style: "Qualifying", platforms: ["TikTok Shop"], text: "If that matches what you need, the cart has the full listing." },
   { style: "Qualifying", platforms: ["TikTok Shop"], text: "Not for everyone. If it is for you, the details are in the cart." },
 
-  // YouTube Shorts — growth-only until the channel product-link route is ready.
-  { style: "Follow", platforms: ["YouTube Shorts"], text: "Follow for more gadget reviews." },
-  { style: "Profile", platforms: ["YouTube Shorts"], text: "My TikTok is linked on my channel profile." },
-  { style: "Subscribe", platforms: ["YouTube Shorts"], text: "Subscribe for more hands-on gadget demos." },
-  { style: "Profile", platforms: ["YouTube Shorts"], text: "More gadget content is linked on my channel profile." },
+  // YouTube Shorts — description link.
+  { style: "Direct", platforms: ["YouTube Shorts"], text: "Product link is in the description." },
+  { style: "Direct", platforms: ["YouTube Shorts"], text: "Full details are linked below." },
+  { style: "Informed", platforms: ["YouTube Shorts"], text: "Check the description for the full spec sheet." },
+  { style: "Low pressure", platforms: ["YouTube Shorts"], text: "Link is below if you want a closer look." },
 
   // Pinterest — savers and searchers, not impulse buyers.
   { style: "Direct", platforms: ["Pinterest"], text: "Tap through for the full product details." },
@@ -1226,30 +754,21 @@ const CTA_LIBRARY = [
   // no price, no scarcity — the specificity comes from the footage.
   { style: "Demo-linked", platforms: ["TikTok Shop"], text: "That is the whole motion. Full listing is in the cart." },
   { style: "Demo-linked", platforms: ["TikTok Shop"], text: "You just watched it work. Specs are in the cart." },
-  { style: "Demo-linked", platforms: ["TikTok Shop"], text: "The demonstration is complete. Full specifications are in the cart." },
-  { style: "Demo-linked", platforms: ["YouTube Shorts"], text: "That is it in real use. Subscribe for more gadget demos." },
+  { style: "Demo-linked", platforms: ["TikTok Shop"], text: "Same product, same hands, no edit. Details are in the cart." },
+  { style: "Demo-linked", platforms: ["YouTube Shorts"], text: "That is it in real use. Full details are linked below." },
   { style: "Demo-linked", platforms: ["Instagram Reels", "Facebook"], text: "You saw what it does. The listing has the rest." },
   { style: "Demo-linked", platforms: ["Pinterest"], text: "Save this demo. The product page has the full spec." },
 ];
 
 /* Every hook the library can produce for a given platform, already filled in
    with this product and feature — used to populate the Quick Create dropdown. */
-function hookOptions(product, features, platform, viewerOutcome) {
+function hookOptions(product, feature, platform) {
   const pool = HOOK_LIBRARY.filter((h) => h.platforms.indexOf(platform) !== -1);
-  const outcomeText = naturalFeatureText(String(viewerOutcome || "").trim());
   const usable = pool.length ? pool : HOOK_LIBRARY;
-  const hookFeatures = hookWorthyFeatures(features);
   const seen = {};
   const out = [];
-  let detailIndex = 0;
   usable.forEach((h) => {
-    if (h.needsOutcome && !outcomeText) return;
-    const usesFeature = h.make(product, "__DETAIL__", outcomeText || "__OUTCOME__").includes("__DETAIL__");
-    if (usesFeature && !hookFeatures.length) return;
-    const detail = usesFeature
-      ? naturalFeatureText(hookFeatures[detailIndex++ % hookFeatures.length])
-      : "";
-    const text = h.make(product, detail, outcomeText);
+    const text = h.make(product, feature);
     if (seen[text]) return;
     seen[text] = true;
     out.push({ angle: h.angle, text });
@@ -1270,34 +789,34 @@ function ctaOptions(platform) {
    moves faster than any app can. */
 const RESEARCH_NOTES = [
   {
-    finding: "Demonstrations make utility clearer",
-    detail: "Showing the product in use can help viewers understand its function quickly without requiring a face on camera.",
-    soWhat: "The shot patterns below keep hands in frame and the head out.",
+    finding: "Demonstrations beat talking heads",
+    detail: "TikTok Shop affiliate videos with a product demonstration convert roughly 3–5x better than talking-head reviews. Hands doing something to the product is the lift — not a face.",
+    soWhat: "Every shot pattern below keeps hands in frame and the head out.",
   },
   {
-    finding: "Motion can hold attention",
-    detail: "A clear product demonstration may be easier to follow than a sequence of still images.",
-    soWhat: "Use continuous hand motion when the product can be demonstrated safely and honestly.",
+    finding: "Static slideshows are being throttled",
+    detail: "Static image slideshows and silent unboxing videos no longer earn organic algorithmic distribution.",
+    soWhat: "Continuous hand motion is now the default. The old product-image-only format is retired.",
   },
   {
-    finding: "Show utility early",
-    detail: "Opening with the product's verified use can help viewers understand the video quickly.",
-    soWhat: "The patterns open with the product already visible or in use.",
+    finding: "First three seconds must show utility",
+    detail: "The opening three seconds should show what the product actually does, not build suspense.",
+    soWhat: "Every pattern opens mid-action. No empty frame, no reaching in, no logo card.",
   },
   {
-    finding: "Faceless content can show the product clearly",
-    detail: "A face is not required to demonstrate a gadget's verified features or use.",
-    soWhat: "Hands-only framing keeps the 5StarGadgetGuru identity while focusing on the product.",
+    finding: "Faceless is still fine",
+    detail: "The algorithm measures watch time, completion, shares, comments and saves. It does not measure whether a face appears.",
+    soWhat: "Hands-on with no face keeps the 5StarGadgetGuru identity and takes the demo lift.",
   },
   {
-    finding: "Quality matters more than flooding the feed",
-    detail: "A smaller number of clear, accurate product demonstrations is easier to evaluate than many rushed posts.",
-    soWhat: "Track each hook and result, then improve the next test.",
+    finding: "Daily posting limits exist now",
+    detail: "A Content Posting Limit introduced in May 2026 dampens accounts that flood the feed with shoppable video. New creators in the pilot period are capped at a handful of shoppable videos and LIVEs per week.",
+    soWhat: "Fewer, better product tests. Volume alone is no longer a strategy.",
   },
   {
-    finding: "Tutorials and demos explain the product",
-    detail: "Unboxing and in-use footage can show verified features without relying on unsupported promises.",
-    soWhat: "Use the Unbox to use or Problem to demo pattern when it fits the product.",
+    finding: "Tutorials and demos read as organic",
+    detail: "Product tutorials, unboxings and in-use footage outperform static promotion because they look less like an advertisement.",
+    soWhat: "The Unbox to use and Problem to demo patterns exist for exactly this.",
   },
 ];
 
@@ -1310,7 +829,7 @@ const SHOT_PATTERNS = [
   {
     id: "demo-first",
     name: "Demo first",
-    why: "A demonstration can make the product's verified function easier to understand.",
+    why: "Demonstrations convert about 3–5x better than talking-head reviews.",
     platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook"],
     beats: (p, f) => [
       { label: "OPEN MID-ACTION", hands: `Hands are already using ${p} on frame one. Nothing enters the shot.` },
@@ -1351,7 +870,7 @@ const SHOT_PATTERNS = [
     beats: (p, f) => [
       { label: "ALREADY OPENING", hands: "Box is mid-open on frame one. Never start with a sealed box sitting still." },
       { label: "OUT AND UP", hands: `${p} lifted clear of the packaging in one motion.` },
-      { label: "STRAIGHT TO USE", hands: `Hands go directly into using it. Show ${f} in use.` },
+      { label: "STRAIGHT TO USE", hands: `Hands go directly into using it. Show ${f} working.` },
       { label: "HAND OFF", hands: "Packaging pushed out of frame, product held up, point toward the cart." },
     ],
   },
@@ -1370,7 +889,7 @@ const SHOT_PATTERNS = [
   {
     id: "detail-pass",
     name: "Close-up detail pass",
-    why: "Showing one verified feature clearly can be easier to follow than listing several at once.",
+    why: "One feature shown properly outperforms five features listed. Macro hands read as inspection, not sales.",
     platforms: ["TikTok Shop", "Pinterest", "YouTube Shorts", "Instagram Reels"],
     beats: (p, f) => [
       { label: "MACRO OPEN", hands: `Extreme close-up. Fingertips already turning ${p}.` },
@@ -1427,15 +946,25 @@ function pickPattern(platform, chosenId, spin) {
 }
 
 /* Turns a pattern into a timed, filmable shot list. Hands in frame, head out. */
-function buildShotList(pattern, product, feature, duration, spokenLines, platform) {
-  const marks = timelineMarks(duration);
-  const displayFeature = naturalFeatureText(feature) || "the selected verified detail";
-  const beats = pattern.beats(product, displayFeature);
-  const destination = platformDestination(platform).target;
-  const rows = beats.map((beat, index) => [
+function buildShotList(pattern, product, feature, duration, hook, cta) {
+  const total = Number(duration) || 15;
+  const marks = [
+    0,
+    Math.max(2, Math.round(total * 0.18)),
+    Math.round(total * 0.48),
+    Math.round(total * 0.76),
+    total,
+  ];
+  const say = [
+    hook,
+    `${product}. ${feature}.`,
+    "Narrate the demo as it happens. Verified features only.",
+    cta,
+  ];
+  const rows = pattern.beats(product, feature).map((beat, index) => [
     `${marks[index]}–${marks[index + 1]}s  ${beat.label}`,
-    `   HANDS: ${String(beat.hands || "").replace(/\bthe cart\b/gi, destination)}`,
-    `   SAY:   ${spokenLines[index] || ""}`,
+    `   HANDS: ${beat.hands}`,
+    `   SAY:   ${say[index]}`,
   ].join("\n"));
   return [
     `PATTERN: ${pattern.name} — ${pattern.why}`,
@@ -1638,19 +1167,7 @@ function analyzeVideo(file) {
         video.muted = true;
         video.playsInline = true;
         video.src = url;
-        // Some phones never answer at all for an unsupported file: no details,
-        // no error, nothing. Without this timer the checker span forever.
-        let settled = false;
-        const cleanUp = () => {
-            settled = true;
-            window.clearTimeout(watchdog);
-            try { video.removeAttribute("src"); video.load(); }
-            catch { }
-            URL.revokeObjectURL(url);
-        };
-        const finish = (value) => { if (settled) return; cleanUp(); resolve(value); };
-        const fail = (message) => { if (settled) return; cleanUp(); reject(new Error(message)); };
-        const watchdog = window.setTimeout(() => fail("This video took too long to open on this phone. It is usually an unsupported file type — export it again as MP4 (H.264) and try once more."), 25000);
+        const fail = (message) => { URL.revokeObjectURL(url); reject(new Error(message)); };
         video.onerror = () => fail("This file could not be read as a video on this device.");
         video.onloadedmetadata = async () => {
             const width = video.videoWidth;
@@ -1693,7 +1210,8 @@ function analyzeVideo(file) {
                 compared += 1;
             }
             const motionScore = compared ? motion / compared : null;
-            finish({
+            URL.revokeObjectURL(url);
+            resolve({
                 name: file.name,
                 sizeMb: file.size / (1024 * 1024),
                 width,
@@ -1725,28 +1243,25 @@ function videoFlags(info, mode) {
     if (info.width < 720) {
         add("review", `Width is only ${info.width} pixels.`, "Export at 1080 wide or better.");
     }
-    if (info.motionScore === null || info.motionScore === undefined) {
-        add("review", "Movement could not be measured on this device.", "This phone would not let the checker read the picture. Shape and text checks above are still valid — watch the clip back yourself and confirm the product keeps moving.");
+    if (info.motionScore !== null) {
+        if (info.motionScore < 2.5) {
+            add("block", "Almost no movement — this reads as a static slideshow.", "Static slideshows and silent unboxings no longer earn organic distribution. Re-shoot with your hands operating the product the whole way through.");
+        }
+        else if (info.motionScore < 8) {
+            add("review", "Only slight movement between frames.", "Keep the hands working for the full clip. A still section in the middle is where viewers drop.");
+        }
+        else {
+            add("ok", "Continuous motion confirmed — this reads as a hands-on demo.", "This matches your hands-in-frame, no-face format.");
+        }
+        add("review", "Faces cannot be detected automatically.", "Watch the clip back once and confirm no face, head, shoulders, or reflection appears in any frame.");
     }
-    else if (info.motionScore < 2.5) {
-        add("review", "Almost no movement — this may read as a static slideshow.", "Consider re-shooting with your hands operating the product so its verified use is clear.");
-    }
-    else if (info.motionScore < 8) {
-        add("review", "Only slight movement between frames.", "Keep the hands working for the full clip. A still section in the middle is where viewers drop.");
-    }
-    else {
-        add("ok", "Continuous motion confirmed — this reads as a hands-on demo.", "This matches your hands-in-frame, no-face format.");
-    }
-    // This reminder used to sit inside the motion block, so it vanished on
-    // exactly the phones that could not check the picture. It is now always shown.
-    add("review", "Faces cannot be detected automatically.", "Watch the clip back once and confirm no face, head, shoulders, or reflection appears in any frame.");
     return flags;
 }
 /* Common feature wordings, grouped by category. These are prompts, not facts —
    nothing here is true of a product until you have looked at the product and
    confirmed it. Deliberately plain: no performance, health, or quality claims. */
 const FEATURE_LIBRARY = {
-    "Electronics & Gadgets": ["Lightning-compatible connector", "Noise cancellation", "Charging case included", "Compact design", "Foldable design", "Carrying case included", "USB-C charging", "Multiple brightness settings", "Magnetic base", "Built-in LED indicator", "Cordless", "Rechargeable battery"],
+    "Electronics & Gadgets": ["USB-C charging", "Rechargeable battery", "Cordless", "Foldable design", "Built-in LED indicator", "Magnetic base", "Multiple brightness settings", "Carrying case included"],
     Kitchen: ["Dishwasher safe", "Stainless steel body", "Non-stick surface", "Stackable", "Cordless", "Removable lid", "Measurement markings", "Fits standard cabinets"],
     Home: ["Adhesive backing", "No tools needed to set up", "Foldable for storage", "Machine washable cover", "Non-slip base", "Comes in multiple sizes"],
     Outdoor: ["Water-resistant housing", "Foldable", "Carrying strap included", "Stake or clip mount", "Rechargeable battery", "Packs into its own bag"],
@@ -1783,7 +1298,6 @@ function DoneRiteCreatorOS() {
     const [pkg, setPkg] = useState(null);
     const [saved, setSaved] = useState([]);
     const [products, setProducts] = useState([]);
-    const [quickCreateHistory, setQuickCreateHistory] = useState([]);
     const [tasks, setTasks] = useState(DEFAULT_TASKS);
     const [moneyRows, setMoneyRows] = useState([]);
     const [moneyForm, setMoneyForm] = useState(EMPTY_MONEY);
@@ -1803,24 +1317,15 @@ function DoneRiteCreatorOS() {
     const [aiProduct, setAiProduct] = useState("");
     const [needsName, setNeedsName] = useState(false);
     const nameRef = useRef(null);
-    const productContextNameRef = useRef(null);
     const resultsRef = useRef(null);
     const clickerRef = useRef(null);
     const boomerRef = useRef(null); // lightning strike for feature chips
     const metalRef = useRef(null); // metal latch for checkboxes
-    const [sfxLibrary, setSfxLibrary] = useState([]);
-    const [selectedSfxIds, setSelectedSfxIds] = useState([]);
-    const [sfxStatus, setSfxStatus] = useState("");
-    const [playingSfxId, setPlayingSfxId] = useState("");
-    const sfxInputRef = useRef(null);
-    const sfxAudioRef = useRef(null);
-    const sfxUrlRef = useRef("");
     const [gapRows, setGapRows] = useState([]);
     const [gapDraft, setGapDraft] = useState(EMPTY_GAP);
     const [gapScanBusy, setGapScanBusy] = useState(false);
     const [gapScanProgress, setGapScanProgress] = useState(0);
     const [gapScanStatus, setGapScanStatus] = useState("");
-    const [gapScanResults, setGapScanResults] = useState([]);
     const gapImageRef = useRef(null);
     const [hookLog, setHookLog] = useState([]);
     const [hookSpin, setHookSpin] = useState(0);
@@ -1866,143 +1371,37 @@ function DoneRiteCreatorOS() {
     const importRef = useRef(null);
     useEffect(() => {
         try {
-            const candidates = [];
-            const addCandidate = (key, raw) => {
-                if (!raw)
-                    return;
-                try {
-                    const parsed = JSON.parse(raw);
-                    const value = parsed && typeof parsed === "object" && !Array.isArray(parsed)
-                        ? (parsed.state && typeof parsed.state === "object" ? parsed.state : parsed.data && typeof parsed.data === "object" ? parsed.data : parsed)
-                        : parsed;
-                    const data = Array.isArray(value) ? { quickCreateHistory: value } : value;
-                    if (!data || typeof data !== "object")
-                        return;
-                    const looksLikeCreatorData = ["saved", "savedPackages", "creations", "products", "productVault", "quickCreateHistory", "history", "gapRows", "contentGapRows", "contentGaps", "hookLog"].some((field) => Array.isArray(data[field]))
-                        || (data.form && typeof data.form === "object" && data.form.productName);
-                    if (looksLikeCreatorData)
-                        candidates.push({ key, data });
-                }
-                catch { }
-            };
-            addCandidate(STORAGE_KEY, localStorage.getItem(STORAGE_KEY));
-            addCandidate(PRODUCT_HISTORY_KEY, localStorage.getItem(PRODUCT_HISTORY_KEY));
-            for (let index = 0; index < localStorage.length; index += 1) {
-                const key = localStorage.key(index);
-                if (!key || key === STORAGE_KEY || key === PRODUCT_HISTORY_KEY)
-                    continue;
-                addCandidate(key, localStorage.getItem(key));
-            }
-            const primary = candidates.find((item) => item.key === STORAGE_KEY);
-            const sources = primary ? [primary, ...candidates.filter((item) => item !== primary)] : candidates;
-            const mergeRecords = (fields, keyFor) => {
-                const out = [];
-                const seen = new Set();
-                sources.forEach(({ data }) => {
-                    const records = fields.flatMap((field) => Array.isArray(data[field]) ? data[field] : []);
-                    records.forEach((item, index) => {
-                        if (!item || typeof item !== "object")
-                            return;
-                        const normalized = item.productName ? item : {
-                            ...item,
-                            productName: item.name || item.product || item.productTitle || (item.form && item.form.productName) || "",
-                            verifiedFeatures: item.verifiedFeatures || item.features || (item.form && item.form.verifiedFeatures) || "",
-                            category: item.category || (item.form && item.form.category),
-                        };
-                        const key = String(keyFor(normalized, index) || "").toLowerCase();
-                        if (!key || seen.has(key))
-                            return;
-                        seen.add(key);
-                        out.push(normalized);
-                    });
-                });
-                return out;
-            };
-            const savedRecovered = mergeRecords(["saved", "savedPackages", "creations"], (item, index) => item.id || `${item.productName || ""}|${item.createdAt || index}`);
-            const productsRecovered = mergeRecords(["products", "productVault", "productRows"], (item, index) => item.productName || item.id || index);
-            const historyRecovered = mergeRecords(["quickCreateHistory", "history", "productHistory"], (item, index) => item.productName || item.id || index);
-            const gapsRecovered = mergeRecords(["gapRows", "contentGapRows", "contentGaps"], (item, index) => item.phrase || item.searchPhrase || item.id || index)
-                .map((item) => item.phrase ? item : { ...item, phrase: item.searchPhrase || item.query || item.text || "" });
-            const hooksRecovered = mergeRecords(["hookLog"], (item, index) => item.id || `${item.text || ""}|${index}`);
-            const inferredProducts = [...productsRecovered];
-            [...savedRecovered, ...historyRecovered].forEach((item) => {
-                const name = String(item.productName || "").trim();
-                if (!name || inferredProducts.some((product) => String(product.productName || "").trim().toLowerCase() === name.toLowerCase())) return;
-                inferredProducts.push({ id: item.id || uid(), productName: name, category: item.category || "Electronics & Gadgets", verifiedFeatures: item.verifiedFeatures || "", acquisition: item.acquisition || "none", sampleReceived: !!item.sampleReceived, status: "Recovered", updatedAt: item.updatedAt || item.createdAt || new Date().toISOString() });
-            });
-            const chosen = sources.map((item) => item.data).find((data) =>
-                (data.form && data.form.productName)
-                || (Array.isArray(data.products) && data.products.length)
-                || (Array.isArray(data.saved) && data.saved.length)
-                || (Array.isArray(data.quickCreateHistory) && data.quickCreateHistory.length)
-            ) || (sources[0] && sources[0].data);
-            if (sources.length) {
-                setSaved(savedRecovered);
-                setProducts(inferredProducts);
-                setQuickCreateHistory(historyRecovered);
-                if (chosen && chosen.form && typeof chosen.form === "object")
-                    setForm(normalizeRestoredForm(chosen.form));
-                setTasks(chosen && Array.isArray(chosen.tasks) ? chosen.tasks : DEFAULT_TASKS);
-                setMoneyRows(chosen && Array.isArray(chosen.moneyRows) ? chosen.moneyRows : []);
-                const lastTab = (() => { try { return localStorage.getItem(LAST_TAB_KEY); } catch { return null; } })()
-                    || (chosen && chosen.lastTab);
-                if (lastTab)
-                    setTab(lastTab);
-                if (chosen && typeof chosen.clickSound === "boolean")
-                    setClickSound(chosen.clickSound);
-                setHookLog(hooksRecovered);
-                setGapRows(sanitizeContentGapRows(gapsRecovered));
-                if (chosen && typeof chosen.hookSpin === "number")
-                    setHookSpin(chosen.hookSpin);
-                if (chosen && Array.isArray(chosen.sfxLibrary))
-                    setSfxLibrary(chosen.sfxLibrary);
-                if (chosen && Array.isArray(chosen.selectedSfxIds))
-                    setSelectedSfxIds(chosen.selectedSfxIds);
-                if (candidates.some((item) => item.key !== STORAGE_KEY)
-                    && (inferredProducts.length || savedRecovered.length || historyRecovered.length || gapsRecovered.length))
-                    setImportStatus("Previous Creator OS product history was found and recovered.");
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const data = JSON.parse(raw);
+                setSaved(Array.isArray(data.saved) ? data.saved : []);
+                setProducts(Array.isArray(data.products) ? data.products : []);
+                setTasks(Array.isArray(data.tasks) ? data.tasks : DEFAULT_TASKS);
+                setMoneyRows(Array.isArray(data.moneyRows) ? data.moneyRows : []);
+                if (data.lastTab)
+                    setTab(data.lastTab);
+                if (typeof data.clickSound === "boolean")
+                    setClickSound(data.clickSound);
+                if (Array.isArray(data.hookLog))
+                    setHookLog(data.hookLog);
+                if (Array.isArray(data.gapRows))
+                    setGapRows(data.gapRows);
+                if (typeof data.hookSpin === "number")
+                    setHookSpin(data.hookSpin);
             }
         }
         catch {
-            setImportStatus("Saved data could not be read. Open Settings and use Restore Backup if you exported one.");
+            setImportStatus("Saved data could not be read. A fresh local workspace was opened.");
         }
         finally {
             setReady(true);
         }
     }, []);
     useEffect(() => {
-        if (ready && productContextNameRef.current === null)
-            productContextNameRef.current = String(form.productName || "").trim();
-    }, [ready]);
-    useEffect(() => {
         if (!ready)
             return;
         try {
-            const historyMirror = {
-                version: 1,
-                updatedAt: new Date().toISOString(),
-                products: products.map((item) => ({
-                    id: item.id,
-                    productName: item.productName,
-                    category: item.category,
-                    verifiedFeatures: item.verifiedFeatures,
-                    acquisition: item.acquisition,
-                    sampleReceived: item.sampleReceived,
-                    updatedAt: item.updatedAt,
-                })),
-                quickCreateHistory,
-                form: {
-                    productName: form.productName,
-                    category: form.category,
-                    verifiedFeatures: form.verifiedFeatures,
-                    viewerOutcome: form.viewerOutcome,
-                    acquisition: form.acquisition,
-                    sampleReceived: form.sampleReceived,
-                    updatedAt: new Date().toISOString(),
-                },
-            };
-            localStorage.setItem(PRODUCT_HISTORY_KEY, JSON.stringify(historyMirror));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, quickCreateHistory, form: normalizeRestoredForm(form), tasks, moneyRows, gapRows: sanitizeContentGapRows(gapRows), sfxLibrary, selectedSfxIds, lastTab: localStorage.getItem(LAST_TAB_KEY) || tab, clickSound, hookLog, hookSpin, version: 1 }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ saved, products, tasks, moneyRows, gapRows, lastTab: tab, clickSound, hookLog, hookSpin, version: 1 }));
             setSaveBlocked("");
         }
         catch (error) {
@@ -2011,16 +1410,7 @@ function DoneRiteCreatorOS() {
                 ? "This device is out of storage space, so new changes are not being saved. Go to Settings and download a backup now, then delete some saved packages."
                 : "This browser is not allowing anything to be saved on this device. Your work is still on screen, but it will disappear if you close this page. Go to Settings and download a backup now. Private browsing mode is the usual cause.");
         }
-    }, [ready, saved, products, quickCreateHistory, form, tasks, moneyRows, gapRows, sfxLibrary, selectedSfxIds, clickSound, hookLog, hookSpin]);
-    // Which tab you were on is one short word. It used to live in the big
-    // save, so every single tab tap rewrote every saved package on the phone.
-    // It now has its own tiny slot and the big save leaves it alone.
-    useEffect(() => {
-        if (!ready)
-            return;
-        try { localStorage.setItem(LAST_TAB_KEY, tab); }
-        catch { }
-    }, [ready, tab]);
+    }, [ready, saved, products, tasks, moneyRows, gapRows, tab, clickSound, hookLog, hookSpin]);
     useEffect(() => {
         if (!copyStatus)
             return undefined;
@@ -2039,9 +1429,8 @@ function DoneRiteCreatorOS() {
             return;
         setSaved((current) => [pkg, ...current.filter((item) => item.id !== pkg.id)]);
     }, [ready, pkg]);
-    // Quick Create remembers names even when the user has not generated a
-    // package yet. Saved packages go first so a product's most recent target
-    // search phrase is restored when the same name also exists in the vault.
+    // Anything you've ever typed a product name into counts as history —
+    // saved product records first, then every package generated in Quick Create.
     const productHistory = useMemo(() => {
         const list = [];
         const seen = new Set();
@@ -2055,12 +1444,10 @@ function DoneRiteCreatorOS() {
             seen.add(key);
             list.push({ key, name: clean, source });
         };
-        saved.forEach((item) => push(item.productName, item));
         products.forEach((item) => push(item.productName, item));
-        quickCreateHistory.forEach((item) => push(item.productName, item));
-        push(form.productName, form);
+        saved.forEach((item) => push(item.productName, item));
         return list;
-    }, [products, saved, quickCreateHistory, form]);
+    }, [products, saved]);
     const featureHistory = useMemo(() => {
         const seen = new Set();
         const out = [];
@@ -2073,32 +1460,6 @@ function DoneRiteCreatorOS() {
         }));
         return out.slice(0, 12);
     }, [products]);
-    const buildTargetPhraseChoices = (draft) => {
-        const out = [];
-        const seen = new Set();
-        const push = (value) => {
-            const phrase = String(value || "").trim();
-            const key = phrase.toLowerCase();
-            if (!phrase || seen.has(key))
-                return;
-            seen.add(key);
-            out.push(phrase);
-        };
-        const productName = String(draft.productName || "").trim();
-        const stopWords = new Set(["and", "the", "for", "with", "this", "that", "from", "your"]);
-        const productWords = new Set(`${productName} ${draft.verifiedFeatures || ""}`.toLowerCase().match(/[a-z0-9]+/g) || []);
-        const rankedGaps = sanitizeContentGapRows(gapRows)
-            .filter((item) => Number(item.searches || 0) >= MIN_CONTENT_GAP_SEARCHES)
-            .map((item) => {
-                const words = String(item.phrase || "").toLowerCase().match(/[a-z0-9]+/g) || [];
-                const hits = words.filter((word) => word.length > 2 && !stopWords.has(word) && productWords.has(word)).length;
-                return { phrase: item.phrase, searches: Number(item.searches || 0), score: hits + (item.category === draft.category ? 0.25 : 0) };
-            })
-            .sort((a, b) => b.score - a.score || Number(b.searches || 0) - Number(a.searches || 0));
-        rankedGaps.forEach((item) => push(item.phrase));
-        return out;
-    };
-    const targetPhraseChoices = useMemo(() => buildTargetPhraseChoices(form), [form.productName, form.category, form.verifiedFeatures, form.funnel, gapRows]);
     const addFeature = (text) => {
         setForm((current) => {
             const lines = String(current.verifiedFeatures || "").split(/\n/).map((l) => l.trim()).filter(Boolean);
@@ -2108,10 +1469,10 @@ function DoneRiteCreatorOS() {
         });
     };
     const hookChoices = useMemo(() => {
-        const productName = normalizeProductName(form.productName) || "this product";
-        const features = rankVerifiedFeatures(splitVerifiedFeatures(safeFeatureText(form.verifiedFeatures)));
-        return hookOptions(productName, features, form.platform, safeFeatureText(form.viewerOutcome));
-    }, [form.productName, form.verifiedFeatures, form.viewerOutcome, form.platform]);
+        const productName = form.productName.trim() || "this product";
+        const featureLine = String(form.verifiedFeatures || "").split(/\n/).map((l) => l.trim()).filter(Boolean)[0] || "a simpler everyday routine";
+        return hookOptions(productName, featureLine, form.platform);
+    }, [form.productName, form.verifiedFeatures, form.platform]);
     const ctaChoices = useMemo(() => ctaOptions(form.platform), [form.platform]);
     const patternChoices = useMemo(() => patternOptions(form.platform), [form.platform]);
     const previewPattern = useMemo(() => pickPattern(form.platform, form.chosenPattern, hookSpin + 1), [form.platform, form.chosenPattern, hookSpin]);
@@ -2119,90 +1480,6 @@ function DoneRiteCreatorOS() {
     const videoTextResults = useMemo(() => scanCompliance(videoText), [videoText]);
     const videoShapeFlags = useMemo(() => (videoInfo ? videoFlags(videoInfo, videoMode) : []), [videoInfo, videoMode]);
     const aiResults = useMemo(() => scanCompliance(aiDraft), [aiDraft]);
-    const uploadSfxFiles = async (files) => {
-        const picked = Array.from(files || []).filter((file) => file && (String(file.type || "").startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(file.name || "")));
-        if (!picked.length) {
-            setSfxStatus("Choose one or more audio files.");
-            return;
-        }
-        setSfxStatus(`Saving ${picked.length} sound effect${picked.length === 1 ? "" : "s"} on this device…`);
-        const added = [];
-        const failed = [];
-        for (const file of picked) {
-            const id = uid();
-            try {
-                await putSfxBlob(id, file);
-                added.push({ id, name: file.name, type: file.type || "audio", size: file.size || 0, cue: guessSfxCue(file.name), addedAt: new Date().toISOString() });
-            }
-            catch {
-                failed.push(file.name);
-            }
-        }
-        if (added.length) {
-            setSfxLibrary((current) => [...current, ...added]);
-            setSelectedSfxIds((current) => [...new Set([...current, ...added.map((item) => item.id)])]);
-        }
-        setSfxStatus(failed.length
-            ? `${added.length} saved; ${failed.length} could not be saved. Try those files one at a time.`
-            : `${added.length} sound effect${added.length === 1 ? "" : "s"} saved and selected.`);
-        if (sfxInputRef.current)
-            sfxInputRef.current.value = "";
-    };
-    const previewSfx = async (item) => {
-        if (sfxAudioRef.current) {
-            try { sfxAudioRef.current.pause(); }
-            catch { }
-            sfxAudioRef.current = null;
-        }
-        if (sfxUrlRef.current) {
-            URL.revokeObjectURL(sfxUrlRef.current);
-            sfxUrlRef.current = "";
-        }
-        if (playingSfxId === item.id) {
-            setPlayingSfxId("");
-            return;
-        }
-        try {
-            const blob = await getSfxBlob(item.id);
-            if (!blob)
-                throw new Error("missing");
-            const url = URL.createObjectURL(blob);
-            const audio = new Audio(url);
-            sfxUrlRef.current = url;
-            sfxAudioRef.current = audio;
-            setPlayingSfxId(item.id);
-            audio.onended = () => {
-                setPlayingSfxId("");
-                URL.revokeObjectURL(url);
-                if (sfxUrlRef.current === url)
-                    sfxUrlRef.current = "";
-            };
-            await audio.play();
-        }
-        catch {
-            setPlayingSfxId("");
-            setSfxStatus(`${item.name} is not available on this device. Re-upload the file.`);
-        }
-    };
-    const deleteSfx = async (item) => {
-        if (!window.confirm(`Remove ${item.name} from the sound library on this device?`))
-            return;
-        if (playingSfxId === item.id)
-            await previewSfx(item);
-        try { await removeSfxBlob(item.id); }
-        catch { }
-        setSfxLibrary((current) => current.filter((sound) => sound.id !== item.id));
-        setSelectedSfxIds((current) => current.filter((id) => id !== item.id));
-        setSfxStatus(`${item.name} removed.`);
-    };
-    useEffect(() => () => {
-        if (sfxAudioRef.current) {
-            try { sfxAudioRef.current.pause(); }
-            catch { }
-        }
-        if (sfxUrlRef.current)
-            URL.revokeObjectURL(sfxUrlRef.current);
-    }, []);
     const pickVideo = async (file) => {
         if (!file)
             return;
@@ -2275,57 +1552,6 @@ function DoneRiteCreatorOS() {
     const completedTasks = tasks.filter((task) => task.done).length;
     const sampleCount = products.filter((product) => product.acquisition === "sample" || product.acquisition === "purchased" || product.sampleReceived).length;
     const setValue = (key, value) => setForm((current) => ({ ...current, [key]: value }));
-    const clearProductSpecificFields = (current, productName = "") => ({
-        ...current,
-        productName,
-        verifiedFeatures: "",
-        viewerOutcome: "",
-        searchPhrase: "",
-        chosenHook: "",
-        chosenCta: "",
-        chosenPattern: "",
-        batteryPowered: false,
-    });
-    const startNewProduct = () => {
-        productContextNameRef.current = "";
-        setForm((current) => clearProductSpecificFields(current));
-        setPkg(null);
-        setNeedsName(false);
-        setCopyStatus("Ready for a new product. Previous verified features were cleared.");
-        window.setTimeout(() => { var _a; return (_a = nameRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 0);
-    };
-    const changeProductName = (value) => {
-        const nextName = String(value || "");
-        const contextName = String(productContextNameRef.current === null ? form.productName : productContextNameRef.current).trim();
-        const clearlyNew = !nextName.trim()
-            || (contextName && nextName.trim().length >= 3 && !namesLookLikeSameProduct(contextName, nextName));
-        setNeedsName(!nextName.trim());
-        if (clearlyNew) {
-            productContextNameRef.current = nextName.trim();
-            if (form.verifiedFeatures || form.searchPhrase)
-                setCopyStatus("New product detected. Previous verified features and search phrase were cleared.");
-        }
-        setForm((current) => clearlyNew
-            ? clearProductSpecificFields(current, nextName)
-            : { ...current, productName: nextName });
-    };
-    const rememberQuickCreateProduct = (draft = form) => {
-        const name = String(draft.productName || "").trim();
-        if (!name)
-            return;
-        productContextNameRef.current = name;
-        const record = {
-            productName: name,
-            category: draft.category,
-            verifiedFeatures: safeFeatureText(draft.verifiedFeatures),
-            viewerOutcome: safeFeatureText(draft.viewerOutcome),
-            searchPhrase: String(draft.searchPhrase || "").trim(),
-            acquisition: draft.acquisition,
-            sampleReceived: draft.acquisition === "sample",
-            updatedAt: new Date().toISOString(),
-        };
-        setQuickCreateHistory((current) => [record, ...current.filter((item) => String(item.productName || "").trim().toLowerCase() !== name.toLowerCase())]);
-    };
     const notifyCopy = async (text, label) => {
         const ok = await copyText(text);
         setCopyStatus(ok ? `${label} copied.` : "Copy was blocked. Press and hold the text, then choose Select All and Copy.");
@@ -2340,63 +1566,27 @@ function DoneRiteCreatorOS() {
             return;
         }
         setNeedsName(false);
-        const correctedForm = { ...form, productName: normalizeProductName(form.productName) };
-        const effectiveForm = correctedForm.searchPhrase.trim()
-            ? correctedForm
-            : { ...correctedForm, searchPhrase: buildTargetPhraseChoices(correctedForm)[0] || "" };
-        productContextNameRef.current = effectiveForm.productName.trim();
-        if (effectiveForm.searchPhrase !== form.searchPhrase || effectiveForm.productName !== form.productName)
-            setForm(effectiveForm);
-        rememberQuickCreateProduct(effectiveForm);
         // Rotate the hook angles and hand the generator any proven winners.
         const spin = hookSpin + 1;
         setHookSpin(spin);
         const winners = hookLog.filter((entry) => entry.winner);
-        const sfxSelections = sfxLibrary.filter((sound) => selectedSfxIds.includes(sound.id));
-        const next = makePackage({ ...effectiveForm, sfxSelections, hookWinners: winners, hookSpin: spin });
+        const next = makePackage({ ...form, hookWinners: winners, hookSpin: spin });
         setPkg(next);
-        try {
-            localStorage.setItem(VOICEOVER_QUEUE_KEY, JSON.stringify(makeVoiceoverQueue(next)));
-        }
-        catch { }
         window.setTimeout(() => { var _a; return (_a = resultsRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60);
         setProducts((current) => {
-            const existing = current.find((item) => item.productName.toLowerCase() === effectiveForm.productName.trim().toLowerCase());
+            const existing = current.find((item) => item.productName.toLowerCase() === form.productName.trim().toLowerCase());
             const record = {
                 id: (existing === null || existing === void 0 ? void 0 : existing.id) || uid(),
-                productName: effectiveForm.productName.trim(),
-                category: effectiveForm.category,
-                verifiedFeatures: safeFeatureText(effectiveForm.verifiedFeatures),
-                searchPhrase: effectiveForm.searchPhrase,
-                sampleReceived: effectiveForm.acquisition === "sample",
-                acquisition: effectiveForm.acquisition,
-                status: effectiveForm.acquisition === "none" ? "Waiting for product" : "Ready to create",
+                productName: form.productName.trim(),
+                category: form.category,
+                verifiedFeatures: safeFeatureText(form.verifiedFeatures),
+                sampleReceived: form.acquisition === "sample",
+                acquisition: form.acquisition,
+                status: form.acquisition === "none" ? "Waiting for product" : "Ready to create",
                 updatedAt: new Date().toISOString(),
             };
             return [record, ...current.filter((item) => item.id !== (existing === null || existing === void 0 ? void 0 : existing.id))];
         });
-    };
-    const selectGeneratedHook = (hook) => {
-        if (!pkg || !hook)
-            return;
-        const hookOptions = [...pkg.hooks];
-        const chosenForm = { ...pkg.form, chosenHook: hook };
-        const rebuilt = makePackage(chosenForm);
-        const next = {
-            ...rebuilt,
-            id: pkg.id,
-            createdAt: pkg.createdAt,
-            hooks: hookOptions,
-            selectedHook: hook,
-        };
-        setForm((current) => ({ ...current, chosenHook: hook }));
-        setPkg(next);
-        try {
-            localStorage.setItem(VOICEOVER_QUEUE_KEY, JSON.stringify(makeVoiceoverQueue(next)));
-        }
-        catch { }
-        const number = hookOptions.findIndex((item) => item === hook) + 1;
-        setCopyStatus(`Hook ${number} selected. Script and voiceover queue updated.`);
     };
     const savePackage = () => {
         if (!pkg)
@@ -2427,65 +1617,60 @@ function DoneRiteCreatorOS() {
         setMoneyRows((current) => [{ ...moneyForm, id: uid(), amount }, ...current]);
         setMoneyForm((current) => ({ ...EMPTY_MONEY, type: current.type, platform: current.platform }));
     };
-    const scanContentGapImages = async (fileList) => {
-        const files = Array.from(fileList || []).filter((file) => String(file && file.type || "").startsWith("image/"));
-        if (!files.length) {
-            setGapScanStatus("Choose one or more screenshots or photos.");
+    const scanContentGapImage = async (file) => {
+        if (!file)
+            return;
+        if (!String(file.type || "").startsWith("image/")) {
+            setGapScanStatus("Choose a screenshot or photo file.");
             return;
         }
         setGapScanBusy(true);
-        setGapScanResults([]);
         setGapScanProgress(0.02);
-        setGapScanStatus(`Preparing ${files.length} screenshot${files.length === 1 ? "" : "s"}…`);
+        setGapScanStatus("Preparing screenshot…");
         let worker = null;
-        let currentIndex = 0;
-        let failedImages = 0;
-        const detected = [];
-        const detectedKeys = new Set();
         try {
             const Tesseract = await loadGapOcrLibrary();
+            setGapScanStatus("Reading the words in the screenshot…");
             worker = await Tesseract.createWorker("eng", 1, {
                 logger: (message) => {
                     if (message.status === "recognizing text") {
-                        const imageProgress = Number(message.progress || 0);
-                        const overall = (currentIndex + imageProgress) / files.length;
-                        setGapScanProgress(0.05 + overall * 0.93);
-                        setGapScanStatus(`Reading screenshot ${currentIndex + 1} of ${files.length}… ${Math.round(imageProgress * 100)}%`);
+                        const progress = Number(message.progress || 0);
+                        setGapScanProgress(0.1 + progress * 0.88);
+                        setGapScanStatus(`Reading screenshot… ${Math.round(progress * 100)}%`);
                     }
                 },
             });
-            for (currentIndex = 0; currentIndex < files.length; currentIndex += 1) {
-                setGapScanStatus(`Reading screenshot ${currentIndex + 1} of ${files.length}…`);
-                try {
-                    const result = await worker.recognize(files[currentIndex]);
-                    const ocrText = String((result && result.data && result.data.text) || "").trim();
-                    contentGapPhrasesFromText(ocrText).forEach((item) => {
-                        const key = item.phrase.toLowerCase();
-                        if (detectedKeys.has(key))
-                            return;
-                        detectedKeys.add(key);
-                        detected.push(item);
-                    });
-                }
-                catch {
-                    failedImages += 1;
-                }
-                setGapScanProgress(0.05 + ((currentIndex + 1) / files.length) * 0.93);
-            }
-            if (detected.length) {
-                setGapScanResults(detected.map((item) => ({ ...item, phrase: cleanContentGapPhrase(item.phrase), id: uid() })));
-                const failureNote = failedImages ? ` ${failedImages} image${failedImages === 1 ? "" : "s"} could not be read.` : "";
-                setGapScanStatus(`${files.length} screenshot${files.length === 1 ? "" : "s"} processed. ${detected.length} qualified phrase${detected.length === 1 ? "" : "s"} found.${failureNote} Check every word below before saving. All images were discarded.`);
-                setCopyStatus("Screenshot reading finished. Review the detected wording before saving.");
+            const result = await worker.recognize(file);
+            const ocrText = String((result && result.data && result.data.text) || "").trim();
+            const phrases = contentGapPhrasesFromText(ocrText);
+            const createdAt = new Date().toISOString();
+            if (phrases.length) {
+                setGapRows((current) => {
+                    const existing = new Set(current.map((row) => String(row.phrase || "").trim().toLowerCase()));
+                    const additions = phrases
+                        .filter((phrase) => !existing.has(phrase.toLowerCase()))
+                        .map((phrase) => ({
+                            phrase,
+                            category: gapDraft.category,
+                            gapLevel: gapDraft.gapLevel,
+                            note: "Imported from screenshot — review spelling before filming",
+                            id: uid(),
+                            status: "queued",
+                            source: "screenshot import",
+                            createdAt,
+                        }));
+                    return [...additions, ...current];
+                });
+                setGapScanStatus(`${phrases.length} phrase${phrases.length === 1 ? "" : "s"} read and saved in the queue. The image was discarded. Review the spelling, then remove any line that is not a real Content Gap phrase.`);
+                setCopyStatus("Detected Content Gap phrases saved. Image discarded.");
             }
             else {
-                const failureNote = failedImages ? ` ${failedImages} image${failedImages === 1 ? "" : "s"} could not be read.` : "";
-                setGapScanStatus(`No trustworthy 1,000+ search phrases were found.${failureNote} Try tighter screenshots that show each phrase and its search count together. Nothing was saved, and all images were discarded.`);
+                setGapScanStatus("No clear phrases were found, and the image was discarded. Try a tighter screenshot with larger, sharper text.");
             }
             setGapScanProgress(1);
         }
         catch (error) {
-            setGapScanStatus((error && error.message) || "The screenshots could not be read. Try sharper images while connected to the internet.");
+            setGapScanStatus((error && error.message) || "The screenshot could not be read. Try a sharper image while connected to the internet.");
             setGapScanProgress(0);
         }
         finally {
@@ -2498,69 +1683,16 @@ function DoneRiteCreatorOS() {
                 gapImageRef.current.value = "";
         }
     };
-    const saveReviewedGapResults = () => {
-        const reviewed = gapScanResults
-            .map((item) => ({ ...item, phrase: cleanContentGapPhrase(item.phrase) }))
-            .filter((item) => item.searches >= MIN_CONTENT_GAP_SEARCHES && !isContentGapPhraseJunk(item.phrase));
-        if (!reviewed.length) {
-            setCopyStatus("No valid reviewed phrases are ready to save.");
-            return;
-        }
-        const createdAt = new Date().toISOString();
-        setGapRows((current) => sanitizeContentGapRows([
-            ...reviewed.map((item) => ({
-                phrase: item.phrase,
-                searches: item.searches,
-                searchVolumeLabel: item.searches >= 1000000 ? `${Number((item.searches / 1000000).toFixed(1))}M` : `${Number((item.searches / 1000).toFixed(1))}K`,
-                rawMetric: item.rawMetric,
-                category: gapDraft.category,
-                gapLevel: gapDraft.gapLevel,
-                note: `Reviewed screenshot import · ${item.searches.toLocaleString()} searches`,
-                id: uid(),
-                status: "queued",
-                source: "qualified screenshot import",
-                createdAt,
-            })),
-            ...current,
-        ]));
-        setGapScanResults([]);
-        setGapScanStatus(`${reviewed.length} reviewed phrase${reviewed.length === 1 ? "" : "s"} saved to Content Gap.`);
-        setCopyStatus("Reviewed Content Gap phrases saved.");
-    };
-    const backupPayload = () => ({ version: 1, exportedAt: new Date().toISOString(), appBuild: APP_BUILD, saved, products, quickCreateHistory, form: normalizeRestoredForm(form), tasks, moneyRows, gapRows: sanitizeContentGapRows(gapRows), sfxLibrary, selectedSfxIds, hookLog, hookSpin, lastTab: tab, clickSound });
     const exportBackup = () => {
-        try {
-            const text = JSON.stringify(backupPayload(), null, 2);
-            const blob = new Blob([text], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `done-rite-backup-${new Date().toISOString().slice(0, 10)}.json`;
-            link.rel = "noopener";
-            // Safari on iPhone ignores a link that is not in the page, and
-            // cancels the download if the address is thrown away straight
-            // after the tap. So: put it in the page, tap it, clean up later.
-            link.style.position = "fixed";
-            link.style.opacity = "0";
-            document.body.appendChild(link);
-            link.click();
-            window.setTimeout(() => {
-                try { document.body.removeChild(link); }
-                catch { }
-                URL.revokeObjectURL(url);
-            }, 4000);
-            setImportStatus("Backup downloaded. Check the Files app or your Downloads. If nothing arrived, use Copy Backup Text instead.");
-        }
-        catch {
-            setImportStatus("The download would not start on this device. Use Copy Backup Text instead and paste it somewhere safe.");
-        }
-    };
-    // Guaranteed way off the phone when a Home Screen app blocks downloads.
-    const copyBackupText = async () => {
-        const ok = await copyText(JSON.stringify(backupPayload(), null, 2));
-        setImportStatus(ok
-            ? "Backup copied. Paste it into Notes, an email to yourself, or a file in Google Drive and keep it somewhere you can find it."
-            : "Copy was blocked. Try Export Backup instead.");
+        const backup = { version: 1, exportedAt: new Date().toISOString(), saved, products, tasks, moneyRows, gapRows, hookLog };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `done-rite-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        setImportStatus("Backup downloaded.");
     };
     const importBackup = async (file) => {
         if (!file)
@@ -2571,26 +1703,9 @@ function DoneRiteCreatorOS() {
                 throw new Error("Unsupported backup version");
             setSaved(Array.isArray(data.saved) ? data.saved : []);
             setProducts(Array.isArray(data.products) ? data.products : []);
-            setQuickCreateHistory(Array.isArray(data.quickCreateHistory) ? data.quickCreateHistory : []);
-            if (data.form && typeof data.form === "object")
-                setForm(normalizeRestoredForm(data.form));
             setTasks(Array.isArray(data.tasks) ? data.tasks : DEFAULT_TASKS);
             setMoneyRows(Array.isArray(data.moneyRows) ? data.moneyRows : []);
-            setGapRows(sanitizeContentGapRows(data.gapRows));
-            if (Array.isArray(data.sfxLibrary)) {
-                const available = [];
-                for (const sound of data.sfxLibrary) {
-                    try {
-                        if (sound && sound.id && await getSfxBlob(sound.id))
-                            available.push(sound);
-                    }
-                    catch { }
-                }
-                setSfxLibrary(available);
-                setSelectedSfxIds((Array.isArray(data.selectedSfxIds) ? data.selectedSfxIds : []).filter((id) => available.some((sound) => sound.id === id)));
-                if (available.length !== data.sfxLibrary.length)
-                    setSfxStatus("Sound names were restored, but files that are not on this device must be uploaded again.");
-            }
+            setGapRows(Array.isArray(data.gapRows) ? data.gapRows : []);
             if (Array.isArray(data.hookLog))
                 setHookLog(data.hookLog);
             setImportStatus("Backup restored successfully.");
@@ -2600,10 +1715,9 @@ function DoneRiteCreatorOS() {
         }
     };
     const sections = pkg ? [
+        ["Hooks", pkg.hooks.map((hook, index) => `${index + 1}. ${hook}`).join("\n")],
         ...(pkg.shotList ? [["Shot list — hands in frame, no face", pkg.shotList]] : []),
-        ...(pkg.sfxPlan ? [["Sound effects edit plan", pkg.sfxPlan]] : []),
         ["Voiceover", pkg.voiceover],
-        ...(pkg.voiceovers && pkg.voiceovers.length ? [["Voiceover recording queue", pkg.voiceovers.map((item) => `${item.label} · ${item.start}–${item.end}s · ${item.direction}\n${item.text}`).join("\n\n")]] : []),
         ["On-screen text", pkg.onScreenText],
         ["Caption", pkg.caption],
         ["Hashtags", pkg.hashtags],
@@ -2625,7 +1739,6 @@ function DoneRiteCreatorOS() {
         ["products", "Products"],
         ["saved", "Saved"],
         ["money", "Money"],
-        ["tools", "Creator Tools"],
         ["settings", "Settings"],
     ];
     return (React.createElement("div", { className: "dr-shell" },
@@ -2677,54 +1790,34 @@ function DoneRiteCreatorOS() {
                     React.createElement("div", { style: { height: 14 } }),
                     productHistory.length > 0 && (React.createElement(Field, { label: "Load a previous product", help: `${productHistory.length} product${productHistory.length === 1 ? "" : "s"} you have worked on before.` },
                         React.createElement("select", { className: "dr-select", value: "", onChange: (event) => {
-                                if (event.target.value === "__new__") {
-                                    startNewProduct();
-                                    return;
-                                }
                                 const entry = productHistory.find((item) => item.key === event.target.value);
                                 if (!entry)
                                     return;
                                 const found = entry.source;
-                                productContextNameRef.current = entry.name;
-                                setForm((current) => {
-                                    const loaded = {
-                                        ...current,
-                                        productName: entry.name,
-                                        category: found.category || current.category,
-                                        verifiedFeatures: String(found.verifiedFeatures || ""),
-                                        viewerOutcome: String(found.viewerOutcome || ""),
-                                        searchPhrase: "",
-                                        acquisition: found.acquisition || (found.sampleReceived ? "sample" : current.acquisition),
-                                    };
-                                    return { ...loaded, searchPhrase: buildTargetPhraseChoices(loaded)[0] || "" };
-                                });
+                                setForm((current) => ({
+                                    ...current,
+                                    productName: entry.name,
+                                    category: found.category || current.category,
+                                    verifiedFeatures: found.verifiedFeatures || current.verifiedFeatures,
+                                    acquisition: found.acquisition || (found.sampleReceived ? "sample" : current.acquisition),
+                                }));
                                 setCopyStatus(`Loaded ${entry.name}.`);
                             } },
-                            React.createElement("option", { value: "" }, "Choose a saved product"),
-                            React.createElement("option", { value: "__new__" }, "New product — clear old features"),
+                            React.createElement("option", { value: "" }, "New product"),
                             productHistory.map((item) => (React.createElement("option", { key: item.key, value: item.key }, item.name)))))),
                     React.createElement(Field, { label: "Product name" },
-                        React.createElement("input", { ref: nameRef, className: "dr-input", style: needsName ? { borderColor: COLORS.red } : undefined, value: form.productName, onChange: (event) => changeProductName(event.target.value), onBlur: () => rememberQuickCreateProduct(), placeholder: "Example: rechargeable work light" })),
+                        React.createElement("input", { ref: nameRef, className: "dr-input", style: needsName ? { borderColor: COLORS.red } : undefined, value: form.productName, onChange: (event) => { setValue("productName", event.target.value); if (event.target.value.trim())
+                                setNeedsName(false); }, placeholder: "Example: rechargeable work light" })),
                     needsName && (React.createElement("div", { className: "dr-savewarn", role: "alert" },
                         React.createElement("strong", null, "Nothing was generated."),
                         React.createElement("span", null, "Type the product name in the box above, then press Generate Content Package again."))),
                     React.createElement(Field, { label: "Category" },
                         React.createElement("select", { className: "dr-select", value: form.category, onChange: (event) => setValue("category", event.target.value) }, CATEGORIES.map((category) => React.createElement("option", { key: category }, category)))),
-                    React.createElement(Field, { label: "Choose a target search phrase", help: "Only phrases saved in Content Gap appear here. The closest match for the selected product is listed first." },
-                        React.createElement("select", { className: "dr-select", value: "", onChange: (event) => {
-                                if (event.target.value)
-                                    setValue("searchPhrase", event.target.value);
-                            } },
-                            React.createElement("option", { value: "" }, targetPhraseChoices.length ? "Select a Content Gap phrase" : "Save a Content Gap phrase first"),
-                            targetPhraseChoices.length > 0 && React.createElement("optgroup", { label: "Saved Content Gap phrases" },
-                                targetPhraseChoices.map((phrase, index) => React.createElement("option", { key: `gap-${phrase}`, value: phrase }, index === 0 ? `Best match: ${phrase}` : phrase))))),
-                    React.createElement(Field, { label: "Target search phrase", help: "The selected phrase appears here. You can also type or edit your own phrase." },
-                        React.createElement("input", { className: "dr-input", value: form.searchPhrase, onChange: (event) => setValue("searchPhrase", event.target.value), placeholder: "Choose from the list above or type your own" })),
+                    React.createElement(Field, { label: "Target search phrase", help: "Optional. Paste a phrase from Content Gap and it goes into the caption and the opening on-screen text word for word, which is how TikTok search finds the video." },
+                        React.createElement("input", { className: "dr-input", value: form.searchPhrase, onChange: (event) => setValue("searchPhrase", event.target.value), placeholder: "Leave empty if you are not targeting a search" })),
                     React.createElement(Field, { label: "Verified features", help: "Do not paste seller hype, prices, discounts, unsupported specifications, or medical claims." },
                         React.createElement("textarea", { className: "dr-textarea", value: form.verifiedFeatures, onChange: (event) => setValue("verifiedFeatures", event.target.value), placeholder: "One verified feature per line" })),
                     React.createElement("p", { className: "dr-help", style: { marginTop: 4 } }, "Tap to add. Only add what you have actually confirmed on the product \u2014 these are wordings, not facts."),
-                    React.createElement(Field, { label: "Viewer outcome (optional)", help: "Write one verified result the viewer should understand. Quick Create will put it in the first sentence. Avoid promises, prices, and unverified numbers." },
-                        React.createElement("input", { className: "dr-input", value: form.viewerOutcome, onChange: (event) => setValue("viewerOutcome", event.target.value), placeholder: "Example: Keep the phone powered while recording" })),
                     React.createElement("div", { className: "dr-chips" }, (FEATURE_LIBRARY[form.category] || []).map((text) => (React.createElement("button", { className: "dr-chip", type: "button", key: text, onClick: () => addFeature(text) },
                         "+ ",
                         text)))),
@@ -2735,7 +1828,7 @@ function DoneRiteCreatorOS() {
                         React.createElement("select", { className: "dr-select", value: form.chosenHook, onChange: (e) => setValue("chosenHook", e.target.value) },
                             React.createElement("option", { value: "" }, "Auto \u2014 rotate a new hook each time"),
                             hookChoices.map((h) => React.createElement("option", { key: h.text, value: h.text }, `${h.angle}: ${h.text}`)))),
-                    React.createElement(Field, { label: "Pick a call to action", help: `${ctaChoices.length} written specifically for ${form.platform}. No urgency or price language.` },
+                    React.createElement(Field, { label: "Pick a call to action", help: `${ctaChoices.length} written for ${form.platform}. All cart or link directed, no urgency or price language.` },
                         React.createElement("select", { className: "dr-select", value: form.chosenCta, onChange: (e) => setValue("chosenCta", e.target.value) },
                             React.createElement("option", { value: "" }, "Auto \u2014 use the default for this platform"),
                             ctaChoices.map((c) => React.createElement("option", { key: c.text, value: c.text }, `${c.style}: ${c.text}`)))),
@@ -2747,31 +1840,6 @@ function DoneRiteCreatorOS() {
                         React.createElement("div", { className: "dr-label" }, form.chosenPattern ? "Selected pattern" : "Next up on auto"),
                         React.createElement("div", { className: "dr-item-title", style: { color: COLORS.blueGlow } }, previewPattern.name),
                         React.createElement("div", { className: "dr-help", style: { marginTop: 4 } }, previewPattern.why)),
-                    React.createElement("div", { className: "dr-card", style: { background: COLORS.panel2, padding: 12, marginBottom: 14 } },
-                        React.createElement("div", { className: "dr-output-head" },
-                            React.createElement("div", null,
-                                React.createElement("div", { className: "dr-label" }, "Sound effects for this video"),
-                                React.createElement("div", { className: "dr-item-title", style: { color: COLORS.blueGlow } }, selectedSfxIds.length ? `${selectedSfxIds.length} selected` : "No effects selected")),
-                            React.createElement("span", { className: "dr-pill" }, `${sfxLibrary.length} saved`)),
-                        React.createElement("p", { className: "dr-help" }, "Upload several effects at once, preview them, and choose exactly which ones Quick Create should place in the edit plan. On iPhone: Choose Sound Effects, tap Select, pick several files, then tap Open."),
-                        React.createElement("button", { className: "dr-copy", type: "button", style: { width: "100%", marginTop: 10 }, onClick: () => { var _a; return (_a = sfxInputRef.current) === null || _a === void 0 ? void 0 : _a.click(); } }, "Choose Sound Effects"),
-                        React.createElement("input", { ref: sfxInputRef, type: "file", accept: "audio/*,.mp3,.wav,.m4a,.aac,.ogg", multiple: true, hidden: true, onChange: (event) => uploadSfxFiles(event.target.files) }),
-                        sfxStatus && React.createElement("p", { className: "dr-help", style: { marginTop: 9, color: COLORS.green } }, sfxStatus),
-                        React.createElement("p", { className: "dr-help", style: { marginTop: 9, color: COLORS.amber } }, "Use only effects you created, licensed, or confirmed for commercial use."),
-                        React.createElement("div", { className: "dr-sfx-list" },
-                            sfxLibrary.length === 0 && React.createElement("p", { className: "dr-help" }, "No effects saved yet. MP3, WAV, M4A, AAC, and OGG files are supported."),
-                            sfxLibrary.map((sound) => {
-                                const selected = selectedSfxIds.includes(sound.id);
-                                return React.createElement("div", { className: "dr-sfx-item", key: sound.id },
-                                    React.createElement("label", { className: "dr-check" },
-                                        React.createElement("input", { type: "checkbox", checked: selected, onChange: (event) => setSelectedSfxIds((current) => event.target.checked ? [...new Set([...current, sound.id])] : current.filter((id) => id !== sound.id)) }),
-                                        React.createElement("span", { className: "dr-sfx-name" }, sound.name)),
-                                    React.createElement("div", { className: "dr-sfx-controls" },
-                                        React.createElement("select", { className: "dr-select", value: sound.cue || guessSfxCue(sound.name), "aria-label": `Cue for ${sound.name}`, onChange: (event) => setSfxLibrary((current) => current.map((item) => item.id === sound.id ? { ...item, cue: event.target.value } : item)) },
-                                            SFX_CUES.map((cue) => React.createElement("option", { key: cue, value: cue }, cue))),
-                                        React.createElement("button", { className: "dr-copy", type: "button", onClick: () => previewSfx(sound) }, playingSfxId === sound.id ? "Stop" : "Preview"),
-                                        React.createElement("button", { className: "dr-danger", type: "button", onClick: () => deleteSfx(sound) }, "Remove")));
-                            }))),
                     featureHistory.length > 0 && (React.createElement(React.Fragment, null,
                         React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "Features you have used before"),
                         React.createElement("div", { className: "dr-chips" }, featureHistory.map((text) => (React.createElement("button", { className: "dr-chip", type: "button", key: text, onClick: () => addFeature(text) },
@@ -2786,7 +1854,9 @@ function DoneRiteCreatorOS() {
                             React.createElement("select", { className: "dr-select", value: form.duration, onChange: (event) => setValue("duration", event.target.value) },
                                 React.createElement("option", null, "7"),
                                 React.createElement("option", null, "10"),
-                                React.createElement("option", null, "15")))),
+                                React.createElement("option", null, "15"),
+                                React.createElement("option", null, "20"),
+                                React.createElement("option", null, "30")))),
                     React.createElement("div", { className: "dr-field" },
                         React.createElement(Field, { label: "How did you get this product?", help: "Anything other than \u201Cnot in hand yet\u201D lets the script speak from real use." },
                             React.createElement("select", { className: "dr-select", value: form.acquisition, onChange: (event) => setValue("acquisition", event.target.value) },
@@ -2825,19 +1895,6 @@ function DoneRiteCreatorOS() {
                             React.createElement("button", { className: `dr-button ${copiedKey === "Everything" ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(flattenScript(pkg), "Everything") }, copiedKey === "Everything" ? "Copied ✓" : "Copy Everything"),
                             React.createElement("button", { className: `dr-copy ${copiedKey === "AI prompt" ? "is-copied" : ""}`, type: "button", onClick: () => notifyCopy(pkg.aiVideoPrompt, "AI prompt") }, copiedKey === "AI prompt" ? "Copied ✓" : "Copy AI Prompt"),
                             React.createElement("span", { className: "dr-pill" }, "Saved automatically"))),
-                    React.createElement(Card, null,
-                        React.createElement("h3", null, "Choose the Hook Used in Your Script"),
-                        React.createElement("p", { className: "dr-help" }, "Tap any suggestion. The script, opening text, shot timing, saved package, and teleprompter queue update immediately."),
-                        React.createElement("div", { className: "dr-hook-options" }, pkg.hooks.map((hook, index) => {
-                            const selected = hook === (pkg.selectedHook || pkg.hooks[0]);
-                            return React.createElement("button", { key: hook, className: "dr-hook-choice", type: "button", "aria-pressed": selected, onClick: () => selectGeneratedHook(hook) },
-                                React.createElement("strong", null, selected ? `✓ Hook ${index + 1}` : `Hook ${index + 1}`),
-                                hook);
-                        }))),
-                    React.createElement(Card, null,
-                        React.createElement("h3", null, `Record ${pkg.voiceovers && pkg.voiceovers.length || 1} voiceover part${pkg.voiceovers && pkg.voiceovers.length === 1 ? "" : "s"}`),
-                        React.createElement("p", { className: "dr-help" }, "The Teleprompter now carries the script, delivery tone, timing, shot list, on-screen text, sound plan, caption, hashtags, cover, compliance note, and finished-video Share-to-ChatGPT button."),
-                        React.createElement("a", { className: "dr-button", href: "./teleprompter.html", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 12 } }, "Open Teleprompter + Video Guide")),
                     sections.map(([title, text]) => React.createElement(OutputCard, { key: title, title: title, text: text, onCopy: notifyCopy, copiedKey: copiedKey })))))),
             tab === "check" && (React.createElement(React.Fragment, null,
                 React.createElement(Card, null,
@@ -3010,35 +2067,24 @@ function DoneRiteCreatorOS() {
             tab === "gap" && (React.createElement(React.Fragment, null,
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Content Gap"),
-                    React.createElement("p", { className: "dr-help" }, "Upload TikTok Creator Search Insights screenshots. Creator OS now saves only phrases it can pair with a visible search count of 1,000 or more. Labels, broken symbols, percentages, and other OCR junk are discarded."),
+                    React.createElement("p", { className: "dr-help" }, "Take a screenshot of TikTok Creator Search Insights, upload it below, and the Creator OS will read the visible Content Gap phrases into your queue. You can still type one manually when needed."),
                     React.createElement("div", { className: "dr-output", style: { marginTop: 12 } }, [
                         "1. Open TikTok, go to your profile",
                         "2. Creator Tools → Creator Search Insights",
                         "   (on some builds it sits under Settings instead)",
                         "3. Choose Content Gap",
                         "4. Filter to High % Gap",
-                        "5. Take all needed screenshots, then select and upload them together",
+                        "5. Screenshot the visible phrases and upload it here",
                     ].join("\n")),
-                    React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "Keep each phrase and its search count visible in the same screenshot. The first scan needs internet to load the on-device reader. Images are discarded after reading.")),
+                    React.createElement("p", { className: "dr-help", style: { marginTop: 12 } }, "The first scan needs an internet connection to load the on-device text reader. The screenshot is used only long enough to read the text, then discarded. Only the detected phrases are saved.")),
 
                 React.createElement(Card, null,
-                    React.createElement("h3", null, "Upload Content Gap Screenshots"),
+                    React.createElement("h3", null, "Upload Content Gap Screenshot"),
                     React.createElement("div", { className: "dr-upload-box", style: { marginTop: 12 } },
-                        React.createElement("input", { ref: gapImageRef, type: "file", accept: "image/*", multiple: true, hidden: true, onChange: (event) => scanContentGapImages(event.target.files) }),
-                        React.createElement("button", { className: "dr-button", type: "button", disabled: gapScanBusy, onClick: () => gapImageRef.current && gapImageRef.current.click() }, gapScanBusy ? "Reading Screenshots…" : "Choose Screenshots or Take Photos"),
+                        React.createElement("input", { ref: gapImageRef, type: "file", accept: "image/*", hidden: true, onChange: (event) => scanContentGapImage(event.target.files && event.target.files[0]) }),
+                        React.createElement("button", { className: "dr-button", type: "button", disabled: gapScanBusy, onClick: () => gapImageRef.current && gapImageRef.current.click() }, gapScanBusy ? "Reading Screenshot…" : "Choose Screenshot or Take Photo"),
                         gapScanBusy && React.createElement("div", { className: "dr-progress", style: { marginTop: 12 } }, React.createElement("span", { style: { width: `${Math.round(gapScanProgress * 100)}%` } })),
-                        gapScanStatus && React.createElement("p", { className: "dr-help", role: "status", style: { marginBottom: 0, color: gapScanProgress === 1 ? COLORS.green : COLORS.chrome } }, gapScanStatus)),
-                    gapScanResults.length > 0 && React.createElement("div", { className: "dr-review-list" },
-                        React.createElement("h3", null, "Detected Phrases — Review Before Saving"),
-                        React.createElement("p", { className: "dr-help", style: { color: COLORS.amber, margin: 0 } }, "These are not saved yet. Correct any OCR spelling or discard the phrase."),
-                        gapScanResults.map((item) => React.createElement("div", { className: "dr-review-item", key: item.id },
-                            React.createElement("div", { className: "dr-review-top" },
-                                React.createElement("span", { className: "dr-pill" }, `${item.searches.toLocaleString()} searches`),
-                                React.createElement("button", { className: "dr-danger", type: "button", onClick: () => setGapScanResults((current) => current.filter((row) => row.id !== item.id)) }, "Discard")),
-                            React.createElement("input", { className: "dr-input", value: item.phrase, onChange: (event) => setGapScanResults((current) => current.map((row) => row.id === item.id ? { ...row, phrase: event.target.value } : row)), "aria-label": "Review detected Content Gap phrase" }))),
-                        React.createElement("div", { className: "dr-review-actions" },
-                            React.createElement("button", { className: "dr-button", type: "button", onClick: saveReviewedGapResults }, "Save Reviewed"),
-                            React.createElement("button", { className: "dr-danger", type: "button", onClick: () => { setGapScanResults([]); setGapScanStatus("Detected phrases discarded. Nothing was saved."); } }, "Discard All")))),
+                        gapScanStatus && React.createElement("p", { className: "dr-help", role: "status", style: { marginBottom: 0, color: gapScanProgress === 1 ? COLORS.green : COLORS.chrome } }, gapScanStatus))),
 
                 React.createElement(Card, null,
                     React.createElement("h3", null, "Type One Phrase Manually"),
@@ -3056,10 +2102,8 @@ function DoneRiteCreatorOS() {
                     React.createElement(Field, { label: "Note" },
                         React.createElement("input", { className: "dr-input", value: gapDraft.note, onChange: (e) => setGapDraft({ ...gapDraft, note: e.target.value }), placeholder: "Optional — anything you noticed" })),
                     React.createElement("button", { className: "dr-button", type: "button", onClick: () => {
-                        const phrase = cleanContentGapPhrase(gapDraft.phrase);
-                        if (!phrase) { setCopyStatus("Type the search phrase first."); return; }
-                        if (isContentGapPhraseJunk(phrase)) { setCopyStatus("That looks like a label or broken OCR text. Type only the exact search phrase."); return; }
-                        setGapRows((current) => sanitizeContentGapRows([{ ...gapDraft, phrase, note: gapDraft.note.trim(), id: uid(), status: "queued", source: "manual", createdAt: new Date().toISOString() }, ...current]));
+                        if (!gapDraft.phrase.trim()) { setCopyStatus("Type the search phrase first."); return; }
+                        setGapRows((current) => [{ ...gapDraft, phrase: gapDraft.phrase.trim(), note: gapDraft.note.trim(), id: uid(), status: "queued", createdAt: new Date().toISOString() }, ...current]);
                         setGapDraft({ ...EMPTY_GAP, category: gapDraft.category, gapLevel: gapDraft.gapLevel });
                         setCopyStatus("Phrase logged.");
                     } }, "Log This Phrase")),
@@ -3068,13 +2112,6 @@ function DoneRiteCreatorOS() {
                     React.createElement("div", { className: "dr-output-head" },
                         React.createElement("h3", null, "Queue"),
                         React.createElement("span", { className: "dr-pill" }, `${gapRows.filter((r) => r.status !== "filmed").length} waiting`)),
-                    React.createElement("button", { className: "dr-copy", type: "button", style: { width: "100%", marginBottom: 12 }, onClick: () => {
-                        const cleaned = sanitizeContentGapRows(gapRows);
-                        const removed = gapRows.length - cleaned.length;
-                        setGapRows(cleaned);
-                        if (form.searchPhrase && isContentGapPhraseJunk(form.searchPhrase)) setValue("searchPhrase", "");
-                        setCopyStatus(removed ? `${removed} bad or duplicate Content Gap row${removed === 1 ? "" : "s"} removed.` : "Content Gap queue is already clean.");
-                    } }, "Clean Bad Imported Rows"),
                     React.createElement("p", { className: "dr-help" }, "Products you already own are matched by keyword. A match is a suggestion, not a verdict — you decide whether the phrase honestly describes the product."),
                     React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
                         gapRows.length === 0 && React.createElement("p", { className: "dr-help" }, "Nothing logged yet. Open Creator Search Insights and bring back five phrases."),
@@ -3083,14 +2120,12 @@ function DoneRiteCreatorOS() {
                             const filmed = row.status === "filmed";
                             return React.createElement("div", { className: "dr-item", key: row.id, style: { flexDirection: "column", alignItems: "stretch", opacity: filmed ? 0.55 : 1 } },
                                 React.createElement("div", { className: "dr-item-title", style: { color: filmed ? COLORS.dim : row.gapLevel === "High" ? COLORS.green : COLORS.chrome, textDecoration: filmed ? "line-through" : "none" } }, row.phrase),
-                                React.createElement("div", { className: "dr-help", style: { marginTop: 4 } }, `${row.gapLevel} gap · ${row.category}${row.searchVolumeLabel ? " · " + row.searchVolumeLabel + " searches" : ""}${row.note ? " · " + row.note : ""}`),
+                                React.createElement("div", { className: "dr-help", style: { marginTop: 4 } }, `${row.gapLevel} gap · ${row.category}${row.note ? " · " + row.note : ""}`),
                                 React.createElement("div", { className: "dr-help", style: { marginTop: 8, color: matches.length ? COLORS.blueGlow : COLORS.amber } },
                                     matches.length
                                         ? `Possible match: ${matches.map((m) => m.product.productName).join(", ")}`
                                         : "No product in your vault matches this. Worth requesting a sample, or skip it."),
-                                React.createElement("details", { className: "dr-gap-menu" },
-                                    React.createElement("summary", null, "Actions"),
-                                    React.createElement("div", { className: "dr-gap-actions" },
+                                React.createElement("div", { className: "dr-row", style: { marginTop: 10 } },
                                     React.createElement("button", { className: "dr-copy", type: "button", onClick: () => {
                                         setForm((current) => ({
                                             ...current,
@@ -3103,9 +2138,7 @@ function DoneRiteCreatorOS() {
                                         setCopyStatus("Loaded into Quick Create.");
                                     } }, "Use in Quick Create"),
                                     React.createElement("button", { className: "dr-copy", type: "button", onClick: () => setGapRows((c) => c.map((x) => x.id === row.id ? { ...x, status: filmed ? "queued" : "filmed" } : x)) }, filmed ? "Reopen" : "Mark filmed"),
-                                    React.createElement("button", { className: "dr-danger", type: "button", onClick: () => {
-                                        if (window.confirm("Remove this Content Gap phrase?")) setGapRows((c) => c.filter((x) => x.id !== row.id));
-                                    } }, "Remove"))));
+                                    React.createElement("button", { className: "dr-danger", type: "button", onClick: () => setGapRows((c) => c.filter((x) => x.id !== row.id)) }, "Remove")));
                         })))
             )),
             tab === "products" && (React.createElement(Card, null,
@@ -3192,28 +2225,6 @@ function DoneRiteCreatorOS() {
                                     row.platform),
                                 React.createElement("div", { className: "dr-help" }, row.date)),
                             React.createElement("strong", { style: { color: row.type === "Expense" ? COLORS.amber : COLORS.green } }, money(row.amount)))))))),
-            tab === "tools" && (React.createElement(React.Fragment, null,
-                React.createElement(Card, null,
-                    React.createElement("h2", null, "Creator Tools"),
-                    React.createElement("p", { className: "dr-help" }, "Record voiceovers, remove audio gaps, organize media, preview clips, and import Content Gap screenshots from one place.")),
-                React.createElement(Card, null,
-                    React.createElement("h3", null, "Media Organizer & Gap Remover"),
-                    React.createElement("p", { className: "dr-help" }, "Organize photos, videos, and sounds. The audio editor trims silence at the beginning, end, and between words while keeping the untouched original available as a backup."),
-                    React.createElement("div", { className: "dr-row", style: { marginTop: 14 } },
-                        React.createElement("a", { className: "dr-button", href: "https://done-rite-media-organizer.im-da-man-now-711.chatgpt.site/audio-editor", style: { display: "block", flex: "1 1 190px", textAlign: "center", textDecoration: "none" } }, "Open Gap Remover"),
-                        React.createElement("a", { className: "dr-copy", href: "https://done-rite-media-organizer.im-da-man-now-711.chatgpt.site", style: { display: "block", flex: "1 1 190px", textAlign: "center", textDecoration: "none" } }, "Open Media Organizer"))),
-                React.createElement(Card, null,
-                    React.createElement("h3", null, "Teleprompter & Voice Coach"),
-                    React.createElement("p", { className: "dr-help" }, "Hear synthesized tone examples, practice without pressure, record with the iPhone or Hollyland LARK A1, and automatically organize reusable recordings in your searchable Voiceover Library."),
-                    React.createElement("a", { className: "dr-button", href: "./teleprompter.html", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 14 } }, "Open Teleprompter & Voice Coach")),
-                React.createElement(Card, null,
-                    React.createElement("h3", null, "Video Upload & Clip Preview"),
-                    React.createElement("p", { className: "dr-help" }, "Select and preview several original product clips, copy the ad brief, and prepare files to send for complete editing."),
-                    React.createElement("a", { className: "dr-button", href: "./video-upload.html", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 14 } }, "Open Video Uploader")),
-                React.createElement(Card, null,
-                    React.createElement("h3", null, "Content Gap Screenshot Import"),
-                    React.createElement("p", { className: "dr-help" }, "Import several Creator Search Insights screenshots while preserving manually entered Content Gap data."),
-                    React.createElement("a", { className: "dr-button", href: "./content-gap-import.html", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 14 } }, "Open Screenshot Importer")))),
             tab === "settings" && (React.createElement(React.Fragment, null,
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Button Sound"),
@@ -3226,19 +2237,18 @@ function DoneRiteCreatorOS() {
                 React.createElement(Card, null,
                     React.createElement("h2", null, "Backup & Restore"),
                     React.createElement("p", { className: "dr-help" }, "This component stores data on the current device. Export regular backups before clearing browser data or changing devices."),
-                    React.createElement("p", { className: "dr-help" }, "Backups include saved packages, products, Quick Create history, tasks, money records, hook results, settings, cleaned Content Gap phrases, and sound-library names. Audio files stay in this device’s on-device sound library and may need to be uploaded again after moving to another phone."),
+                    React.createElement("p", { className: "dr-help" }, "Backups include every Content Gap phrase imported from a screenshot. Images are never saved."),
                     React.createElement("div", { className: "dr-row", style: { marginTop: 14 } },
                         React.createElement("button", { className: "dr-button", type: "button", onClick: exportBackup }, "Export Backup"),
-                        React.createElement("button", { className: "dr-copy", type: "button", onClick: () => { var _a; return (_a = importRef.current) === null || _a === void 0 ? void 0 : _a.click(); } }, "Restore Backup"),
-                        React.createElement("button", { className: "dr-copy", type: "button", onClick: copyBackupText }, "Copy Backup Text")),
+                        React.createElement("button", { className: "dr-copy", type: "button", onClick: () => { var _a; return (_a = importRef.current) === null || _a === void 0 ? void 0 : _a.click(); } }, "Restore Backup")),
                     React.createElement("input", { ref: importRef, type: "file", accept: "application/json,.json", hidden: true, onChange: (event) => { var _a; return importBackup((_a = event.target.files) === null || _a === void 0 ? void 0 : _a[0]); } }),
                     importStatus && React.createElement("p", { className: "dr-help", style: { color: COLORS.green } }, importStatus)),
                 React.createElement(Card, null,
                     React.createElement("h3", null, "Permanent Playbook Rules"),
                     React.createElement("div", { className: "dr-output", style: { marginTop: 10 } }, "No pricing or discount language. No competitor comparisons. No unsupported claims. Health content uses support language only. Every affiliate hashtag set includes #ad. Hands-on demo by default \u2014 hands in frame, face never in frame, product moving throughout. Confirm Sample Received before publish-ready first-person content.")),
                 React.createElement(Card, null,
-                    React.createElement("h3", null, "App Status"),
-                    React.createElement("p", { className: "dr-help" }, `Clean build ${APP_BUILD} · ${products.length} product${products.length === 1 ? "" : "s"} · ${saved.length} saved creation${saved.length === 1 ? "" : "s"} · ${gapRows.length} Content Gap phrase${gapRows.length === 1 ? "" : "s"}.`))))),
+                    React.createElement("h3", null, "Implementation note for Claude"),
+                    React.createElement("p", { className: "dr-help" }, "This is the single-file local-first baseline. Preserve its data schema and working copy flow when splitting it into modules. A complete installable PWA still needs a project manifest, service worker, icons, and deployment configuration outside this component."))))),
         React.createElement("nav", { className: "dr-nav", "aria-label": "Bottom navigation" },
             React.createElement("div", { className: "dr-nav-inner" }, tabs.map(([id, label]) => React.createElement("button", { key: id, type: "button", "aria-current": tab === id ? "page" : undefined, onClick: () => setTab(id) }, label))))));
 }
