@@ -1,13 +1,35 @@
 /* DONE RITE Creator OS — offline service worker
    ------------------------------------------------------------------
-   Network first, cache second. The phone always tries GitHub for the
-   newest file, and only falls back to its saved copy when there is no
-   connection. That means a bad upload can never get stuck on the phone
-   the way it did before. */
+   Fresh network first, cache second. Same-origin GET requests bypass
+   Safari's normal HTTP cache so newly deployed JavaScript reaches the
+   phone immediately. Navigation requests may fall back to index.html;
+   scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v16-media-organizer-audio-editor";
+const CACHE_NAME = "done-rite-v17-one-click-trim-audio";
 
-const FILES = ["./", "./index.html", "./app.js", "./teleprompter.html", "./video-upload.html", "./content-gap-import.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+const FILES = [
+  "./",
+  "./index.html",
+  "./app.js",
+  "./teleprompter.html",
+  "./teleprompter-script-studio.html",
+  "./one-click-ad-dev.html",
+  "./video-upload.html",
+  "./content-gap-import.html",
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./modules/one-click-ad-editor.js",
+  "./modules/one-click-media-stage.js",
+  "./modules/one-click-scene-scorer.js",
+  "./modules/one-click-render-stage.js",
+  "./modules/one-click-browser-executor.js",
+  "./modules/one-click-camera-handoff.js",
+  "./modules/one-click-gap-remover.js",
+  "./modules/one-click-session-state.js",
+  "./modules/one-click-creative-controls.js",
+  "./modules/one-click-creative-render.js"
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -32,16 +54,20 @@ self.addEventListener("fetch", (event) => {
   if (new URL(request.url).origin !== self.location.origin) return;
 
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: "no-store" })
       .then((response) => {
-        if (response && response.ok) {
+        if (response && response.status === 200) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
         }
         return response;
       })
       .catch(() =>
-        caches.match(request).then((hit) => hit || caches.match("./index.html"))
+        caches.match(request).then((hit) => {
+          if (hit) return hit;
+          if (request.mode === "navigate") return caches.match("./index.html");
+          return Response.error();
+        })
       )
   );
 });
