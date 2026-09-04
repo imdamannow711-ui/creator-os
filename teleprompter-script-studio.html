@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#05070b">
-<title>DONE RITE Script Studio</title>
+<title>DONE RITE One Click Script Studio</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#05070b;color:#f5f8fc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{width:min(760px,100%);margin:auto;padding:18px 14px calc(84px + env(safe-area-inset-bottom))}.brand{font-weight:950;letter-spacing:.1em;color:#55adff}.card{background:#10151d;border:1px solid #293544;border-radius:18px;padding:16px;margin:12px 0}h1{font-size:25px;margin:7px 0}.help{color:#9aa7b6;line-height:1.5}.label{display:block;font-weight:850;margin:14px 0 7px}.script{width:100%;min-height:230px;resize:vertical;padding:15px;background:#090d13;color:#fff;border:1px solid #344457;border-radius:14px;font:700 20px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.modes{display:grid;grid-template-columns:1fr;gap:9px;margin-top:12px}.btn{width:100%;min-height:54px;border:1px solid #57adff;border-radius:13px;background:#197aff;color:#fff;font:900 16px/1.15 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:12px}.btn.secondary{background:#171d27;color:#72bdff;border-color:#344457}.btn.green{background:#168a50;border-color:#48d98d}.btn.purple{background:#6b43d6;border-color:#9b7cff}.btn.orange{background:#9b5b00;border-color:#d9942f}.status{min-height:22px;margin-top:10px;font-weight:800;color:#72bdff}.warning{border:1px solid #d9942f;background:#211506;color:#ffd18a;border-radius:13px;padding:12px;line-height:1.45;margin-top:12px}.ok{border:1px solid #2bd97c;background:#0d1a15;color:#56ec9c;border-radius:13px;padding:12px;line-height:1.45;margin-top:12px}.modeTitle{font-weight:950;font-size:18px}.modeSub{font-size:13px;font-weight:650;opacity:.82;margin-top:4px}.pill{display:inline-block;padding:6px 9px;border-radius:999px;border:1px solid #344457;color:#cfe7ff;background:#0b1019;font-size:12px;font-weight:900}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}@media(max-width:480px){.row{grid-template-columns:1fr}}
 </style>
@@ -12,8 +12,8 @@
 <body>
 <main class="wrap">
  <div class="brand">⚡ DONE RITE CREATOR OS</div>
- <h1>Teleprompter Script Studio</h1>
- <p class="help">Paste a script once, choose how much you want it changed, then send the result straight into the DONE RITE Teleprompter.</p>
+ <h1>ONE CLICK SCRIPT STUDIO</h1>
+ <p class="help">Paste a script once, choose how much you want it changed, then send the selected version into the same DONE RITE Teleprompter recording session.</p>
  <div class="card">
   <span class="pill">STEP 1</span>
   <label class="label" for="sourceScript">Paste your script</label>
@@ -37,73 +37,24 @@
 <script>
 (function(){
 'use strict';
-const $=id=>document.getElementById(id),KEY='done-rite-teleprompter-script-studio:v1';
+const $=id=>document.getElementById(id),KEY_BASE='done-rite-one-click-script-studio:v2';
 const source=$('sourceScript'),result=$('resultScript'),status=$('modeStatus'),compliance=$('compliance');
 let mode='exact';
 function pick(a){return a[Math.floor(Math.random()*a.length)];}
 function clean(s){return String(s||'').replace(/\r/g,'').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();}
-function save(){try{localStorage.setItem(KEY,JSON.stringify({source:source.value,result:result.value,mode,updatedAt:Date.now()}));}catch(e){}}
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||'{}');if(s.source)source.value=s.source;if(s.result)result.value=s.result;if(s.mode)mode=s.mode;}catch(e){}const params=new URLSearchParams(location.search),target=params.get('target')||'';if(target){try{const u=new URL(target,location.href),incoming=u.searchParams.get('script')||u.searchParams.get('text')||'';if(incoming&&!source.value)source.value=incoming;}catch(e){}}}
-function sentenceCase(s){return s?String(s).charAt(0).toUpperCase()+String(s).slice(1):s;}
-function lightRewrite(text){
- let out=clean(text);
- const swaps=[
-  [/I'm not afraid to admit it\.?/gi,()=>pick(["I'll say it plainly.","I'm comfortable saying that.","I'll admit that."])],
-  [/I think it works/gi,()=>pick(["I've liked using it","I've kept it in my routine","I've chosen to keep using it"])],
-  [/I'm going to keep taking it/gi,()=>pick(["I'm planning to keep it in my routine","I'm continuing to use it","I'm sticking with it for now"])],
-  [/This is a form of/gi,()=>pick(["This is a form of","It's a form of","This product uses a form of"])],
-  [/helps your body produce/gi,()=>pick(["is involved in pathways related to","supports processes related to","plays a role in pathways involving"])],
-  [/Supposedly,/gi,()=>pick(["The idea is that","The reason people talk about it is that","What gets discussed most is that"])],
-  [/so this helps\.?/gi,()=>pick(["which is why people are interested in it.","and that's why it gets attention.","which is the reason some people add it to a routine."])],
-  [/I'm going to link the brand I've been taking/gi,()=>pick(["I'll link the brand I've been using","I'm linking the one I've been using","I'll put the brand I've been using in the product link"])],
-  [/because they're having a limited-time offer/gi,()=>pick(["so you can check the current product-page offer","so you can see the current offer shown on the product page","so you can check what the product page is offering right now"])],
-  [/Don't miss out!?/gi,()=>pick(["Take a look if it fits what you're looking for.","Check the product page if you want the details.","You can decide from there."])]
- ];
- swaps.forEach(([re,fn])=>{out=out.replace(re,fn);});
- return clean(out);
-}
+function targetObject(){const params=new URLSearchParams(location.search),raw=params.get('target');try{return raw?new URL(raw,location.href):new URL('teleprompter.html',location.href);}catch(e){return new URL('teleprompter.html',location.href);}}
+function hash(v){let h=5381;for(const ch of String(v||''))h=((h<<5)+h)^ch.charCodeAt(0);return (h>>>0).toString(36);}
+function sessionKey(){const u=targetObject(),identity=[u.pathname,u.searchParams.get('product')||'',u.searchParams.get('script')||u.searchParams.get('text')||'',u.searchParams.get('seconds')||''].join('|');return KEY_BASE+':'+hash(identity);}
+function save(){try{localStorage.setItem(sessionKey(),JSON.stringify({source:source.value,result:result.value,mode,updatedAt:Date.now()}));}catch(e){}}
+function load(){const target=targetObject(),incoming=target.searchParams.get('script')||target.searchParams.get('text')||'';let saved={};try{saved=JSON.parse(localStorage.getItem(sessionKey())||'{}')||{};}catch(e){}if(saved.source!=null)source.value=saved.source;else if(incoming)source.value=incoming;if(saved.result!=null)result.value=saved.result;if(saved.mode)mode=saved.mode;}
+function lightRewrite(text){let out=clean(text);const swaps=[[/I'm not afraid to admit it\.?/gi,()=>pick(["I'll say it plainly.","I'm comfortable saying that.","I'll admit that."])],[/I think it works/gi,()=>pick(["I've liked using it","I've kept it in my routine","I've chosen to keep using it"])],[/I'm going to keep taking it/gi,()=>pick(["I'm planning to keep it in my routine","I'm continuing to use it","I'm sticking with it for now"])],[/This is a form of/gi,()=>pick(["This is a form of","It's a form of","This product uses a form of"])],[/helps your body produce/gi,()=>pick(["is involved in pathways related to","supports processes related to","plays a role in pathways involving"])],[/Supposedly,/gi,()=>pick(["The idea is that","The reason people talk about it is that","What gets discussed most is that"])],[/so this helps\.?/gi,()=>pick(["which is why people are interested in it.","and that's why it gets attention.","which is the reason some people add it to a routine."])],[/I'm going to link the brand I've been taking/gi,()=>pick(["I'll link the brand I've been using","I'm linking the one I've been using","I'll put the brand I've been using in the product link"])],[/because they're having a limited-time offer/gi,()=>pick(["so you can check the current product-page offer","so you can see the current offer shown on the product page","so you can check what the product page is offering right now"])],[/Don't miss out!?/gi,()=>pick(["Take a look if it fits what you're looking for.","Check the product page if you want the details.","You can decide from there."])]];swaps.forEach(([re,fn])=>{out=out.replace(re,fn);});return clean(out);}
 function stripHeadings(text){return clean(text).replace(/^\s*#{1,6}\s*\[[^\n]+\]\s*$/gmi,'').replace(/^\s*\*\*([^*]+)\*\*\s*$/gmi,'$1').replace(/^\s*\[Scene[^\]]*\]\s*$/gmi,'');}
 function splitSentences(text){return stripHeadings(text).replace(/\n+/g,' ').match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s=>s.trim()).filter(Boolean)||[];}
-function heavyRewrite(text){
- const sentences=splitSentences(lightRewrite(text));if(!sentences.length)return '';
- const topic=sentences.find(s=>/NMN|product|vitamin|mic|kit|scooter|charger|cable/i.test(s))||sentences[0];
- const hookPool=[
-  `This is the part I knew people were going to have opinions about: ${topic.replace(/[.!?]+$/,'')}.`,
-  `I posted about this once and the comments went in every direction.`,
-  `I knew this one would start a conversation, and it definitely did.`,
-  `Here is the product I keep coming back to, even after all the debate.`
- ];
- const body=sentences.slice(1,-1).filter(s=>!/(limited-time|don't miss|link the brand|product link)/i.test(s));
- const reordered=body.length>2?[body[1],body[0],...body.slice(2)]:body;
- const bridges=["Here is why I kept looking into it.","The part that matters to me is what it actually is and why people use it.","What I wanted was a simple explanation without all the hype."];
- const cta=pick(["I'll link the one I've been using so you can check the product page and decide for yourself.","If you want to look at the exact one I've been using, I'll put it in the product link.","I'll link the product so you can read the details and see whether it makes sense for you."]);
- return clean([pick(hookPool),pick(bridges),...reordered,cta].join(' '));
-}
-function complianceCheck(text,selectedMode){
- const flags=[];const t=String(text||'');
- if(/\b(cure|treat|prevent|heal|fix)\b/i.test(t))flags.push('medical treatment/cure wording');
- if(/\b(works|guaranteed|100%|instantly)\b/i.test(t))flags.push('absolute or efficacy wording');
- if(/limited[- ]time|don't miss out|last chance|only today/i.test(t))flags.push('scarcity/offer wording — verify it is currently true');
- if(/NMN|supplement|vitamin|NAD\b/i.test(t))flags.push('supplement/health content — use careful support language and avoid disease/treatment claims');
- compliance.className=flags.length?'warning':'ok';
- compliance.textContent=flags.length?(selectedMode==='exact'?'Exact mode did not change your wording. Compliance flags: ':'Compliance flags: ')+flags.join(' • '):'Compliance check: no obvious high-risk wording detected by the local checker.';
-}
-function apply(nextMode){
- mode=nextMode;const input=clean(source.value);if(!input){status.textContent='Paste a script first.';return;}
- let out=input;if(mode==='light')out=lightRewrite(input);if(mode==='heavy')out=heavyRewrite(input);
- result.value=out;status.textContent=mode==='exact'?'EXACT selected — word-for-word copy.':mode==='light'?'LIGHT selected — same structure, fresh wording.':'HEAVY selected — larger rewrite with a new hook/flow/CTA.';complianceCheck(out,mode);save();
-}
-function targetUrl(){
- const params=new URLSearchParams(location.search),raw=params.get('target');let url;
- try{url=raw?new URL(raw,location.href):new URL('teleprompter.html',location.href);}catch(e){url=new URL('teleprompter.html',location.href);}
- url.searchParams.set('script',clean(result.value||source.value));url.searchParams.set('text',clean(result.value||source.value));url.searchParams.set('session','1');return url.toString();
-}
-$('exactBtn').onclick=()=>apply('exact');$('lightBtn').onclick=()=>apply('light');$('heavyBtn').onclick=()=>apply('heavy');
-$('rerollBtn').onclick=()=>apply(mode==='exact'?'light':mode);
-$('copyBtn').onclick=async()=>{const text=clean(result.value||source.value);try{await navigator.clipboard.writeText(text);status.textContent='Script copied.';}catch(e){result.focus();result.select();status.textContent='Script selected — tap Copy.';}};
-$('sendBtn').onclick=()=>{const text=clean(result.value||source.value);if(!text){status.textContent='Paste or create a script first.';return;}save();location.href=targetUrl();};
-source.addEventListener('input',save);result.addEventListener('input',()=>{complianceCheck(result.value,mode);save();});
-load();if(source.value&&!result.value)apply('exact');else if(result.value)complianceCheck(result.value,mode);
+function heavyRewrite(text){const sentences=splitSentences(lightRewrite(text));if(!sentences.length)return '';const topic=sentences.find(s=>/NMN|product|vitamin|mic|kit|scooter|charger|cable/i.test(s))||sentences[0];const hookPool=[`This is the part I knew people were going to have opinions about: ${topic.replace(/[.!?]+$/,'')}.`,`I posted about this once and the comments went in every direction.`,`I knew this one would start a conversation, and it definitely did.`,`Here is the product I keep coming back to, even after all the debate.`];const body=sentences.slice(1,-1).filter(s=>!/(limited-time|don't miss|link the brand|product link)/i.test(s)),reordered=body.length>2?[body[1],body[0],...body.slice(2)]:body,bridges=["Here is why I kept looking into it.","The part that matters to me is what it actually is and why people use it.","What I wanted was a simple explanation without all the hype."],cta=pick(["I'll link the one I've been using so you can check the product page and decide for yourself.","If you want to look at the exact one I've been using, I'll put it in the product link.","I'll link the product so you can read the details and see whether it makes sense for you."]);return clean([pick(hookPool),pick(bridges),...reordered,cta].join(' '));}
+function complianceCheck(text,selectedMode){const flags=[],t=String(text||'');if(/\b(cure|treat|prevent|heal|fix)\b/i.test(t))flags.push('medical treatment/cure wording');if(/\b(works|guaranteed|100%|instantly)\b/i.test(t))flags.push('absolute or efficacy wording');if(/limited[- ]time|don't miss out|last chance|only today/i.test(t))flags.push('scarcity/offer wording — verify it is currently true');if(/NMN|supplement|vitamin|NAD\b/i.test(t))flags.push('supplement/health content — use careful support language and avoid disease/treatment claims');compliance.className=flags.length?'warning':'ok';compliance.textContent=flags.length?(selectedMode==='exact'?'Exact mode did not change your wording. Compliance flags: ':'Compliance flags: ')+flags.join(' • '):'Compliance check: no obvious high-risk wording detected by the local checker.';}
+function apply(nextMode){mode=nextMode;const raw=source.value;if(!raw.trim()){status.textContent='Paste a script first.';return;}let out=raw;if(mode==='light')out=lightRewrite(raw);if(mode==='heavy')out=heavyRewrite(raw);result.value=out;status.textContent=mode==='exact'?'EXACT selected — word-for-word copy.':mode==='light'?'LIGHT selected — same structure, fresh wording.':'HEAVY selected — larger rewrite with a new hook/flow/CTA.';complianceCheck(out,mode);save();}
+function targetUrl(){const url=targetObject(),text=mode==='exact'?(result.value||source.value):clean(result.value||source.value);url.searchParams.set('script',text);url.searchParams.set('text',text);url.searchParams.set('session','1');url.searchParams.set('scriptmode',mode);return url.toString();}
+$('exactBtn').onclick=()=>apply('exact');$('lightBtn').onclick=()=>apply('light');$('heavyBtn').onclick=()=>apply('heavy');$('rerollBtn').onclick=()=>apply(mode==='exact'?'light':mode);$('copyBtn').onclick=async()=>{const text=result.value||source.value;try{await navigator.clipboard.writeText(text);status.textContent='Script copied.';}catch(e){result.focus();result.select();status.textContent='Script selected — tap Copy.';}};$('sendBtn').onclick=()=>{const text=result.value||source.value;if(!text.trim()){status.textContent='Paste or create a script first.';return;}save();location.href=targetUrl();};source.addEventListener('input',save);result.addEventListener('input',()=>{complianceCheck(result.value,mode);save();});load();if(source.value&&!result.value)apply('exact');else if(result.value)complianceCheck(result.value,mode);
 })();
 </script>
 </body>
