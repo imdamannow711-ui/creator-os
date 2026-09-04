@@ -1,12 +1,22 @@
-/* DONE RITE Creator OS — One-Click Camera Handoff v0.1
+/* DONE RITE Creator OS — One-Click Camera Handoff v0.2
    Adds a real iPhone camera capture path to the Hook + CTA recording guide.
-   The captured file stays local and is appended to the current One-Click clip set when Safari permits it.
+   Also loads the One-Click voiceover gap remover.
 */
 (function(){
 'use strict';
-const VERSION='0.1';
+const VERSION='0.2';
 let lastPlan=null;
 let capturedUrl='';
+
+function loadGapRemover(){
+  if(window.DoneRiteOneClickGapRemover)return;
+  if(document.querySelector('script[data-done-rite-gap-remover]'))return;
+  const s=document.createElement('script');
+  s.src='modules/one-click-gap-remover.js?v=20260904-gap1';
+  s.async=false;s.dataset.doneRiteGapRemover='1';
+  s.onload=()=>{try{window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.install();}catch(e){}};
+  document.head.appendChild(s);
+}
 
 function fileSignature(file){return [file&&file.name||'',file&&file.size||0,file&&file.lastModified||0].join('|');}
 
@@ -25,6 +35,7 @@ function appendCapturedFile(captured){
 }
 
 function install(plan){
+  loadGapRemover();
   if(plan)lastPlan=plan;
   const card=document.getElementById('doneRiteRecordingHandoff');
   if(!card||!lastPlan)return;
@@ -88,12 +99,13 @@ function install(plan){
     }
   });
 }
-window.addEventListener('pagehide',()=>{if(capturedUrl)try{URL.revokeObjectURL(capturedUrl);}catch(e){}});
 
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadGapRemover,{once:true});else loadGapRemover();
+window.addEventListener('pagehide',()=>{if(capturedUrl)try{URL.revokeObjectURL(capturedUrl);}catch(e){}});
 window.addEventListener('done-rite-one-click-plan',event=>{
   lastPlan=event&&event.detail||lastPlan;
   setTimeout(()=>install(lastPlan),0);
 });
 
-window.DoneRiteOneClickCameraHandoff={version:VERSION,install,appendCapturedFile};
+window.DoneRiteOneClickCameraHandoff={version:VERSION,install,appendCapturedFile,loadGapRemover};
 })();
