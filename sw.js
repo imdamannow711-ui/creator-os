@@ -34,8 +34,12 @@ const FILES = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      // One file at a time, so a single miss cannot fail the whole install.
-      .then((cache) => Promise.all(FILES.map((file) => cache.add(file).catch(() => null))))
+      .then((cache) => Promise.all(FILES.map(async (file) => {
+        try {
+          const response = await fetch(file, { cache: "no-store" });
+          if (response && response.status === 200) await cache.put(file, response.clone());
+        } catch (e) {}
+      })))
       .then(() => self.skipWaiting())
   );
 });
@@ -63,9 +67,9 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() =>
-        caches.match(request).then((hit) => {
+        caches.match(request, { ignoreSearch: true }).then((hit) => {
           if (hit) return hit;
-          if (request.mode === "navigate") return caches.match("./index.html");
+          if (request.mode === "navigate") return caches.match("./index.html", { ignoreSearch: true });
           return Response.error();
         })
       )
