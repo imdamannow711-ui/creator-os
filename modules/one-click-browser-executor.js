@@ -1,10 +1,11 @@
-/* DONE RITE Creator OS — One-Click Browser Executor v0.7
-   iPhone-safe local preview and multi-source timed render executor.
+/* DONE RITE Creator OS — One-Click Browser Executor v0.8
+   iPhone-safe local preview, manual trim and multi-source timed render executor.
    Originals are never overwritten.
 */
 (function(){
 'use strict';
-const VERSION='0.7';
+const VERSION='0.8';
+const manualTrims=new Map();
 
 function supports(){
   const canCapture=typeof HTMLCanvasElement!=='undefined'&&!!HTMLCanvasElement.prototype.captureStream;
@@ -28,6 +29,20 @@ function buildExecutionState(session,recipe){
 function waitEvent(target,name,timeout){return new Promise((resolve,reject)=>{let timer=null;const done=()=>{cleanup();resolve();};const fail=()=>{cleanup();reject(new Error('Video '+name+' failed.'));};function cleanup(){target.removeEventListener(name,done);target.removeEventListener('error',fail);if(timer)clearTimeout(timer);}target.addEventListener(name,done,{once:true});target.addEventListener('error',fail,{once:true});if(timeout)timer=setTimeout(()=>{cleanup();reject(new Error('Timed out waiting for video '+name+'.'));},timeout);});}
 function waitUntil(test,timeout,label){return new Promise((resolve,reject)=>{const start=Date.now();function tick(){let ok=false;try{ok=!!test();}catch(e){}if(ok){resolve();return;}if(Date.now()-start>=timeout){reject(new Error('Timed out waiting for '+label+'.'));return;}setTimeout(tick,80);}tick();});}
 function waitRecorderState(recorder,eventName,timeout){return new Promise((resolve,reject)=>{let timer=null;const done=()=>{cleanup();resolve();};const fail=e=>{cleanup();reject(e&&e.error||new Error('Recorder '+eventName+' failed.'));};function cleanup(){recorder.removeEventListener(eventName,done);recorder.removeEventListener('error',fail);if(timer)clearTimeout(timer);}recorder.addEventListener(eventName,done,{once:true});recorder.addEventListener('error',fail,{once:true});timer=setTimeout(()=>{cleanup();reject(new Error('Timed out waiting for recorder '+eventName+'.'));},timeout||5000);});}
+function fileKey(file,index){return [index||0,file&&file.name||'',file&&file.size||0,file&&file.lastModified||0].join('|');}
+function formatTime(sec){
+  sec=Math.max(0,Number(sec||0));const m=Math.floor(sec/60),s=Math.floor(sec%60),t=Math.floor((sec-Math.floor(sec))*10);
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+t;
+}
+function getManualTrim(file,index){return manualTrims.get(fileKey(file,index))||null;}
+function setManualTrim(file,index,start,end,duration){
+  const d=Math.max(.1,Number(duration||end||0)),minGap=Math.min(.25,d);
+  start=Math.max(0,Math.min(Number(start||0),d-minGap));end=Math.max(start+minGap,Math.min(Number(end||d),d));
+  const changed=start>.05||end<d-.05;
+  const value={sourceIndex:index||0,start:+start.toFixed(3),end:+end.toFixed(3),duration:d,changed};
+  manualTrims.set(fileKey(file,index),value);return value;
+}
+function clearManualTrims(){manualTrims.clear();}
 
 async function loadPlayableVideo(file){
   const video=document.createElement('video');video.playsInline=true;video.preload='auto';video.volume=1;video.muted=false;
@@ -51,6 +66,12 @@ function overlayForTime(recipe,t){const overlays=recipe&&Array.isArray(recipe.ov
 function drawUntil(video,ctx,canvas,cut,baseElapsed,recipe,onProgress){return new Promise((resolve,reject)=>{let stopped=false;function frame(){if(stopped)return;try{if(video.readyState>=2){fitContain(ctx,video,canvas.width,canvas.height);const elapsed=baseElapsed+Math.max(0,Math.min(cut.end,video.currentTime)-cut.start);drawOverlay(ctx,overlayForTime(recipe,elapsed),canvas.width,canvas.height);if(typeof onProgress==='function')onProgress(Math.min(1,elapsed/Math.max(.1,recipe.outputDurationSeconds||1)));}if(video.currentTime>=cut.end-.025||video.ended){stopped=true;resolve();return;}requestAnimationFrame(frame);}catch(err){stopped=true;reject(err);}}requestAnimationFrame(frame);});}
 async function previewFrame(file,recipe,options){options=options||{};if(!file)throw new Error('Missing source file.');const loaded=await loadPlayableVideo(file),video=loaded.video,url=loaded.url;try{const cuts=recipe&&Array.isArray(recipe.selectedCuts)?recipe.selectedCuts:[],first=cuts[0];const target=first?Math.min(first.end-.05,first.start+Math.min(.35,Math.max(.08,(first.end-first.start)*.15))):Math.min(.35,Math.max(.08,(video.duration||1)*.08));await ensureFrameReady(video,target);const canvas=makeCanvasForVideo(video,options.maxLongEdge||1280),ctx=canvas.getContext('2d');fitContain(ctx,video,canvas.width,canvas.height);drawOverlay(ctx,overlayForTime(recipe,0),canvas.width,canvas.height);return {canvas,dataUrl:canvas.toDataURL('image/jpeg',.9),sourceTime:target};}finally{video.pause();video.removeAttribute('src');video.load();release(url);}}
 function createRecorder(stream,mime,options){const full={mimeType:mime,videoBitsPerSecond:Number(options.videoBitsPerSecond||6000000),audioBitsPerSecond:Number(options.audioBitsPerSecond||128000)};try{return new MediaRecorder(stream,full);}catch(e){return new MediaRecorder(stream,{mimeType:mime});}}
+function applyManualTrims(files,recipeCuts){
+  const list=Array.from(files||[]),changed=[];
+  list.forEach((f,i)=>{const t=getManualTrim(f,i);if(t&&t.changed)changed.push({start:t.start,end:t.end,sourceIndex:i,sequenceIndex:changed.length,manualTrim:true});});
+  if(changed.length)return changed;
+  return (recipeCuts||[]).map((c,i)=>({start:Number(c.start),end:Number(c.end),sourceIndex:Number.isInteger(c.sourceIndex)?c.sourceIndex:0,sequenceIndex:i}));
+}
 async function renderLocalVideo(file,recipe,options){return renderLocalBatch([file],recipe,options);}
 
 async function renderLocalBatch(files,recipe,options){
@@ -60,16 +81,17 @@ async function renderLocalBatch(files,recipe,options){
   if(!recipe||!Array.isArray(recipe.selectedCuts)||!recipe.selectedCuts.length)throw new Error('No selected cuts to render.');
   if(!caps.localExport||!mime||!AudioCtx)throw new Error('Local video export is not available in this browser.');
 
-  const cuts=recipe.selectedCuts.map((c,i)=>({start:Number(c.start),end:Number(c.end),sourceIndex:Number.isInteger(c.sourceIndex)?c.sourceIndex:0,sequenceIndex:i})).filter(c=>c.end>c.start);
+  const cuts=applyManualTrims(list,recipe.selectedCuts).filter(c=>c.end>c.start);
+  if(!cuts.length)throw new Error('No usable selected range to render.');
   const firstIndex=Math.max(0,Math.min(list.length-1,cuts[0].sourceIndex));
+  const renderDuration=cuts.reduce((n,c)=>n+Math.max(0,c.end-c.start),0);
+  const renderRecipe=Object.assign({},recipe,{outputDurationSeconds:renderDuration,selectedCuts:cuts});
   let audioCtx=null,canvasStream=null,combined=null,recorder=null,outputUrl='',video=null,currentUrl='',currentSourceIndex=-1;
 
   try{
-    /* iPhone Safari: create and authorize ONE media element while the Render button tap is still active. */
     video=document.createElement('video');video.playsInline=true;video.preload='auto';video.volume=1;video.muted=false;
     currentUrl=URL.createObjectURL(list[firstIndex]);video.src=currentUrl;video.load();
     const initialPlay=video.play();
-
     audioCtx=new AudioCtx();
     const resumePromise=audioCtx.state==='running'?Promise.resolve():audioCtx.resume();
     await Promise.allSettled([initialPlay,resumePromise]);
@@ -99,7 +121,7 @@ async function renderLocalBatch(files,recipe,options){
     }
 
     await switchSource(firstIndex,cuts[0].start);
-    fitContain(ctx,video,canvas.width,canvas.height);drawOverlay(ctx,overlayForTime(recipe,0),canvas.width,canvas.height);
+    fitContain(ctx,video,canvas.width,canvas.height);drawOverlay(ctx,overlayForTime(renderRecipe,0),canvas.width,canvas.height);
     recorder.start(250);
     let baseElapsed=0;
 
@@ -110,23 +132,17 @@ async function renderLocalBatch(files,recipe,options){
         await switchSource(cut.sourceIndex,cut.start);
         if(recorder.state==='paused'){const r=waitRecorderState(recorder,'resume',5000);recorder.resume();await r;}
       }else await ensureFrameReady(video,cut.start);
-
       video.muted=false;
       try{await video.play();}
-      catch(err){
-        /* Safari fallback: reuse the same authorized element and allow muted playback only if required.
-           Do not alter the source file or recorded voice data. */
-        video.muted=true;
-        await video.play();
-      }
-      await drawUntil(video,ctx,canvas,cut,baseElapsed,recipe,options.onProgress);
+      catch(err){video.muted=true;await video.play();}
+      await drawUntil(video,ctx,canvas,cut,baseElapsed,renderRecipe,options.onProgress);
       video.pause();baseElapsed+=cut.end-cut.start;
     }
 
     if(recorder.state!=='inactive')recorder.stop();await stopped;
     const blob=new Blob(chunks,{type:mime.split(';')[0]||'video/mp4'});if(!blob.size)throw new Error('The browser returned an empty rendered video.');
     outputUrl=URL.createObjectURL(blob);
-    return {status:'RENDER_COMPLETE',blob,url:outputUrl,mimeType:blob.type||mime,fileName:recipe.export&&recipe.export.fileName||'done-rite-ad.mp4',durationSeconds:+baseElapsed.toFixed(2),width:canvas.width,height:canvas.height,sourceCount:list.length,originalPreserved:true};
+    return {status:'RENDER_COMPLETE',blob,url:outputUrl,mimeType:blob.type||mime,fileName:recipe.export&&recipe.export.fileName||'done-rite-ad.mp4',durationSeconds:+baseElapsed.toFixed(2),width:canvas.width,height:canvas.height,sourceCount:new Set(cuts.map(c=>c.sourceIndex)).size,manualTrimUsed:cuts.some(c=>c.manualTrim),originalPreserved:true};
   }catch(err){if(outputUrl)release(outputUrl);throw err;}
   finally{
     try{if(video){video.pause();video.removeAttribute('src');video.load();}}catch(e){}release(currentUrl);
@@ -141,26 +157,59 @@ function installMultiClipReviewUI(){
   const input=document.getElementById('video'),preview=document.getElementById('preview');
   if(!input||!preview||document.getElementById('doneRiteClipReview'))return;
   const wrap=document.createElement('div');wrap.id='doneRiteClipReview';wrap.style.display='none';wrap.style.marginTop='10px';
-  wrap.innerHTML='<div id="doneRiteClipCounter" style="text-align:center;font-weight:800;margin-bottom:8px;color:#c4ccd6"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button id="doneRitePrevClip" type="button" style="min-height:44px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#58a6ff;font-weight:900">◀ PREVIOUS CLIP</button><button id="doneRiteNextClip" type="button" style="min-height:44px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#58a6ff;font-weight:900">NEXT CLIP ▶</button></div>';
+  wrap.innerHTML=''
+    +'<div id="doneRiteClipCounter" style="text-align:center;font-weight:800;margin-bottom:8px;color:#c4ccd6"></div>'
+    +'<div id="doneRiteTrimPanel" style="background:#171c25;border:1px solid #2a3442;border-radius:14px;padding:12px;margin:8px 0 10px">'
+    +'<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:900;color:#c4ccd6"><span>START <b id="doneRiteStartTime" style="color:#58a6ff">00:00.0</b></span><span>END <b id="doneRiteEndTime" style="color:#58a6ff">00:00.0</b></span></div>'
+    +'<div id="doneRiteTrimTrack" style="position:relative;height:54px;margin:8px 4px;touch-action:pan-y">'
+    +'<div style="position:absolute;left:0;right:0;top:22px;height:10px;border-radius:999px;background:#2a3442"></div>'
+    +'<div id="doneRiteTrimFill" style="position:absolute;top:22px;height:10px;border-radius:999px;background:#1e7bff"></div>'
+    +'<button id="doneRiteStartHandle" type="button" aria-label="Trim start" style="position:absolute;top:8px;width:38px;height:38px;border-radius:50%;border:2px solid #fff;background:#1e7bff;transform:translateX(-19px);padding:0"></button>'
+    +'<button id="doneRiteEndHandle" type="button" aria-label="Trim end" style="position:absolute;top:8px;width:38px;height:38px;border-radius:50%;border:2px solid #fff;background:#1e7bff;transform:translateX(-19px);padding:0"></button>'
+    +'</div>'
+    +'<div id="doneRiteTrimDuration" style="text-align:center;color:#8793a1;font-size:13px;margin-bottom:8px">Selected: full clip</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button id="doneRitePreviewTrim" type="button" style="min-height:44px;border-radius:12px;border:1px solid #58a6ff;background:#171c25;color:#58a6ff;font-weight:900">▶ PREVIEW SELECTED</button><button id="doneRiteResetTrim" type="button" style="min-height:44px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#c4ccd6;font-weight:900">RESET FULL CLIP</button></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button id="doneRitePrevClip" type="button" style="min-height:44px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#58a6ff;font-weight:900">◀ PREVIOUS CLIP</button><button id="doneRiteNextClip" type="button" style="min-height:44px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#58a6ff;font-weight:900">NEXT CLIP ▶</button></div>';
   preview.insertAdjacentElement('afterend',wrap);
-  let index=0,url='';
+  let index=0,url='',duration=0,start=0,end=0,previewStopHandler=null;
   const counter=wrap.querySelector('#doneRiteClipCounter'),prev=wrap.querySelector('#doneRitePrevClip'),next=wrap.querySelector('#doneRiteNextClip');
+  const track=wrap.querySelector('#doneRiteTrimTrack'),fill=wrap.querySelector('#doneRiteTrimFill'),startHandle=wrap.querySelector('#doneRiteStartHandle'),endHandle=wrap.querySelector('#doneRiteEndHandle');
+  const startTime=wrap.querySelector('#doneRiteStartTime'),endTime=wrap.querySelector('#doneRiteEndTime'),durationText=wrap.querySelector('#doneRiteTrimDuration'),previewTrim=wrap.querySelector('#doneRitePreviewTrim'),resetTrim=wrap.querySelector('#doneRiteResetTrim');
   function list(){return Array.from(input.files||[]);}
+  function percent(t){return duration>0?Math.max(0,Math.min(100,t/duration*100)):0;}
+  function updateTrimUI(){
+    const ps=percent(start),pe=percent(end);startHandle.style.left=ps+'%';endHandle.style.left=pe+'%';fill.style.left=ps+'%';fill.style.width=Math.max(0,pe-ps)+'%';
+    startTime.textContent=formatTime(start);endTime.textContent=formatTime(end);durationText.textContent='Selected: '+formatTime(Math.max(0,end-start))+(start>.05||end<duration-.05?' • MANUAL RANGE WILL RENDER':' • full clip');
+  }
+  function saveTrim(){const files=list();if(!files[index])return;setManualTrim(files[index],index,start,end,duration);updateTrimUI();}
+  function loadTrim(){const files=list(),saved=files[index]?getManualTrim(files[index],index):null;start=saved?saved.start:0;end=saved?saved.end:duration;updateTrimUI();}
+  function positionFromEvent(e){const r=track.getBoundingClientRect();return Math.max(0,Math.min(duration,((e.clientX-r.left)/Math.max(1,r.width))*duration));}
+  function bindHandle(handle,kind){
+    handle.addEventListener('pointerdown',e=>{e.preventDefault();handle.setPointerCapture(e.pointerId);});
+    handle.addEventListener('pointermove',e=>{if(!handle.hasPointerCapture(e.pointerId)||!duration)return;const t=positionFromEvent(e),gap=Math.min(.25,duration);if(kind==='start')start=Math.max(0,Math.min(t,end-gap));else end=Math.min(duration,Math.max(t,start+gap));saveTrim();});
+    handle.addEventListener('pointerup',e=>{try{handle.releasePointerCapture(e.pointerId);}catch(x){}saveTrim();});
+  }
+  bindHandle(startHandle,'start');bindHandle(endHandle,'end');
   function show(i,autoPlay){
     const files=list();if(!files.length)return;
     index=Math.max(0,Math.min(files.length-1,i));
     try{preview.pause();}catch(e){}if(url)release(url);url=createPreviewUrl(files[index]);preview.src=url;preview.style.display='block';preview.load();
     counter.textContent='Clip '+(index+1)+' of '+files.length+' — '+files[index].name;
     prev.disabled=index===0;next.disabled=index===files.length-1;prev.style.opacity=prev.disabled?'.45':'1';next.style.opacity=next.disabled?'.45':'1';
+    const onMeta=()=>{duration=Math.max(.1,Number(preview.duration||0));loadTrim();};
+    if(preview.readyState>=1)onMeta();else preview.addEventListener('loadedmetadata',onMeta,{once:true});
     if(autoPlay)preview.play().catch(()=>{});
   }
-  input.addEventListener('change',()=>setTimeout(()=>{const files=list();if(!files.length){wrap.style.display='none';if(url){release(url);url='';}return;}wrap.style.display='block';show(0,false);},0));
-  prev.addEventListener('click',()=>show(index-1,true));next.addEventListener('click',()=>show(index+1,true));
+  previewTrim.addEventListener('click',()=>{if(!duration)return;try{preview.pause();}catch(e){}preview.currentTime=Math.max(0,start);if(previewStopHandler)preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=()=>{if(preview.currentTime>=end-.03){preview.pause();preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=null;}};preview.addEventListener('timeupdate',previewStopHandler);preview.play().catch(()=>{});});
+  resetTrim.addEventListener('click',()=>{start=0;end=duration;saveTrim();try{preview.currentTime=0;}catch(e){}});
+  input.addEventListener('change',()=>setTimeout(()=>{clearManualTrims();const files=list();if(!files.length){wrap.style.display='none';if(url){release(url);url='';}return;}wrap.style.display='block';show(0,false);},0));
+  prev.addEventListener('click',()=>show(index-1,false));next.addEventListener('click',()=>show(index+1,false));
   window.addEventListener('pagehide',()=>{if(url)release(url);});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installMultiClipReviewUI,{once:true});else setTimeout(installMultiClipReviewUI,0);
 
 function canShareFile(blob,fileName){if(!blob||typeof File==='undefined'||!navigator.share||!navigator.canShare)return false;try{return navigator.canShare({files:[new File([blob],fileName||'done-rite-ad.mp4',{type:blob.type||'video/mp4'})]});}catch(e){return false;}}
 async function shareFile(blob,fileName,shareText){if(!canShareFile(blob,fileName))throw new Error('File sharing is not available in this browser.');const file=new File([blob],fileName||'done-rite-ad.mp4',{type:blob.type||'video/mp4'});const payload={files:[file],title:file.name};if(shareText)payload.text=String(shareText);await navigator.share(payload);}
-window.DoneRiteOneClickBrowserExecutor={version:VERSION,supports,pickMime,createPreviewUrl,release,buildExecutionState,previewFrame,renderLocalVideo,renderLocalBatch,canShareFile,shareFile,installMultiClipReviewUI};
+window.DoneRiteOneClickBrowserExecutor={version:VERSION,supports,pickMime,createPreviewUrl,release,buildExecutionState,previewFrame,renderLocalVideo,renderLocalBatch,canShareFile,shareFile,installMultiClipReviewUI,getManualTrim,setManualTrim,clearManualTrims};
 })();
