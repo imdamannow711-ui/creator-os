@@ -5,13 +5,14 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v17-one-click-trim-audio";
+const CACHE_NAME = "done-rite-v18-one-click-studio-voiceover";
 
 const FILES = [
   "./",
   "./index.html",
   "./app.js",
   "./teleprompter.html",
+  "./teleprompter-one-click.html",
   "./teleprompter-script-studio.html",
   "./one-click-ad-dev.html",
   "./video-upload.html",
@@ -19,6 +20,7 @@ const FILES = [
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
+  "./assets/sfx/manifest.json",
   "./modules/one-click-ad-editor.js",
   "./modules/one-click-media-stage.js",
   "./modules/one-click-scene-scorer.js",
