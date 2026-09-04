@@ -64,7 +64,7 @@ async function renderLocalBatch(files,recipe,options){
 function installMultiClipReviewUI(){
   const input=document.getElementById('video'),preview=document.getElementById('preview');if(!input||!preview||document.getElementById('doneRiteClipReview'))return;
   const wrap=document.createElement('div');wrap.id='doneRiteClipReview';wrap.style.display='none';wrap.style.marginTop='10px';
-  wrap.innerHTML=''<
+  wrap.innerHTML=''
     +'<div id="doneRiteClipCounter" style="text-align:center;font-weight:800;margin-bottom:8px;color:#c4ccd6"></div>'
     +'<div id="doneRiteTrimPanel" style="background:#171c25;border:1px solid #2a3442;border-radius:14px;padding:12px;margin:8px 0 10px">'
     +'<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:900;color:#c4ccd6"><span>START <b id="doneRiteStartTime" style="color:#58a6ff">00:00.0</b></span><span>END <b id="doneRiteEndTime" style="color:#58a6ff">00:00.0</b></span></div>'
