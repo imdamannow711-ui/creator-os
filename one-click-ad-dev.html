@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>DONE RITE One-Click Ad Dev</title>
 <style>
-body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:760px;margin:auto;padding:16px 16px 40px}.card{background:#11151c;border:1px solid #2a3442;border-radius:18px;padding:16px;margin-bottom:12px}.button{width:100%;min-height:52px;border:1px solid #58a6ff;border-radius:14px;background:linear-gradient(135deg,#1e7bff,#0f4fa8);color:#fff;font-size:17px;font-weight:900}.input,.select{width:100%;margin-top:7px;margin-bottom:12px;padding:13px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#fff;font-size:16px}.label{font-size:12px;color:#c4ccd6;font-weight:900;letter-spacing:.07em;text-transform:uppercase}.help{color:#8793a1;font-size:13px;line-height:1.45}.out{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.45}h1{font-size:22px;margin:8px 0 4px}.pill{display:inline-block;border:1px solid #2a3442;border-radius:999px;padding:5px 9px;color:#58a6ff;font-size:12px;margin-bottom:8px}</style>
+body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:760px;margin:auto;padding:16px 16px 40px}.card{background:#11151c;border:1px solid #2a3442;border-radius:18px;padding:16px;margin-bottom:12px}.button{width:100%;min-height:52px;border:1px solid #58a6ff;border-radius:14px;background:linear-gradient(135deg,#1e7bff,#0f4fa8);color:#fff;font-size:17px;font-weight:900}.button:disabled{opacity:.5}.input,.select{width:100%;margin-top:7px;margin-bottom:12px;padding:13px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#fff;font-size:16px}.label{font-size:12px;color:#c4ccd6;font-weight:900;letter-spacing:.07em;text-transform:uppercase}.help{color:#8793a1;font-size:13px;line-height:1.45}.out{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.45}h1{font-size:22px;margin:8px 0 4px}.pill{display:inline-block;border:1px solid #2a3442;border-radius:999px;padding:5px 9px;color:#58a6ff;font-size:12px;margin-bottom:8px}.ok{color:#2bd97c}.warn{color:#ffb020}</style>
 </head>
 <body>
 <div class="wrap">
   <div class="pill">DEVELOPMENT ONLY — LIVE APP UNTOUCHED</div>
   <h1>ONE-CLICK AD</h1>
-  <p class="help">Raw-footage intake and deterministic ad-plan test harness.</p>
+  <p class="help">Raw-footage intake, media inspection, and deterministic ad-plan test harness.</p>
   <div class="card">
     <label class="label">Raw video</label>
     <input id="video" class="input" type="file" accept="video/*">
@@ -23,31 +23,43 @@ body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMa
     <select id="mode" class="select"><option value="AUTO_SELL">AUTO SELL</option><option value="AUTO_HOOK">AUTO HOOK</option><option value="AUTO_CLEAN">AUTO CLEAN</option></select>
     <label class="label">Duration</label>
     <select id="duration" class="select"><option>7</option><option>10</option><option selected>15</option><option>20</option><option>25</option><option>30</option></select>
-    <button id="go" class="button">CREATE POST-READY PLAN</button>
+    <button id="go" class="button">CREATE ONE-CLICK SESSION</button>
   </div>
   <div class="card"><strong>Video intake</strong><div id="media" class="out help">No video selected.</div></div>
-  <div class="card"><strong>Edit + compliance plan</strong><div id="out" class="out help">Tap the button to generate the plan.</div></div>
+  <div class="card"><strong>Media analysis</strong><div id="analysis" class="out help">Waiting for a raw video.</div></div>
+  <div class="card"><strong>Edit + compliance plan</strong><div id="out" class="out help">Tap the button to create the session.</div></div>
 </div>
 <script src="modules/one-click-ad-editor.js"></script>
+<script src="modules/one-click-media-stage.js"></script>
 <script>
-const video=document.getElementById('video'), media=document.getElementById('media'), out=document.getElementById('out');
-video.addEventListener('change',()=>{
+const video=document.getElementById('video'),media=document.getElementById('media'),analysis=document.getElementById('analysis'),out=document.getElementById('out'),go=document.getElementById('go');
+video.addEventListener('change',async()=>{
  const f=video.files&&video.files[0];
- if(!f){media.textContent='No video selected.';return;}
- media.textContent=`${f.name}\n${f.type||'video'}\n${(f.size/1024/1024).toFixed(1)} MB\nRaw file stays local in this development harness.`;
+ if(!f){media.textContent='No video selected.';analysis.textContent='Waiting for a raw video.';return;}
+ media.textContent=`${f.name}\n${f.type||'video'}\n${(f.size/1024/1024).toFixed(1)} MB\nOriginal remains under your control.`;
+ try{
+  const meta=await window.DoneRiteOneClickMediaStage.loadMetadata(f);
+  analysis.textContent=`Duration: ${meta.duration.toFixed(2)}s\nFrame: ${meta.width}×${meta.height}\nOrientation: ${meta.orientation}\nOriginal framing preserved when possible.`;
+ }catch(err){analysis.textContent='Could not inspect this file yet: '+err.message;}
 });
-document.getElementById('go').addEventListener('click',()=>{
+go.addEventListener('click',async()=>{
  const f=video.files&&video.files[0];
- const plan=window.DoneRiteOneClickAdEditor.createPlan({
-  productName:document.getElementById('product').value,
-  verifiedFeature:document.getElementById('feature').value,
-  mode:document.getElementById('mode').value,
-  durationSeconds:document.getElementById('duration').value,
-  category:'Electronics & Gadgets',batteryPowered:true,
-  hashtags:['#Gadgets','#TikTokShop']
- });
- plan.rawMedia=f?{name:f.name,type:f.type,sizeBytes:f.size}:null;
- out.textContent=JSON.stringify(plan,null,2);
+ if(!f){out.textContent='Choose a raw video first.';return;}
+ go.disabled=true;go.textContent='BUILDING SESSION…';
+ try{
+  const plan=window.DoneRiteOneClickAdEditor.createPlan({
+   productName:document.getElementById('product').value,
+   verifiedFeature:document.getElementById('feature').value,
+   mode:document.getElementById('mode').value,
+   durationSeconds:document.getElementById('duration').value,
+   category:'Electronics & Gadgets',batteryPowered:true,
+   hashtags:['#Gadgets','#TikTokShop']
+  });
+  const session=await window.DoneRiteOneClickMediaStage.createSession(f,plan);
+  analysis.textContent=JSON.stringify(session.analysis,null,2);
+  out.textContent=JSON.stringify({status:session.status,sessionId:session.id,plan:session.plan,rollback:session.rollback},null,2);
+ }catch(err){out.textContent='Session error: '+err.message;}
+ finally{go.disabled=false;go.textContent='CREATE ONE-CLICK SESSION';}
 });
 </script>
 </body>
