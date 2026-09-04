@@ -1,5 +1,5 @@
 {
-  "version": "1.4",
+  "version": "1.5",
   "branch": "feature/one-click-ad-editor",
   "modules": [
     "creator-os-next-config.js",
@@ -11,6 +11,7 @@
     "one-click-media-stage.js",
     "one-click-scene-scorer.js",
     "one-click-render-stage.js",
+    "one-click-browser-executor.js",
     "youtube-amazon.js",
     "product-picks.js",
     "performance-engine.js",
