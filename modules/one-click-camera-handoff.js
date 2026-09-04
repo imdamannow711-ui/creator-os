@@ -1,21 +1,24 @@
-/* DONE RITE Creator OS — One-Click Camera Handoff v0.2
+/* DONE RITE Creator OS — One-Click Camera Handoff v0.3
    Adds a real iPhone camera capture path to the Hook + CTA recording guide.
-   Also loads the One-Click voiceover gap remover.
+   Also loads the One-Click voiceover gap remover and autosave/resume state.
 */
 (function(){
 'use strict';
-const VERSION='0.2';
+const VERSION='0.3';
 let lastPlan=null;
 let capturedUrl='';
 
+function loadScriptOnce(selector,src,datasetKey,onload){
+  if(document.querySelector(selector))return;
+  const s=document.createElement('script');s.src=src;s.async=false;s.dataset[datasetKey]='1';if(onload)s.onload=onload;document.head.appendChild(s);
+}
 function loadGapRemover(){
   if(window.DoneRiteOneClickGapRemover)return;
-  if(document.querySelector('script[data-done-rite-gap-remover]'))return;
-  const s=document.createElement('script');
-  s.src='modules/one-click-gap-remover.js?v=20260904-gap1';
-  s.async=false;s.dataset.doneRiteGapRemover='1';
-  s.onload=()=>{try{window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.install();}catch(e){}};
-  document.head.appendChild(s);
+  loadScriptOnce('script[data-done-rite-gap-remover]','modules/one-click-gap-remover.js?v=20260904-gap1','doneRiteGapRemover',()=>{try{window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.install();}catch(e){}});
+}
+function loadSessionState(){
+  if(window.DoneRiteOneClickSessionState)return;
+  loadScriptOnce('script[data-done-rite-session-state]','modules/one-click-session-state.js?v=20260904-session1','doneRiteSessionState');
 }
 
 function fileSignature(file){return [file&&file.name||'',file&&file.size||0,file&&file.lastModified||0].join('|');}
@@ -35,7 +38,7 @@ function appendCapturedFile(captured){
 }
 
 function install(plan){
-  loadGapRemover();
+  loadGapRemover();loadSessionState();
   if(plan)lastPlan=plan;
   const card=document.getElementById('doneRiteRecordingHandoff');
   if(!card||!lastPlan)return;
@@ -68,10 +71,7 @@ function install(plan){
   if(oldLink)card.insertBefore(cameraInput,oldLink);else card.appendChild(cameraInput);
   if(oldLink)card.insertBefore(status,oldLink);else card.appendChild(status);
 
-  cameraButton.addEventListener('click',()=>{
-    cameraInput.value='';
-    cameraInput.click();
-  });
+  cameraButton.addEventListener('click',()=>{cameraInput.value='';cameraInput.click();});
 
   cameraInput.addEventListener('change',()=>{
     const file=cameraInput.files&&cameraInput.files[0];
@@ -100,12 +100,10 @@ function install(plan){
   });
 }
 
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadGapRemover,{once:true});else loadGapRemover();
+function bootHelpers(){loadGapRemover();loadSessionState();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootHelpers,{once:true});else bootHelpers();
 window.addEventListener('pagehide',()=>{if(capturedUrl)try{URL.revokeObjectURL(capturedUrl);}catch(e){}});
-window.addEventListener('done-rite-one-click-plan',event=>{
-  lastPlan=event&&event.detail||lastPlan;
-  setTimeout(()=>install(lastPlan),0);
-});
+window.addEventListener('done-rite-one-click-plan',event=>{lastPlan=event&&event.detail||lastPlan;setTimeout(()=>install(lastPlan),0);});
 
-window.DoneRiteOneClickCameraHandoff={version:VERSION,install,appendCapturedFile,loadGapRemover};
+window.DoneRiteOneClickCameraHandoff={version:VERSION,install,appendCapturedFile,loadGapRemover,loadSessionState};
 })();
