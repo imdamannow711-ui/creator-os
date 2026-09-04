@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>DONE RITE One-Click Ad Test</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:760px;margin:auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom))}.card{background:#11151c;border:1px solid #2a3442;border-radius:18px;padding:16px;margin-bottom:12px}.button{width:100%;min-height:52px;border:1px solid #58a6ff;border-radius:14px;background:linear-gradient(135deg,#1e7bff,#0f4fa8);color:#fff;font-size:17px;font-weight:900;margin-top:8px}.button.secondary{background:#171c25;color:#58a6ff}.button.good{background:linear-gradient(135deg,#16864b,#0d5e35);border-color:#2bd97c}.button:disabled{opacity:.45}.input,.select{width:100%;margin-top:7px;margin-bottom:12px;padding:13px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#fff;font-size:16px}.label{font-size:12px;color:#c4ccd6;font-weight:900;letter-spacing:.07em;text-transform:uppercase}.help{color:#8793a1;font-size:13px;line-height:1.45}.preview{width:100%;border-radius:14px;background:#000;display:none;margin-top:10px}.preview-img{width:100%;border-radius:14px;background:#000;display:none;margin-top:10px}.pill{display:inline-flex;border:1px solid #2a3442;border-radius:999px;padding:5px 9px;color:#58a6ff;font-size:12px;margin-bottom:8px}.status{font-weight:900;font-size:18px;margin:6px 0}.ok{color:#2bd97c}.warn{color:#ffb020}.bad{color:#ff5d6c}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#171c25;border:1px solid #2a3442;border-radius:12px;padding:12px}.metric b{display:block;font-size:12px;color:#8793a1;text-transform:uppercase;margin-bottom:4px}.metric span{font-weight:800}.copybox{background:#171c25;border:1px solid #2a3442;border-radius:12px;padding:12px;margin-top:8px;overflow-wrap:anywhere}.progress{height:12px;border:1px solid #2a3442;background:#171c25;border-radius:999px;overflow:hidden;margin-top:12px;display:none}.progress span{display:block;height:100%;width:0;background:#2bd97c;transition:width .12s linear}.renderbox{display:none;margin-top:12px;padding-top:12px;border-top:1px solid #2a3442}details{margin-top:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;color:#8793a1;max-height:260px;overflow:auto}h1{font-size:23px;margin:8px 0 4px}h2{font-size:16px;margin:0 0 8px}@media(max-width:430px){.row{grid-template-columns:1fr}}
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:760px;margin:auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom))}.card{background:#11151c;border:1px solid #2a3442;border-radius:18px;padding:16px;margin-bottom:12px}.button{width:100%;min-height:52px;border:1px solid #58a6ff;border-radius:14px;background:linear-gradient(135deg,#1e7bff,#0f4fa8);color:#fff;font-size:17px;font-weight:900;margin-top:8px}.button.secondary{background:#171c25;color:#58a6ff}.button.good{background:linear-gradient(135deg,#16864b,#0d5e35);border-color:#2bd97c}.button.tiktok{background:#fff;color:#000;border-color:#fff}.button:disabled{opacity:.45}.input,.select{width:100%;margin-top:7px;margin-bottom:12px;padding:13px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#fff;font-size:16px}.label{font-size:12px;color:#c4ccd6;font-weight:900;letter-spacing:.07em;text-transform:uppercase}.help{color:#8793a1;font-size:13px;line-height:1.45}.preview{width:100%;border-radius:14px;background:#000;display:none;margin-top:10px}.preview-img{width:100%;border-radius:14px;background:#000;display:none;margin-top:10px}.pill{display:inline-flex;border:1px solid #2a3442;border-radius:999px;padding:5px 9px;color:#58a6ff;font-size:12px;margin-bottom:8px}.status{font-weight:900;font-size:18px;margin:6px 0}.ok{color:#2bd97c}.warn{color:#ffb020}.bad{color:#ff5d6c}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#171c25;border:1px solid #2a3442;border-radius:12px;padding:12px}.metric b{display:block;font-size:12px;color:#8793a1;text-transform:uppercase;margin-bottom:4px}.metric span{font-weight:800}.copybox{background:#171c25;border:1px solid #2a3442;border-radius:12px;padding:12px;margin-top:8px;overflow-wrap:anywhere}.progress{height:12px;border:1px solid #2a3442;background:#171c25;border-radius:999px;overflow:hidden;margin-top:12px;display:none}.progress span{display:block;height:100%;width:0;background:#2bd97c;transition:width .12s linear}.renderbox{display:none;margin-top:12px;padding-top:12px;border-top:1px solid #2a3442}details{margin-top:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;color:#8793a1;max-height:260px;overflow:auto}h1{font-size:23px;margin:8px 0 4px}h2{font-size:16px;margin:0 0 8px}@media(max-width:430px){.row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -62,6 +62,8 @@
     <div id="renderBox" class="renderbox">
       <div class="status ok">RENDER COMPLETE</div>
       <video id="renderedVideo" class="preview" controls playsinline></video>
+      <button id="tiktokBtn" class="button tiktok" style="display:none">SEND TO TIKTOK</button>
+      <div id="tiktokHelp" class="help" style="display:none;margin-top:8px">Choose TikTok in the iPhone share sheet, then attach the TikTok Shop product inside TikTok and post.</div>
       <button id="shareBtn" class="button good" style="display:none">SAVE / SHARE FINISHED VIDEO</button>
       <a id="openLink" class="button secondary" style="display:block;text-align:center;text-decoration:none" target="_blank" rel="noopener">OPEN FINISHED VIDEO</a>
     </div>
@@ -84,7 +86,7 @@ function releasePreview(){if(previewUrl&&window.DoneRiteOneClickBrowserExecutor)
 function releaseRendered(){if(renderedUrl&&window.DoneRiteOneClickBrowserExecutor)window.DoneRiteOneClickBrowserExecutor.release(renderedUrl);renderedUrl='';}
 function humanSize(bytes){if(!bytes)return '0 MB';return (bytes/1024/1024).toFixed(1)+' MB';}
 function setCheck(ok,text){$('checkResult').className=ok?'ok':'bad';$('checkResult').textContent=text;}
-function resetRender(){releaseRendered();currentRender=null;$('renderBox').style.display='none';$('renderedVideo').style.display='none';$('shareBtn').style.display='none';$('progress').style.display='none';$('progress').firstElementChild.style.width='0%';$('renderState').textContent='';}
+function resetRender(){releaseRendered();currentRender=null;$('renderBox').style.display='none';$('renderedVideo').style.display='none';$('shareBtn').style.display='none';$('tiktokBtn').style.display='none';$('tiktokHelp').style.display='none';$('progress').style.display='none';$('progress').firstElementChild.style.width='0%';$('renderState').textContent='';$('renderState').className='help';}
 $('check').addEventListener('click',()=>{
   if(!modulesReady()){setCheck(false,'System check failed: one or more editor modules did not load. Do not choose a video yet.');return;}
   try{
@@ -117,7 +119,7 @@ go.addEventListener('click',async()=>{
     $('fileName').textContent=plan.packaging.videoFileName;$('caption').textContent=plan.packaging.caption;$('hashtags').textContent=plan.packaging.hashtags.join(' ');$('compliance').textContent=plan.packaging.compliance.flags.length?plan.packaging.compliance.flags.join(' • '):'No extra category flags.';
     $('nextStep').textContent=execution.status==='LOCAL_EXPORT_AVAILABLE'?'The edit plan is ready. Tap Render Finished Test Video to create the actual playable local video.':'This phone cannot execute the timed local render path.';renderBtn.style.display=execution.status==='LOCAL_EXPORT_AVAILABLE'?'block':'none';
     try{const p=await window.DoneRiteOneClickBrowserExecutor.previewFrame(f,recipe);frame.src=p.dataUrl;frame.style.display='block';}catch(e){frame.style.display='none';$('renderState').textContent='Preview frame unavailable: '+e.message;}
-    $('tech').textContent=JSON.stringify({sessionId:session.id,selection:{totalSeconds:selection.totalSeconds,complete:selection.complete},execution:{status:execution.status,capabilities:execution.capabilities,recorderMime:execution.recorderMime},rollback:session.rollback},null,2);$('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
+    $('tech').textContent=JSON.stringify({sessionId:session.id,selection:{totalSeconds:selection.totalSeconds,complete:selection.complete},execution:{status:execution.status,capabilities:execution.capabilities,recorderMime:execution.recorderMime},hook:plan.analytics||null,rollback:session.rollback},null,2);$('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(err){$('resultCard').style.display='block';$('status').className='status bad';$('status').textContent='EDIT PLAN FAILED';$('nextStep').textContent=err.message;$('tech').textContent=String(err&&err.stack||err);renderBtn.style.display='none';}
   finally{go.disabled=false;go.textContent='BUILD EDIT PLAN';}
 });
@@ -128,11 +130,21 @@ renderBtn.addEventListener('click',async()=>{
     const result=await window.DoneRiteOneClickBrowserExecutor.renderLocalVideo(f,currentRecipe,{maxLongEdge:1280,fps:30,onProgress:p=>{$('progress').firstElementChild.style.width=Math.round(p*100)+'%';}});
     currentRender=result;renderedUrl=result.url;$('progress').firstElementChild.style.width='100%';$('renderState').textContent='Finished • '+result.durationSeconds.toFixed(1)+' sec • '+result.width+'×'+result.height+' • original preserved';
     $('renderedVideo').src=renderedUrl;$('renderedVideo').style.display='block';$('openLink').href=renderedUrl;$('renderBox').style.display='block';
-    $('shareBtn').style.display=window.DoneRiteOneClickBrowserExecutor.canShareFile(result.blob,result.fileName)?'block':'none';$('renderBox').scrollIntoView({behavior:'smooth',block:'start'});
+    const canShare=window.DoneRiteOneClickBrowserExecutor.canShareFile(result.blob,result.fileName);
+    $('shareBtn').style.display=canShare?'block':'none';$('tiktokBtn').style.display=canShare?'block':'none';$('tiktokHelp').style.display=canShare?'block':'none';$('renderBox').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(err){$('renderState').className='bad';$('renderState').textContent='Render failed: '+err.message+' Your original video was not changed.';}
   finally{renderBtn.disabled=false;renderBtn.textContent='RENDER FINISHED TEST VIDEO';}
 });
-$('shareBtn').addEventListener('click',async()=>{if(!currentRender)return;try{await window.DoneRiteOneClickBrowserExecutor.shareFile(currentRender.blob,currentRender.fileName);}catch(err){alert('Share failed: '+err.message);}});
+async function shareFinished(includeCaption){
+  if(!currentRender)return;
+  const file=new File([currentRender.blob],currentRender.fileName||'done-rite-ad.mp4',{type:currentRender.blob.type||'video/mp4'});
+  const text=includeCaption&&currentPlan?([currentPlan.packaging.caption,currentPlan.packaging.hashtags.join(' ')].filter(Boolean).join('\n\n')):'';
+  const data={files:[file],title:file.name};if(text)data.text=text;
+  if(!navigator.share||!navigator.canShare||!navigator.canShare({files:[file]}))throw new Error('File sharing is not available in this browser.');
+  await navigator.share(data);
+}
+$('tiktokBtn').addEventListener('click',async()=>{try{await shareFinished(true);}catch(err){if(err&&err.name!=='AbortError')alert('TikTok handoff failed: '+err.message);}});
+$('shareBtn').addEventListener('click',async()=>{try{await shareFinished(false);}catch(err){if(err&&err.name!=='AbortError')alert('Share failed: '+err.message);}});
 window.addEventListener('pagehide',()=>{releasePreview();releaseRendered();});
 })();
 </script>
