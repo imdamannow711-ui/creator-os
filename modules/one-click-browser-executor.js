@@ -1,10 +1,10 @@
-/* DONE RITE Creator OS — One-Click Browser Executor v0.8
+/* DONE RITE Creator OS — One-Click Browser Executor v0.9
    iPhone-safe local preview, manual trim and multi-source timed render executor.
    Originals are never overwritten.
 */
 (function(){
 'use strict';
-const VERSION='0.8';
+const VERSION='0.9';
 const manualTrims=new Map();
 
 function supports(){
@@ -172,7 +172,7 @@ function installMultiClipReviewUI(){
     +'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button id="doneRitePrevClip" type="button" style="min-height:44px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#58a6ff;font-weight:900">◀ PREVIOUS CLIP</button><button id="doneRiteNextClip" type="button" style="min-height:44px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#58a6ff;font-weight:900">NEXT CLIP ▶</button></div>';
   preview.insertAdjacentElement('afterend',wrap);
-  let index=0,url='',duration=0,start=0,end=0,previewStopHandler=null;
+  let index=0,url='',duration=0,start=0,end=0,previewStopHandler=null,loadToken=0;
   const counter=wrap.querySelector('#doneRiteClipCounter'),prev=wrap.querySelector('#doneRitePrevClip'),next=wrap.querySelector('#doneRiteNextClip');
   const track=wrap.querySelector('#doneRiteTrimTrack'),fill=wrap.querySelector('#doneRiteTrimFill'),startHandle=wrap.querySelector('#doneRiteStartHandle'),endHandle=wrap.querySelector('#doneRiteEndHandle');
   const startTime=wrap.querySelector('#doneRiteStartTime'),endTime=wrap.querySelector('#doneRiteEndTime'),durationText=wrap.querySelector('#doneRiteTrimDuration'),previewTrim=wrap.querySelector('#doneRitePreviewTrim'),resetTrim=wrap.querySelector('#doneRiteResetTrim');
@@ -180,10 +180,11 @@ function installMultiClipReviewUI(){
   function percent(t){return duration>0?Math.max(0,Math.min(100,t/duration*100)):0;}
   function updateTrimUI(){
     const ps=percent(start),pe=percent(end);startHandle.style.left=ps+'%';endHandle.style.left=pe+'%';fill.style.left=ps+'%';fill.style.width=Math.max(0,pe-ps)+'%';
-    startTime.textContent=formatTime(start);endTime.textContent=formatTime(end);durationText.textContent='Selected: '+formatTime(Math.max(0,end-start))+(start>.05||end<duration-.05?' • MANUAL RANGE WILL RENDER':' • full clip');
+    startTime.textContent=formatTime(start);endTime.textContent=formatTime(end);durationText.textContent=duration>0?'Selected: '+formatTime(Math.max(0,end-start))+(start>.05||end<duration-.05?' • MANUAL RANGE WILL RENDER':' • full clip'):'Loading clip timing…';
+    previewTrim.disabled=!duration;resetTrim.disabled=!duration;
   }
-  function saveTrim(){const files=list();if(!files[index])return;setManualTrim(files[index],index,start,end,duration);updateTrimUI();}
-  function loadTrim(){const files=list(),saved=files[index]?getManualTrim(files[index],index):null;start=saved?saved.start:0;end=saved?saved.end:duration;updateTrimUI();}
+  function saveTrim(){const files=list();if(!files[index]||!duration)return;setManualTrim(files[index],index,start,end,duration);updateTrimUI();}
+  function loadTrim(){const files=list(),saved=files[index]?getManualTrim(files[index],index):null;start=saved?Math.min(saved.start,duration):0;end=saved?Math.min(saved.end,duration):duration;if(end<=start)end=duration;updateTrimUI();}
   function positionFromEvent(e){const r=track.getBoundingClientRect();return Math.max(0,Math.min(duration,((e.clientX-r.left)/Math.max(1,r.width))*duration));}
   function bindHandle(handle,kind){
     handle.addEventListener('pointerdown',e=>{e.preventDefault();handle.setPointerCapture(e.pointerId);});
@@ -194,18 +195,30 @@ function installMultiClipReviewUI(){
   function show(i,autoPlay){
     const files=list();if(!files.length)return;
     index=Math.max(0,Math.min(files.length-1,i));
-    try{preview.pause();}catch(e){}if(url)release(url);url=createPreviewUrl(files[index]);preview.src=url;preview.style.display='block';preview.load();
+    const token=++loadToken;
+    try{preview.pause();}catch(e){}
+    if(previewStopHandler){preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=null;}
+    if(url)release(url);
+    duration=0;start=0;end=0;updateTrimUI();
     counter.textContent='Clip '+(index+1)+' of '+files.length+' — '+files[index].name;
     prev.disabled=index===0;next.disabled=index===files.length-1;prev.style.opacity=prev.disabled?'.45':'1';next.style.opacity=next.disabled?'.45':'1';
-    const onMeta=()=>{duration=Math.max(.1,Number(preview.duration||0));loadTrim();};
-    if(preview.readyState>=1)onMeta();else preview.addEventListener('loadedmetadata',onMeta,{once:true});
-    if(autoPlay)preview.play().catch(()=>{});
+    const onMeta=()=>{
+      if(token!==loadToken)return;
+      const d=Number(preview.duration);
+      if(!Number.isFinite(d)||d<=0)return;
+      duration=d;loadTrim();
+      if(autoPlay)preview.play().catch(()=>{});
+    };
+    preview.addEventListener('loadedmetadata',onMeta,{once:true});
+    url=createPreviewUrl(files[index]);
+    preview.removeAttribute('src');preview.load();
+    preview.src=url;preview.style.display='block';preview.load();
   }
   previewTrim.addEventListener('click',()=>{if(!duration)return;try{preview.pause();}catch(e){}preview.currentTime=Math.max(0,start);if(previewStopHandler)preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=()=>{if(preview.currentTime>=end-.03){preview.pause();preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=null;}};preview.addEventListener('timeupdate',previewStopHandler);preview.play().catch(()=>{});});
-  resetTrim.addEventListener('click',()=>{start=0;end=duration;saveTrim();try{preview.currentTime=0;}catch(e){}});
-  input.addEventListener('change',()=>setTimeout(()=>{clearManualTrims();const files=list();if(!files.length){wrap.style.display='none';if(url){release(url);url='';}return;}wrap.style.display='block';show(0,false);},0));
+  resetTrim.addEventListener('click',()=>{if(!duration)return;start=0;end=duration;saveTrim();try{preview.currentTime=0;}catch(e){}});
+  input.addEventListener('change',()=>setTimeout(()=>{clearManualTrims();loadToken++;const files=list();if(!files.length){wrap.style.display='none';duration=0;start=0;end=0;updateTrimUI();if(url){release(url);url='';}return;}wrap.style.display='block';show(0,false);},0));
   prev.addEventListener('click',()=>show(index-1,false));next.addEventListener('click',()=>show(index+1,false));
-  window.addEventListener('pagehide',()=>{if(url)release(url);});
+  window.addEventListener('pagehide',()=>{loadToken++;if(url)release(url);});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installMultiClipReviewUI,{once:true});else setTimeout(installMultiClipReviewUI,0);
 
