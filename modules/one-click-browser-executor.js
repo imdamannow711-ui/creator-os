@@ -1,15 +1,15 @@
-/* DONE RITE Creator OS — One-Click Browser Executor v0.2
-   Local preview/export executor. Preserves the original source and never overwrites it.
+/* DONE RITE Creator OS — One-Click Browser Executor v0.3
+   Local preview and timed render executor. Originals are never overwritten.
 */
 (function(){
 'use strict';
-const VERSION='0.2';
-
+const VERSION='0.3';
 function supports(){
   const canCapture=typeof HTMLCanvasElement!=='undefined'&&!!HTMLCanvasElement.prototype.captureStream;
   const canRecord=typeof MediaRecorder!=='undefined';
   const canDraw=typeof document!=='undefined';
-  return {canCapture,canRecord,canDraw,localPreview:canDraw,localExport:canCapture&&canRecord};
+  const AudioCtx=typeof window!=='undefined'&&(window.AudioContext||window.webkitAudioContext);
+  return {canCapture,canRecord,canDraw,canAudioMix:!!AudioCtx,localPreview:canDraw,localExport:canCapture&&canRecord&&!!AudioCtx};
 }
 function pickMime(){
   if(typeof MediaRecorder==='undefined'||typeof MediaRecorder.isTypeSupported!=='function') return '';
@@ -20,60 +20,158 @@ function pickMime(){
 function createPreviewUrl(file){if(!file) throw new Error('Missing source file.');return URL.createObjectURL(file);}
 function release(url){if(url) try{URL.revokeObjectURL(url);}catch(e){}}
 function buildExecutionState(session,recipe){
-  const caps=supports(); const mime=pickMime();
+  const caps=supports(),mime=pickMime();
   return {
     engine:'DONE RITE One-Click Browser Executor',version:VERSION,
-    status:caps.localExport?'LOCAL_EXPORT_AVAILABLE':'PREVIEW_ONLY',
+    status:caps.localExport&&mime?'LOCAL_EXPORT_AVAILABLE':'PREVIEW_ONLY',
     sessionId:session&&session.id||null,originalPreserved:true,recipe:recipe||null,
     capabilities:caps,recorderMime:mime||null,
-    exportWarning:caps.localExport?null:'This browser can preview the planned edit but cannot reliably encode the final local video in this path.',
+    exportWarning:caps.localExport&&mime?null:'This browser can preview the planned edit but cannot reliably encode the final local video in this path.',
     requiresUserGestureForSave:true
   };
 }
-function makeCanvas(width,height){const canvas=document.createElement('canvas');canvas.width=Math.max(1,width||1080);canvas.height=Math.max(1,height||1920);return canvas;}
-function fitContain(ctx,video,w,h){const vw=video.videoWidth||w,vh=video.videoHeight||h;const scale=Math.min(w/vw,h/vh),dw=vw*scale,dh=vh*scale;const x=(w-dw)/2,y=(h-dh)/2;ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.drawImage(video,x,y,dw,dh);}
-function drawOverlay(ctx,overlay,w,h){if(!overlay||!overlay.text)return;const text=String(overlay.text).slice(0,90);const x=Math.round(w*0.08),y=Math.round(h*0.18);ctx.font=`900 ${Math.max(34,Math.round(w*0.055))}px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif`;ctx.textBaseline='top';ctx.lineWidth=Math.max(3,Math.round(w*0.004));ctx.strokeStyle='rgba(0,0,0,.9)';ctx.fillStyle='#fff';ctx.strokeText(text,x,y);ctx.fillText(text,x,y);}
-function waitFor(target,event,timeoutMs){
+function waitEvent(target,name,timeout){
   return new Promise((resolve,reject)=>{
-    let done=false;
-    const finish=(ok,value)=>{if(done)return;done=true;clearTimeout(timer);target.removeEventListener(event,onEvent);target.removeEventListener('error',onError);ok?resolve(value):reject(value);};
-    const onEvent=()=>finish(true);
-    const onError=()=>finish(false,new Error('Could not decode the selected video frame.'));
-    const timer=setTimeout(()=>finish(false,new Error('Timed out waiting for the selected video frame.')),timeoutMs||6000);
-    target.addEventListener(event,onEvent,{once:true});
-    target.addEventListener('error',onError,{once:true});
+    let timer=null;
+    const done=()=>{cleanup();resolve();};
+    const fail=()=>{cleanup();reject(new Error('Video '+name+' failed.'));};
+    function cleanup(){target.removeEventListener(name,done);target.removeEventListener('error',fail);if(timer)clearTimeout(timer);}
+    target.addEventListener(name,done,{once:true});target.addEventListener('error',fail,{once:true});
+    if(timeout)timer=setTimeout(()=>{cleanup();reject(new Error('Timed out waiting for video '+name+'.'));},timeout);
+  });
+}
+async function loadPlayableVideo(file){
+  const video=document.createElement('video');
+  video.playsInline=true;video.preload='auto';video.crossOrigin='anonymous';video.volume=1;video.muted=false;
+  const url=URL.createObjectURL(file);video.src=url;
+  try{
+    if(video.readyState<1)await waitEvent(video,'loadedmetadata',12000);
+    if(video.readyState<2)await waitEvent(video,'loadeddata',12000);
+    return {video,url};
+  }catch(err){release(url);throw err;}
+}
+function makeCanvasForVideo(video,maxLongEdge){
+  const vw=video.videoWidth||1080,vh=video.videoHeight||1920,maxEdge=Math.max(vw,vh),limit=Math.max(360,Number(maxLongEdge||1280));
+  const scale=maxEdge>limit?limit/maxEdge:1;
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(2,Math.round(vw*scale));canvas.height=Math.max(2,Math.round(vh*scale));
+  return canvas;
+}
+function fitContain(ctx,video,w,h){
+  const vw=video.videoWidth||w,vh=video.videoHeight||h,scale=Math.min(w/vw,h/vh),dw=vw*scale,dh=vh*scale,x=(w-dw)/2,y=(h-dh)/2;
+  ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.drawImage(video,x,y,dw,dh);
+}
+function wrapText(ctx,text,maxWidth){
+  const words=String(text||'').trim().split(/\s+/),lines=[];let line='';
+  for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=word;}else line=test;}
+  if(line)lines.push(line);return lines.slice(0,3);
+}
+function drawOverlay(ctx,overlay,w,h){
+  if(!overlay||!overlay.text)return;
+  const fontSize=Math.max(26,Math.round(w*0.058)),x=Math.round(w*0.08),y=Math.round(h*0.17),maxWidth=Math.round(w*0.78);
+  ctx.font='900 '+fontSize+'px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';ctx.textBaseline='top';ctx.lineJoin='round';
+  const lines=wrapText(ctx,String(overlay.text).slice(0,100),maxWidth),gap=Math.round(fontSize*1.12);
+  lines.forEach((line,i)=>{ctx.lineWidth=Math.max(3,Math.round(w*0.005));ctx.strokeStyle='rgba(0,0,0,.92)';ctx.fillStyle='#fff';ctx.strokeText(line,x,y+i*gap);ctx.fillText(line,x,y+i*gap);});
+}
+function overlayForTime(recipe,t){
+  const overlays=recipe&&Array.isArray(recipe.overlays)?recipe.overlays:[],d=Math.max(.1,Number(recipe&&recipe.outputDurationSeconds||0));
+  if(!overlays.length)return null;
+  if(overlays.length===1)return overlays[0];
+  if(t<Math.min(2,d*.25))return overlays[0];
+  if(overlays.length>2&&t>=Math.max(0,d-2.4))return overlays[overlays.length-1];
+  if(overlays.length>1&&t>=d*.34&&t<=d*.72)return overlays[Math.min(1,overlays.length-1)];
+  return null;
+}
+async function seekVideo(video,time){
+  const target=Math.max(0,Math.min(Number(time||0),Math.max(0,(video.duration||0)-.01)));
+  if(Math.abs(video.currentTime-target)<.04)return;
+  video.currentTime=target;await waitEvent(video,'seeked',10000);
+}
+function drawUntil(video,ctx,canvas,cut,baseElapsed,recipe,onProgress){
+  return new Promise((resolve,reject)=>{
+    let stopped=false;
+    function finish(){if(stopped)return;stopped=true;resolve();}
+    function frame(){
+      if(stopped)return;
+      try{
+        if(video.readyState>=2){
+          fitContain(ctx,video,canvas.width,canvas.height);
+          const elapsed=baseElapsed+Math.max(0,Math.min(cut.end,video.currentTime)-cut.start);
+          drawOverlay(ctx,overlayForTime(recipe,elapsed),canvas.width,canvas.height);
+          if(typeof onProgress==='function')onProgress(Math.min(1,elapsed/Math.max(.1,recipe.outputDurationSeconds||1)));
+        }
+        if(video.currentTime>=cut.end-.025||video.ended){finish();return;}
+        requestAnimationFrame(frame);
+      }catch(err){stopped=true;reject(err);}
+    }
+    requestAnimationFrame(frame);
   });
 }
 async function previewFrame(file,recipe,options){
-  options=options||{}; if(!file) throw new Error('Missing source file.');
-  const video=document.createElement('video');video.muted=true;video.playsInline=true;video.preload='auto';
-  const url=URL.createObjectURL(file);
+  options=options||{};if(!file)throw new Error('Missing source file.');
+  const loaded=await loadPlayableVideo(file),video=loaded.video,url=loaded.url;
   try{
-    video.src=url;
-    if(video.readyState<1) await waitFor(video,'loadedmetadata',6000);
-    const duration=Number.isFinite(video.duration)?video.duration:0;
-    const firstCut=recipe&&Array.isArray(recipe.selectedCuts)&&recipe.selectedCuts[0];
-    const requested=firstCut?Number(firstCut.start||0)+Math.min(0.35,Math.max(0,(Number(firstCut.end||0)-Number(firstCut.start||0))/2)):0.25;
-    const seekTo=Math.max(0,Math.min(duration>0?Math.max(0,duration-0.05):requested,requested));
-    if(video.readyState<2) await waitFor(video,'loadeddata',6000);
-    if(seekTo>0.01 && Math.abs((video.currentTime||0)-seekTo)>0.01){
-      video.currentTime=seekTo;
-      await waitFor(video,'seeked',6000);
+    const cuts=recipe&&Array.isArray(recipe.selectedCuts)?recipe.selectedCuts:[];
+    const first=cuts[0];
+    const target=first?Math.min(first.end-.05,first.start+Math.min(.35,Math.max(.08,(first.end-first.start)*.15))):Math.min(.35,Math.max(.08,(video.duration||1)*.08));
+    await seekVideo(video,target);
+    const canvas=makeCanvasForVideo(video,options.maxLongEdge||1280),ctx=canvas.getContext('2d');
+    fitContain(ctx,video,canvas.width,canvas.height);drawOverlay(ctx,overlayForTime(recipe,0),canvas.width,canvas.height);
+    return {canvas,dataUrl:canvas.toDataURL('image/jpeg',.9),sourceTime:target};
+  }finally{video.pause();video.removeAttribute('src');video.load();release(url);}
+}
+async function renderLocalVideo(file,recipe,options){
+  options=options||{};
+  const caps=supports(),mime=pickMime();
+  if(!file)throw new Error('Missing source file.');
+  if(!recipe||!Array.isArray(recipe.selectedCuts)||!recipe.selectedCuts.length)throw new Error('No selected cuts to render.');
+  if(!caps.localExport||!mime)throw new Error('Local video export is not available in this browser.');
+  const loaded=await loadPlayableVideo(file),video=loaded.video,url=loaded.url;
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  let audioCtx=null,canvasStream=null,combined=null,recorder=null,outputUrl='';
+  try{
+    const canvas=makeCanvasForVideo(video,options.maxLongEdge||1280),ctx=canvas.getContext('2d',{alpha:false});
+    canvasStream=canvas.captureStream(Number(options.fps||30));
+    audioCtx=new AudioCtx();await audioCtx.resume();
+    const source=audioCtx.createMediaElementSource(video),gain=audioCtx.createGain(),dest=audioCtx.createMediaStreamDestination();
+    gain.gain.value=1;source.connect(gain);gain.connect(dest);
+    const tracks=[...canvasStream.getVideoTracks(),...dest.stream.getAudioTracks()];combined=new MediaStream(tracks);
+    const chunks=[];recorder=new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:Number(options.videoBitsPerSecond||6000000),audioBitsPerSecond:Number(options.audioBitsPerSecond||128000)});
+    recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+    const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=e=>reject(e.error||new Error('MediaRecorder failed.'));});
+    const cuts=recipe.selectedCuts.map(c=>({start:Number(c.start),end:Number(c.end)})).filter(c=>c.end>c.start);
+    let baseElapsed=0;
+    await seekVideo(video,cuts[0].start);
+    fitContain(ctx,video,canvas.width,canvas.height);drawOverlay(ctx,overlayForTime(recipe,0),canvas.width,canvas.height);
+    recorder.start(250);
+    for(let i=0;i<cuts.length;i++){
+      const cut=cuts[i];
+      if(i>0){if(recorder.state==='recording')recorder.pause();await seekVideo(video,cut.start);if(recorder.state==='paused')recorder.resume();}
+      await video.play();
+      await drawUntil(video,ctx,canvas,cut,baseElapsed,recipe,options.onProgress);
+      video.pause();baseElapsed+=cut.end-cut.start;
     }
-    if('requestVideoFrameCallback' in video){
-      await new Promise(resolve=>{let settled=false;const timer=setTimeout(()=>{if(!settled){settled=true;resolve();}},1200);video.requestVideoFrameCallback(()=>{if(!settled){settled=true;clearTimeout(timer);resolve();}});});
-    }else{
-      await new Promise(resolve=>setTimeout(resolve,120));
-    }
-    const canvas=makeCanvas(options.width||video.videoWidth||1080,options.height||video.videoHeight||1920);
-    const ctx=canvas.getContext('2d');
-    if(!ctx) throw new Error('Canvas preview is unavailable on this device.');
-    fitContain(ctx,video,canvas.width,canvas.height);
-    const overlay=recipe&&recipe.overlays&&recipe.overlays[0]; drawOverlay(ctx,overlay,canvas.width,canvas.height);
-    return {canvas,dataUrl:canvas.toDataURL('image/jpeg',0.9),sampleTime:seekTo};
-  } finally {
-    release(url);
+    if(recorder.state!=='inactive')recorder.stop();await stopped;
+    const blob=new Blob(chunks,{type:mime.split(';')[0]||'video/mp4'});
+    if(!blob.size)throw new Error('The browser returned an empty rendered video.');
+    outputUrl=URL.createObjectURL(blob);
+    return {status:'RENDER_COMPLETE',blob,url:outputUrl,mimeType:blob.type||mime,fileName:recipe.export&&recipe.export.fileName||'done-rite-ad.mp4',durationSeconds:+baseElapsed.toFixed(2),width:canvas.width,height:canvas.height,originalPreserved:true};
+  }catch(err){if(outputUrl)release(outputUrl);throw err;}
+  finally{
+    try{video.pause();video.removeAttribute('src');video.load();}catch(e){}release(url);
+    try{if(recorder&&recorder.state!=='inactive')recorder.stop();}catch(e){}
+    try{if(canvasStream)canvasStream.getTracks().forEach(t=>t.stop());}catch(e){}
+    try{if(combined)combined.getTracks().forEach(t=>t.stop());}catch(e){}
+    try{if(audioCtx)await audioCtx.close();}catch(e){}
   }
 }
-window.DoneRiteOneClickBrowserExecutor={version:VERSION,supports,pickMime,createPreviewUrl,release,buildExecutionState,previewFrame};
+function canShareFile(blob,fileName){
+  if(!blob||typeof File==='undefined'||!navigator.share||!navigator.canShare)return false;
+  try{return navigator.canShare({files:[new File([blob],fileName||'done-rite-ad.mp4',{type:blob.type||'video/mp4'})]});}catch(e){return false;}
+}
+async function shareFile(blob,fileName){
+  if(!canShareFile(blob,fileName))throw new Error('File sharing is not available in this browser.');
+  const file=new File([blob],fileName||'done-rite-ad.mp4',{type:blob.type||'video/mp4'});await navigator.share({files:[file],title:file.name});
+}
+window.DoneRiteOneClickBrowserExecutor={version:VERSION,supports,pickMime,createPreviewUrl,release,buildExecutionState,previewFrame,renderLocalVideo,canShareFile,shareFile};
 })();
