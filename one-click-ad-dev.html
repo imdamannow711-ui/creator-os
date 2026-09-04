@@ -11,7 +11,7 @@ body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMa
 <div class="wrap">
   <div class="pill">DEVELOPMENT ONLY — LIVE APP UNTOUCHED</div>
   <h1>ONE-CLICK AD</h1>
-  <p class="help">Raw-footage intake, media inspection, and deterministic ad-plan test harness.</p>
+  <p class="help">Raw upload → media session → candidate cuts → render recipe.</p>
   <div class="card">
     <label class="label">Raw video</label>
     <input id="video" class="input" type="file" accept="video/*">
@@ -27,12 +27,27 @@ body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMa
   </div>
   <div class="card"><strong>Video intake</strong><div id="media" class="out help">No video selected.</div></div>
   <div class="card"><strong>Media analysis</strong><div id="analysis" class="out help">Waiting for a raw video.</div></div>
+  <div class="card"><strong>Selected cuts</strong><div id="cuts" class="out help">Waiting for a session.</div></div>
+  <div class="card"><strong>Render recipe</strong><div id="render" class="out help">Waiting for selected cuts.</div></div>
   <div class="card"><strong>Edit + compliance plan</strong><div id="out" class="out help">Tap the button to create the session.</div></div>
 </div>
 <script src="modules/one-click-ad-editor.js"></script>
 <script src="modules/one-click-media-stage.js"></script>
+<script src="modules/one-click-scene-scorer.js"></script>
+<script src="modules/one-click-render-stage.js"></script>
 <script>
-const video=document.getElementById('video'),media=document.getElementById('media'),analysis=document.getElementById('analysis'),out=document.getElementById('out'),go=document.getElementById('go');
+const video=document.getElementById('video'),media=document.getElementById('media'),analysis=document.getElementById('analysis'),cuts=document.getElementById('cuts'),render=document.getElementById('render'),out=document.getElementById('out'),go=document.getElementById('go');
+function buildCandidateWindows(duration){
+ const windows=[]; const step=3; let i=0;
+ for(let start=0;start<duration;start+=step){
+  const end=Math.min(duration,start+step); i++;
+  windows.push({id:'candidate-'+i,start,end,features:{
+   productVisibility:0.72,sharpness:0.72,motion:0.58,audioActivity:0.55,brightness:0.62,
+   facePenalty:0,duplicatePenalty:0,deadSpacePenalty:0
+  }});
+ }
+ return windows;
+}
 video.addEventListener('change',async()=>{
  const f=video.files&&video.files[0];
  if(!f){media.textContent='No video selected.';analysis.textContent='Waiting for a raw video.';return;}
@@ -57,6 +72,13 @@ go.addEventListener('click',async()=>{
   });
   const session=await window.DoneRiteOneClickMediaStage.createSession(f,plan);
   analysis.textContent=JSON.stringify(session.analysis,null,2);
+  const candidates=buildCandidateWindows(session.source.metadata.duration);
+  const selection=window.DoneRiteOneClickSceneScorer.chooseNonOverlapping(candidates,plan.durationSeconds,plan.mode);
+  cuts.textContent=JSON.stringify(selection,null,2);
+  const recipe=window.DoneRiteOneClickRenderStage.makeRecipe(session,selection.chosen,plan);
+  recipe.executionPath=window.DoneRiteOneClickRenderStage.chooseExecutionPath();
+  recipe.browserCapabilities=window.DoneRiteOneClickRenderStage.browserCapabilities();
+  render.textContent=JSON.stringify(recipe,null,2);
   out.textContent=JSON.stringify({status:session.status,sessionId:session.id,plan:session.plan,rollback:session.rollback},null,2);
  }catch(err){out.textContent='Session error: '+err.message;}
  finally{go.disabled=false;go.textContent='CREATE ONE-CLICK SESSION';}
