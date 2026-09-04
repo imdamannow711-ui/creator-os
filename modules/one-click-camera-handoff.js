@@ -1,10 +1,11 @@
-/* DONE RITE Creator OS — One-Click Camera Handoff v0.4
+/* DONE RITE Creator OS — One-Click Camera Handoff v0.5
    Adds a real iPhone camera capture path to the Hook + CTA recording guide.
-   Also loads gap removal, autosave/resume, creative controls, and creative render.
+   Also loads gap removal, autosave/resume, creative controls, creative render,
+   and routes Teleprompter handoff through the Script Studio.
 */
 (function(){
 'use strict';
-const VERSION='0.4';
+const VERSION='0.5';
 let lastPlan=null;
 let capturedUrl='';
 
@@ -28,6 +29,13 @@ function loadCreativeControls(){
   if(window.DoneRiteOneClickCreativeControls){try{window.DoneRiteOneClickCreativeControls.install();}catch(e){}loadCreativeRender();return;}
   loadScriptOnce('script[data-done-rite-creative-controls]','modules/one-click-creative-controls.js?v=20260904-creative1','doneRiteCreativeControls',()=>{try{window.DoneRiteOneClickCreativeControls&&window.DoneRiteOneClickCreativeControls.install();}catch(e){}loadCreativeRender();});
 }
+function routeTeleprompterThroughStudio(link){
+  if(!link||link.dataset.scriptStudio==='1')return;
+  const original=link.getAttribute('href')||'teleprompter.html';
+  const studio=new URL('teleprompter-script-studio.html',location.href);
+  studio.searchParams.set('target',new URL(original,location.href).toString());
+  link.href=studio.toString();link.dataset.scriptStudio='1';
+}
 
 function fileSignature(file){return [file&&file.name||'',file&&file.size||0,file&&file.lastModified||0].join('|');}
 function appendCapturedFile(captured){
@@ -50,7 +58,7 @@ function install(plan){
   if(card.dataset.cameraHandoff==='1')return;
   card.dataset.cameraHandoff='1';
   const oldLink=document.getElementById('doneRiteRecordMissing');
-  if(oldLink){oldLink.textContent='🎙 OPEN TELEPROMPTER + VO / FILMING GUIDE';oldLink.style.background='#171c25';oldLink.style.border='1px solid #58a6ff';oldLink.style.color='#72bdff';oldLink.style.marginTop='8px';}
+  if(oldLink){oldLink.textContent='🎙 OPEN SCRIPT STUDIO + TELEPROMPTER';oldLink.style.background='#171c25';oldLink.style.border='1px solid #58a6ff';oldLink.style.color='#72bdff';oldLink.style.marginTop='8px';routeTeleprompterThroughStudio(oldLink);}
   const cameraButton=document.createElement('button');cameraButton.type='button';cameraButton.id='doneRiteCameraButton';cameraButton.textContent='📹 RECORD MISSING CLIP NOW';cameraButton.style.cssText='display:block;width:100%;min-height:54px;padding:14px 10px;border:1px solid #2bd97c;border-radius:13px;background:#16864b;color:#fff;font:950 16px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;margin-top:8px';
   const cameraInput=document.createElement('input');cameraInput.type='file';cameraInput.id='doneRiteCameraCapture';cameraInput.accept='video/*';cameraInput.setAttribute('capture','environment');cameraInput.hidden=true;
   const status=document.createElement('div');status.id='doneRiteCameraStatus';status.setAttribute('aria-live','polite');status.style.cssText='margin-top:8px;color:#b8c6d6;font-size:13px;line-height:1.4';status.textContent='Read the Hook + CTA directions above first. Then record only the missing shot.';
@@ -67,5 +75,5 @@ function bootHelpers(){loadGapRemover();loadSessionState();loadCreativeControls(
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootHelpers,{once:true});else bootHelpers();
 window.addEventListener('pagehide',()=>{if(capturedUrl)try{URL.revokeObjectURL(capturedUrl);}catch(e){}});
 window.addEventListener('done-rite-one-click-plan',event=>{lastPlan=event&&event.detail||lastPlan;setTimeout(()=>install(lastPlan),0);});
-window.DoneRiteOneClickCameraHandoff={version:VERSION,install,appendCapturedFile,loadGapRemover,loadSessionState,loadCreativeControls,loadCreativeRender};
+window.DoneRiteOneClickCameraHandoff={version:VERSION,install,appendCapturedFile,loadGapRemover,loadSessionState,loadCreativeControls,loadCreativeRender,routeTeleprompterThroughStudio};
 })();
