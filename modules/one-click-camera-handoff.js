@@ -6,6 +6,7 @@
 'use strict';
 const VERSION='0.1';
 let lastPlan=null;
+let capturedUrl='';
 
 function fileSignature(file){return [file&&file.name||'',file&&file.size||0,file&&file.lastModified||0].join('|');}
 
@@ -70,10 +71,24 @@ function install(plan){
       status.textContent='New camera clip added to this One-Click project. '+result.count+' raw clip'+(result.count===1?' is':'s are')+' loaded. Rebuild the edit when you are ready.';
     }else{
       status.style.color='#ffd166';
-      status.textContent='The video was recorded, but Safari would not append it automatically. Use Choose your raw clips and select the new video together with your originals. '+result.reason;
+      status.textContent='The video was recorded, but Safari would not append it automatically. Save/share the recorded clip, then add it with your originals. '+result.reason;
+      let save=document.getElementById('doneRiteSaveCaptured');
+      if(!save){
+        save=document.createElement('button');save.type='button';save.id='doneRiteSaveCaptured';save.textContent='SAVE / SHARE RECORDED CLIP';
+        save.style.cssText='display:block;width:100%;min-height:48px;padding:12px 10px;border:1px solid #ffd166;border-radius:12px;background:#2a1c00;color:#ffd166;font-weight:900;margin-top:8px';
+        status.insertAdjacentElement('afterend',save);
+      }
+      save.onclick=async()=>{
+        try{
+          if(typeof File!=='undefined'&&navigator.share&&navigator.canShare){const shareFile=new File([file],file.name||'done-rite-missing-clip.mov',{type:file.type||'video/quicktime'});if(navigator.canShare({files:[shareFile]})){await navigator.share({files:[shareFile],title:shareFile.name});return;}}
+          if(capturedUrl)try{URL.revokeObjectURL(capturedUrl);}catch(e){}
+          capturedUrl=URL.createObjectURL(file);const a=document.createElement('a');a.href=capturedUrl;a.download=file.name||'done-rite-missing-clip.mov';a.click();
+        }catch(err){if(err&&err.name!=='AbortError')status.textContent='Could not open the save/share sheet. The recorded clip is still loaded on this page.';}
+      };
     }
   });
 }
+window.addEventListener('pagehide',()=>{if(capturedUrl)try{URL.revokeObjectURL(capturedUrl);}catch(e){}});
 
 window.addEventListener('done-rite-one-click-plan',event=>{
   lastPlan=event&&event.detail||lastPlan;
