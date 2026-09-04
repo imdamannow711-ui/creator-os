@@ -1,9 +1,9 @@
-/* DONE RITE Creator OS — One-Click Scene Scorer v0.2
+/* DONE RITE Creator OS — One-Click Scene Scorer v0.3
    Source-aware scoring for candidate time windows. Does not alter source media.
 */
 (function(){
 'use strict';
-const VERSION='0.2';
+const VERSION='0.3';
 function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
 function round(n){return Math.round(n*100)/100;}
 function normalizeFeatures(x){
@@ -16,7 +16,8 @@ function normalizeFeatures(x){
     productVisibility:clamp(Number(x.productVisibility||0),0,1),
     audioActivity:clamp(Number(x.audioActivity||0),0,1),
     duplicatePenalty:clamp(Number(x.duplicatePenalty||0),0,1),
-    deadSpacePenalty:clamp(Number(x.deadSpacePenalty||0),0,1)
+    deadSpacePenalty:clamp(Number(x.deadSpacePenalty||0),0,1),
+    semanticMatch:clamp(Number(x.semanticMatch||0),0,1)
   };
 }
 function scoreCandidate(candidate,mode){
@@ -24,15 +25,16 @@ function scoreCandidate(candidate,mode){
   const hookBoost=mode==='AUTO_HOOK'?1.18:1;
   const cleanBoost=mode==='AUTO_CLEAN'?1.08:1;
   let score=0;
-  score+=f.productVisibility*0.34;
-  score+=f.sharpness*0.18;
-  score+=f.motion*0.16*hookBoost;
-  score+=f.audioActivity*0.12;
-  score+=f.brightness*0.08;
+  score+=f.semanticMatch*0.30;
+  score+=f.productVisibility*0.26;
+  score+=f.sharpness*0.16;
+  score+=f.motion*0.14*hookBoost;
+  score+=f.audioActivity*0.08;
+  score+=f.brightness*0.06;
   score-=f.deadSpacePenalty*0.28*cleanBoost;
   score-=f.duplicatePenalty*0.18;
   score-=f.facePenalty*0.05;
-  return round(clamp(score,0,1.25));
+  return round(clamp(score,0,1.35));
 }
 function rank(candidates,mode){
   return (candidates||[]).map((c,i)=>Object.assign({id:c.id||('scene-'+i)},c,{score:scoreCandidate(c,mode)})).sort((a,b)=>b.score-a.score);
