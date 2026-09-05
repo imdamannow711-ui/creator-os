@@ -1,26 +1,25 @@
-/* DONE RITE Creator OS — One-Click Browser Executor v0.10
-   iPhone-safe local preview, manual trim and multi-source timed render executor.
+/* DONE RITE Creator OS — One-Click Browser Executor v1.3
+   iPhone-safe local preview, persistent manual trim, multi-source timed render,
+   and attached voiceover mixing at original gain.
    Originals are never overwritten.
 
-   v0.10 changes:
+   v1.3 keeps the v0.10 trim fixes and restores the v1.2 voiceover render path:
    1. Manual trims persist on this device and survive leaving the page.
-   2. A manual trim now overrides only its own source. Untouched clips still render.
+   2. A manual trim overrides only its own source. Untouched clips still render.
    3. A cut can no longer render silently. If Safari blocks audio, the render stops
       with a clear message instead of returning a voiceless video.
    4. Clip timing no longer gets stuck on "Loading clip timing…" when iPhone reports
       the duration late.
+   5. Attached voiceover is mixed independently at gain 1 with no normalization,
+      compression, pitch change, or speed change.
 */
 (function(){
 'use strict';
-const VERSION='0.10';
+const VERSION='1.3';
 const TRIM_KEY='done-rite-one-click-trims:v1';
 const TRIM_LIMIT=300;
 const manualTrims=new Map();
 
-/* ---- trim storage -------------------------------------------------------
-   Keyed by name+size+lastModified only. The picker position is deliberately
-   NOT part of the key, so reselecting the same clips in a different order
-   still finds the saved trim. */
 function fileKey(file){return [file&&file.name||'',file&&file.size||0,file&&file.lastModified||0].join('|');}
 function loadStoredTrims(){
   try{
@@ -30,7 +29,7 @@ function loadStoredTrims(){
       const v=obj[key];
       if(v&&typeof v==='object'&&Number.isFinite(Number(v.start))&&Number.isFinite(Number(v.end)))manualTrims.set(key,v);
     });
-  }catch(e){/* Storage may be unavailable in private browsing. Trims stay in memory. */}
+  }catch(e){}
 }
 function persistTrims(){
   try{
@@ -42,7 +41,7 @@ function persistTrims(){
     }
     const obj={};entries.forEach(([k,v])=>{obj[k]=v;});
     localStorage.setItem(TRIM_KEY,JSON.stringify(obj));
-  }catch(e){/* Out of space or blocked. The trim still works for this session. */}
+  }catch(e){}
 }
 loadStoredTrims();
 
@@ -68,10 +67,7 @@ function buildExecutionState(session,recipe){
 function waitEvent(target,name,timeout){return new Promise((resolve,reject)=>{let timer=null;const done=()=>{cleanup();resolve();};const fail=()=>{cleanup();reject(new Error('Video '+name+' failed.'));};function cleanup(){target.removeEventListener(name,done);target.removeEventListener('error',fail);if(timer)clearTimeout(timer);}target.addEventListener(name,done,{once:true});target.addEventListener('error',fail,{once:true});if(timeout)timer=setTimeout(()=>{cleanup();reject(new Error('Timed out waiting for video '+name+'.'));},timeout);});}
 function waitUntil(test,timeout,label){return new Promise((resolve,reject)=>{const start=Date.now();function tick(){let ok=false;try{ok=!!test();}catch(e){}if(ok){resolve();return;}if(Date.now()-start>=timeout){reject(new Error('Timed out waiting for '+label+'.'));return;}setTimeout(tick,80);}tick();});}
 function waitRecorderState(recorder,eventName,timeout){return new Promise((resolve,reject)=>{let timer=null;const done=()=>{cleanup();resolve();};const fail=e=>{cleanup();reject(e&&e.error||new Error('Recorder '+eventName+' failed.'));};function cleanup(){recorder.removeEventListener(eventName,done);recorder.removeEventListener('error',fail);if(timer)clearTimeout(timer);}recorder.addEventListener(eventName,done,{once:true});recorder.addEventListener('error',fail,{once:true});timer=setTimeout(()=>{cleanup();reject(new Error('Timed out waiting for recorder '+eventName+'.'));},timeout||5000);});}
-function formatTime(sec){
-  sec=Math.max(0,Number(sec||0));const m=Math.floor(sec/60),s=Math.floor(sec%60),t=Math.floor((sec-Math.floor(sec))*10);
-  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+t;
-}
+function formatTime(sec){sec=Math.max(0,Number(sec||0));const m=Math.floor(sec/60),s=Math.floor(sec%60),t=Math.floor((sec-Math.floor(sec))*10);return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+t;}
 function getManualTrim(file,index){return manualTrims.get(fileKey(file))||null;}
 function setManualTrim(file,index,start,end,duration){
   const d=Math.max(.1,Number(duration||end||0)),minGap=Math.min(.25,d);
@@ -106,46 +102,42 @@ function drawUntil(video,ctx,canvas,cut,baseElapsed,recipe,onProgress){return ne
 async function previewFrame(file,recipe,options){options=options||{};if(!file)throw new Error('Missing source file.');const loaded=await loadPlayableVideo(file),video=loaded.video,url=loaded.url;try{const cuts=recipe&&Array.isArray(recipe.selectedCuts)?recipe.selectedCuts:[],first=cuts[0];const target=first?Math.min(first.end-.05,first.start+Math.min(.35,Math.max(.08,(first.end-first.start)*.15))):Math.min(.35,Math.max(.08,(video.duration||1)*.08));await ensureFrameReady(video,target);const canvas=makeCanvasForVideo(video,options.maxLongEdge||1280),ctx=canvas.getContext('2d');fitContain(ctx,video,canvas.width,canvas.height);drawOverlay(ctx,overlayForTime(recipe,0),canvas.width,canvas.height);return {canvas,dataUrl:canvas.toDataURL('image/jpeg',.9),sourceTime:target};}finally{video.pause();video.removeAttribute('src');video.load();release(url);}}
 function createRecorder(stream,mime,options){const full={mimeType:mime,videoBitsPerSecond:Number(options.videoBitsPerSecond||6000000),audioBitsPerSecond:Number(options.audioBitsPerSecond||128000)};try{return new MediaRecorder(stream,full);}catch(e){return new MediaRecorder(stream,{mimeType:mime});}}
 
-/* A manual trim replaces only the cuts belonging to ITS OWN clip.
-   Every clip you did not touch keeps the sections Creator OS chose.
-   Before v0.10 a single manual trim discarded the whole automatic selection,
-   so trimming clip 2 silently dropped clips 1 and 3 from the finished video. */
 function applyManualTrims(files,recipeCuts){
   const list=Array.from(files||[]);
   const trims=new Map();
   list.forEach((f,i)=>{const t=getManualTrim(f,i);if(t&&t.changed)trims.set(i,t);});
-
-  const base=(recipeCuts||[]).map((c,i)=>({
-    start:Number(c.start),
-    end:Number(c.end),
-    sourceIndex:Number.isInteger(c.sourceIndex)?c.sourceIndex:0,
-    sequenceIndex:i,
-    manualTrim:false
-  }));
+  const base=(recipeCuts||[]).map((c,i)=>({start:Number(c.start),end:Number(c.end),sourceIndex:Number.isInteger(c.sourceIndex)?c.sourceIndex:0,sequenceIndex:i,manualTrim:false}));
   if(!trims.size)return base;
-
   const out=[],replaced=new Set();
   base.forEach(cut=>{
     if(!trims.has(cut.sourceIndex)){out.push(cut);return;}
     if(replaced.has(cut.sourceIndex))return;
-    const t=trims.get(cut.sourceIndex);
-    replaced.add(cut.sourceIndex);
+    const t=trims.get(cut.sourceIndex);replaced.add(cut.sourceIndex);
     out.push({start:t.start,end:t.end,sourceIndex:cut.sourceIndex,sequenceIndex:cut.sequenceIndex,manualTrim:true});
   });
-  // A clip you trimmed by hand that Creator OS had not selected still gets used.
   trims.forEach((t,sourceIndex)=>{
     if(replaced.has(sourceIndex)||sourceIndex>=list.length)return;
-    replaced.add(sourceIndex);
-    out.push({start:t.start,end:t.end,sourceIndex,sequenceIndex:out.length,manualTrim:true});
+    replaced.add(sourceIndex);out.push({start:t.start,end:t.end,sourceIndex,sequenceIndex:out.length,manualTrim:true});
   });
-
   out.sort((a,b)=>a.sourceIndex-b.sourceIndex||a.start-b.start);
   out.forEach((c,i)=>{c.sequenceIndex=i;});
   return out.length?out:base;
 }
 
-async function renderLocalVideo(file,recipe,options){return renderLocalBatch([file],recipe,options);}
+function attachedVoiceover(){
+  try{return window.DoneRiteOneClickGapRemover&&typeof window.DoneRiteOneClickGapRemover.getRenderVoiceover==='function'?window.DoneRiteOneClickGapRemover.getRenderVoiceover():null;}
+  catch(e){return null;}
+}
+async function setupVoiceover(audioCtx,dest,voiceSpec){
+  if(!voiceSpec||!voiceSpec.blob)return null;
+  const data=await voiceSpec.blob.arrayBuffer();
+  const buffer=await audioCtx.decodeAudioData(data.slice(0));
+  const source=audioCtx.createBufferSource(),gain=audioCtx.createGain();
+  source.buffer=buffer;gain.gain.value=1;source.connect(gain);gain.connect(dest);
+  return {source,buffer,name:voiceSpec.name||null,started:false};
+}
 
+async function renderLocalVideo(file,recipe,options){return renderLocalBatch([file],recipe,options);}
 async function renderLocalBatch(files,recipe,options){
   options=options||{};
   const list=Array.from(files||[]),caps=supports(),mime=pickMime(),AudioCtx=window.AudioContext||window.webkitAudioContext;
@@ -158,8 +150,8 @@ async function renderLocalBatch(files,recipe,options){
   const firstIndex=Math.max(0,Math.min(list.length-1,cuts[0].sourceIndex));
   const renderDuration=cuts.reduce((n,c)=>n+Math.max(0,c.end-c.start),0);
   const renderRecipe=Object.assign({},recipe,{outputDurationSeconds:renderDuration,selectedCuts:cuts});
-  const silentCuts=[];
-  let audioCtx=null,canvasStream=null,combined=null,recorder=null,outputUrl='',video=null,currentUrl='',currentSourceIndex=-1;
+  const silentCuts=[],voiceSpec=attachedVoiceover();
+  let audioCtx=null,canvasStream=null,combined=null,recorder=null,outputUrl='',video=null,currentUrl='',currentSourceIndex=-1,voice=null;
 
   try{
     video=document.createElement('video');video.playsInline=true;video.preload='auto';video.volume=1;video.muted=false;
@@ -176,6 +168,7 @@ async function renderLocalBatch(files,recipe,options){
     const canvas=makeCanvasForVideo(video,options.maxLongEdge||1280),ctx=canvas.getContext('2d',{alpha:false});
     const dest=audioCtx.createMediaStreamDestination();
     const sourceNode=audioCtx.createMediaElementSource(video),gain=audioCtx.createGain();gain.gain.value=1;sourceNode.connect(gain);gain.connect(dest);
+    voice=await setupVoiceover(audioCtx,dest,voiceSpec);
     canvasStream=canvas.captureStream(Number(options.fps||30));
     combined=new MediaStream([...canvasStream.getVideoTracks(),...dest.stream.getAudioTracks()]);
     const chunks=[];recorder=createRecorder(combined,mime,options);recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
@@ -193,11 +186,6 @@ async function renderLocalBatch(files,recipe,options){
       await ensureFrameReady(video,startTime||0);
     }
 
-    /* The original voice must stay audible at gain 1 on every cut.
-       If Safari refuses to start playback we try once more with the audio
-       context resumed before we ever consider muting. Anything that still
-       ends up muted is recorded and the render is refused below, because a
-       silent cut shipped without warning is worse than a failed render. */
     async function startCutPlayback(cutNumber){
       video.muted=false;
       try{await video.play();return;}catch(err){}
@@ -213,12 +201,15 @@ async function renderLocalBatch(files,recipe,options){
     fitContain(ctx,video,canvas.width,canvas.height);drawOverlay(ctx,overlayForTime(renderRecipe,0),canvas.width,canvas.height);
     recorder.start(250);
     let baseElapsed=0;
+    if(voice){voice.source.start(0);voice.started=true;}
 
     for(let i=0;i<cuts.length;i++){
       const cut=cuts[i];
       if(i>0){
         if(recorder.state==='recording'){const p=waitRecorderState(recorder,'pause',5000);recorder.pause();await p;}
+        if(voice&&audioCtx.state==='running')await audioCtx.suspend();
         await switchSource(cut.sourceIndex,cut.start);
+        if(voice&&audioCtx.state!=='running')await audioCtx.resume();
         if(recorder.state==='paused'){const r=waitRecorderState(recorder,'resume',5000);recorder.resume();await r;}
       }else await ensureFrameReady(video,cut.start);
       await startCutPlayback(i+1);
@@ -227,16 +218,16 @@ async function renderLocalBatch(files,recipe,options){
     }
 
     if(recorder.state!=='inactive')recorder.stop();await stopped;
-
     if(silentCuts.length){
       throw new Error('Safari muted the audio on cut'+(silentCuts.length===1?' ':'s ')+silentCuts.join(', ')+', so '+(silentCuts.length===1?'that section':'those sections')+' would have had no voice. The render was stopped instead of saving a silent video. Tap RENDER FINISHED VIDEO again without leaving this page. Your original clips were not changed.');
     }
 
     const blob=new Blob(chunks,{type:mime.split(';')[0]||'video/mp4'});if(!blob.size)throw new Error('The browser returned an empty rendered video.');
     outputUrl=URL.createObjectURL(blob);
-    return {status:'RENDER_COMPLETE',blob,url:outputUrl,mimeType:blob.type||mime,fileName:recipe.export&&recipe.export.fileName||'done-rite-ad.mp4',durationSeconds:+baseElapsed.toFixed(2),width:canvas.width,height:canvas.height,sourceCount:new Set(cuts.map(c=>c.sourceIndex)).size,manualTrimUsed:cuts.some(c=>c.manualTrim),audioComplete:true,originalPreserved:true};
+    return {status:'RENDER_COMPLETE',blob,url:outputUrl,mimeType:blob.type||mime,fileName:recipe.export&&recipe.export.fileName||'done-rite-ad.mp4',durationSeconds:+baseElapsed.toFixed(2),width:canvas.width,height:canvas.height,sourceCount:new Set(cuts.map(c=>c.sourceIndex)).size,manualTrimUsed:cuts.some(c=>c.manualTrim),audioComplete:true,attachedVoiceoverIncluded:!!voice,originalPreserved:true};
   }catch(err){if(outputUrl)release(outputUrl);throw err;}
   finally{
+    try{if(voice&&voice.started)voice.source.stop();}catch(e){}
     try{if(video){video.pause();video.removeAttribute('src');video.load();}}catch(e){}release(currentUrl);
     try{if(recorder&&recorder.state!=='inactive')recorder.stop();}catch(e){}
     try{if(canvasStream)canvasStream.getTracks().forEach(t=>t.stop());}catch(e){}
@@ -276,14 +267,11 @@ function installMultiClipReviewUI(){
     previewTrim.disabled=!duration;resetTrim.disabled=!duration;
   }
   function saveTrim(){const files=list();if(!files[index]||!duration)return;setManualTrim(files[index],index,start,end,duration);updateTrimUI();}
-  /* Restores the saved trim for this exact file, including one saved in an
-     earlier session. Reselect the same clip and the range comes back. */
   function loadTrim(){
     const files=list(),saved=files[index]?getManualTrim(files[index],index):null;
     start=saved?Math.max(0,Math.min(Number(saved.start)||0,duration)):0;
     end=saved?Math.max(0,Math.min(Number(saved.end)||duration,duration)):duration;
-    if(!(end>start))
-      {start=0;end=duration;}
+    if(!(end>start)){start=0;end=duration;}
     updateTrimUI();
   }
   function positionFromEvent(e){const r=track.getBoundingClientRect();return Math.max(0,Math.min(duration,((e.clientX-r.left)/Math.max(1,r.width))*duration));}
@@ -293,12 +281,7 @@ function installMultiClipReviewUI(){
     handle.addEventListener('pointerup',e=>{try{handle.releasePointerCapture(e.pointerId);}catch(x){}saveTrim();});
   }
   bindHandle(startHandle,'start');bindHandle(endHandle,'end');
-  function detachMeta(){
-    if(!metaHandler)return;
-    preview.removeEventListener('loadedmetadata',metaHandler);
-    preview.removeEventListener('durationchange',metaHandler);
-    metaHandler=null;
-  }
+  function detachMeta(){if(!metaHandler)return;preview.removeEventListener('loadedmetadata',metaHandler);preview.removeEventListener('durationchange',metaHandler);metaHandler=null;}
   function show(i,autoPlay){
     const files=list();if(!files.length)return;
     index=Math.max(0,Math.min(files.length-1,i));
@@ -310,15 +293,11 @@ function installMultiClipReviewUI(){
     duration=0;start=0;end=0;updateTrimUI();
     counter.textContent='Clip '+(index+1)+' of '+files.length+' — '+files[index].name;
     prev.disabled=index===0;next.disabled=index===files.length-1;prev.style.opacity=prev.disabled?'.45':'1';next.style.opacity=next.disabled?'.45':'1';
-    /* iPhone sometimes reports duration as Infinity on the first event and a
-       real number a moment later. Keep listening until a usable number lands
-       instead of giving up and leaving the panel stuck on "Loading…". */
     metaHandler=()=>{
       if(token!==loadToken){detachMeta();return;}
       const d=Number(preview.duration);
       if(!Number.isFinite(d)||d<=0)return;
-      detachMeta();
-      duration=d;loadTrim();
+      detachMeta();duration=d;loadTrim();
       if(autoPlay)preview.play().catch(()=>{});
     };
     preview.addEventListener('loadedmetadata',metaHandler);
@@ -329,8 +308,6 @@ function installMultiClipReviewUI(){
   }
   previewTrim.addEventListener('click',()=>{if(!duration)return;try{preview.pause();}catch(e){}preview.currentTime=Math.max(0,start);if(previewStopHandler)preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=()=>{if(preview.currentTime>=end-.03){preview.pause();preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=null;}};preview.addEventListener('timeupdate',previewStopHandler);preview.play().catch(()=>{});});
   resetTrim.addEventListener('click',()=>{if(!duration)return;const files=list();start=0;end=duration;if(files[index])forgetManualTrim(files[index]);updateTrimUI();try{preview.currentTime=0;}catch(e){}});
-  /* Choosing files no longer wipes saved trims. Reselecting the same clip
-     restores the exact range you set, even after leaving the page. */
   input.addEventListener('change',()=>setTimeout(()=>{loadToken++;detachMeta();const files=list();if(!files.length){wrap.style.display='none';duration=0;start=0;end=0;updateTrimUI();if(url){release(url);url='';}return;}wrap.style.display='block';show(0,false);},0));
   prev.addEventListener('click',()=>show(index-1,false));next.addEventListener('click',()=>show(index+1,false));
   window.addEventListener('pagehide',()=>{loadToken++;detachMeta();if(url)release(url);});
