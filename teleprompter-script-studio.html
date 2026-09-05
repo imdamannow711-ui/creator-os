@@ -69,28 +69,17 @@ function lightRewrite(text){
     [/\bcheck this out\b/gi,()=>pick(["take a look at this","look at this","here's something worth seeing"])],
     [/\bwhat I like about\b/gi,()=>pick(["what stands out to me about","one thing I like about","what I noticed about"])],
     [/\bit has\b/gi,()=>pick(["it comes with","it includes"])],
-    [/\byou can\b/gi,()=>pick(["you're able to","you can"])],
     [/\bI want to show you\b/gi,()=>pick(["let me show you","I want you to see"])],
-    [/\bthis is\b/gi,()=>pick(["here's","this is"])],
-    [/\bI like\b/gi,()=>pick(["what I like is","I really like"])],
-    [/\bworks well\b/gi,()=>pick(["does a good job","has worked well for me"])],
     [/\beasy to use\b/gi,()=>pick(["simple to use","straightforward to use"])],
     [/\bsmall and compact\b/gi,()=>pick(["compact and easy to carry","small enough to carry easily"])],
-    [/\bperfect for\b/gi,()=>pick(["a good fit for","made for"])],
-    [/\bgo ahead and\b/gi,()=>pick(["go ahead and","you can"])],
+    [/\bgo ahead and\b/gi,()=>pick(["you can","go ahead and"])],
     [/\bmake sure you\b/gi,()=>pick(["be sure to","make sure you"])],
     [/\bthe good thing is\b/gi,()=>pick(["what's nice is","the nice part is"])],
-    [/\bthe best part is\b/gi,()=>pick(["my favorite part is","what stands out most is"])],
     [/\bI use this\b/gi,()=>pick(["I've been using this","this is what I use"])],
-    [/\bif you want\b/gi,()=>pick(["if you're looking to","if you want to"])],
+    [/\bif you want to\b/gi,()=>pick(["if you're looking to","if you want to"])],
     [/\bclick the link\b/gi,()=>pick(["check the product link","take a look at the product link"])],
     [/\bcheck the link\b/gi,()=>pick(["check the product link","take a look at the link"])],
-    [/\bthat's why\b/gi,()=>pick(["which is why","and that's the reason"])],
-    [/\balso\b/gi,()=>pick(["plus","on top of that"])],
-    [/\breally\b/gi,()=>pick(["really","definitely"])],
-    [/\bjust\b/gi,()=>pick(["simply","just"])],
-    [/\ba lot\b/gi,()=>pick(["quite a bit","a lot"])],
-    [/\bright now\b/gi,()=>pick(["at the moment","right now"])]
+    [/\bthat's why\b/gi,()=>pick(["which is why","and that's the reason"])]
   ];
   swaps.forEach(([re,fn])=>{out=out.replace(re,fn);});
   out=clean(out);
@@ -108,7 +97,7 @@ function lightRewrite(text){
 }
 function heavyRewrite(text){const sentences=splitSentences(lightRewrite(text));if(!sentences.length)return '';const topic=sentences.find(s=>/NMN|product|vitamin|mic|kit|scooter|charger|cable/i.test(s))||sentences[0];const hookPool=[`This is the part I knew people were going to have opinions about: ${topic.replace(/[.!?]+$/,'')}.`,`I posted about this once and the comments went in every direction.`,`I knew this one would start a conversation, and it definitely did.`,`Here is the product I keep coming back to, even after all the debate.`];const body=sentences.slice(1,-1).filter(s=>!/(limited-time|don't miss|link the brand|product link)/i.test(s)),reordered=body.length>2?[body[1],body[0],...body.slice(2)]:body,bridges=["Here is why I kept looking into it.","The part that matters to me is what it actually is and why people use it.","What I wanted was a simple explanation without all the hype."],cta=pick(["I'll link the one I've been using so you can check the product page and decide for yourself.","If you want to look at the exact one I've been using, I'll put it in the product link.","I'll link the product so you can read the details and see whether it makes sense for you."]);return clean([pick(hookPool),pick(bridges),...reordered,cta].join(' '));}
 function complianceCheck(text,selectedMode){const flags=[],t=String(text||'');if(/\b(cure|treat|prevent|heal|fix)\b/i.test(t))flags.push('medical treatment/cure wording');if(/\b(works|guaranteed|100%|instantly)\b/i.test(t))flags.push('absolute or efficacy wording');if(/limited[- ]time|don't miss out|last chance|only today/i.test(t))flags.push('scarcity/offer wording — verify it is currently true');if(/NMN|supplement|vitamin|NAD\b/i.test(t))flags.push('supplement/health content — use careful support language and avoid disease/treatment claims');compliance.className=flags.length?'warning':'ok';compliance.textContent=flags.length?(selectedMode==='exact'?'Original wording restored. Compliance flags: ':'Compliance flags: ')+flags.join(' • '):'Compliance check: no obvious high-risk wording detected by the local checker.';}
-function apply(nextMode){mode=nextMode;const raw=source.value;if(!raw.trim()){status.textContent='Paste a script first.';return;}let out=raw;if(mode==='light'){let tries=0;do{out=lightRewrite(raw);tries++;}while(out===result.value&&tries<6);}if(mode==='heavy')out=heavyRewrite(raw);result.value=out;status.textContent=mode==='exact'?'ORIGINAL restored — word-for-word copy of the script you pasted.':mode==='light'?'RANDOMIZE A LITTLE — same structure and message with visible wording changes.':'RANDOMIZE A LOT — larger rewrite with a new hook/flow/CTA.';complianceCheck(out,mode);save();}
+function apply(nextMode){mode=nextMode;const raw=source.value;if(!raw.trim()){status.textContent='Paste a script first.';return;}let out=raw;if(mode==='light'){const previous=result.value;let tries=0;do{out=lightRewrite(raw);tries++;}while(out===previous&&tries<6);if(out===previous){const prefixes=["Quick version: ","Here's the quick version: ","A slightly different take: ","Fresh wording: "];const prefix=prefixes.find(item=>!previous.startsWith(item))||"Another version: ";out=prefix+clean(raw);}}if(mode==='heavy')out=heavyRewrite(raw);result.value=out;status.textContent=mode==='exact'?'ORIGINAL restored — word-for-word copy of the script you pasted.':mode==='light'?'RANDOMIZE A LITTLE — same structure and message with visible wording changes.':'RANDOMIZE A LOT — larger rewrite with a new hook/flow/CTA.';complianceCheck(out,mode);save();}
 function targetUrl(includeScript){const url=targetObject(),text=mode==='exact'?(result.value||source.value):clean(result.value||source.value);if(includeScript){url.searchParams.set('script',text);url.searchParams.set('text',text);}else{url.searchParams.delete('script');url.searchParams.delete('text');}url.searchParams.set('session','1');url.searchParams.set('scriptmode',mode);url.searchParams.set('return',returnUrl());url.searchParams.set('back',location.href);return url.toString();}
 $('exactBtn').onclick=()=>apply('exact');$('lightBtn').onclick=()=>apply('light');$('heavyBtn').onclick=()=>apply('heavy');$('rerollBtn').onclick=()=>apply(mode==='exact'?'light':mode);$('copyBtn').onclick=async()=>{const text=result.value||source.value;try{await navigator.clipboard.writeText(text);status.textContent='Script copied.';}catch(e){result.focus();result.select();status.textContent='Script selected — tap Copy.';}};
 $('sendBtn').onclick=()=>{const text=result.value||source.value;if(!text.trim()){status.textContent='Paste or create a script first.';return;}save();location.href=targetUrl(true);};
