@@ -150,7 +150,7 @@ async function renderLocalBatch(files,recipe,options){
   const firstIndex=Math.max(0,Math.min(list.length-1,cuts[0].sourceIndex));
   const renderDuration=cuts.reduce((n,c)=>n+Math.max(0,c.end-c.start),0);
   const renderRecipe=Object.assign({},recipe,{outputDurationSeconds:renderDuration,selectedCuts:cuts});
-  const silentCuts=[],voiceSpec=attachedVoiceover();
+  const silentCuts=[],voiceSpec=options.includeAttachedVoiceover===false?null:attachedVoiceover();
   let audioCtx=null,canvasStream=null,combined=null,recorder=null,outputUrl='',video=null,currentUrl='',currentSourceIndex=-1,voice=null;
 
   try{
