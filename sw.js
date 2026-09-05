@@ -5,12 +5,14 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v21-split-react-runtime";
+const CACHE_NAME = "done-rite-v22-split-app-libraries";
 
 const FILES = [
   "./",
   "./index.html",
   "./app.js",
+  "./modules/creator-content-libraries.js",
+  "./styles/dashboard.css",
   "./vendor/react-offline.js",
   "./teleprompter.html",
   "./teleprompter-one-click.html",
