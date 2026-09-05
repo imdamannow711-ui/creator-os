@@ -1,83 +1,33 @@
-/* DONE RITE Creator OS — One-Click Browser Executor v0.1
-   Local preview/export executor. Preserves the original source and never overwrites it.
-*/
+/* DONE RITE Creator OS — One-Click Browser Executor v0.2 */
 (function(){
 'use strict';
-const VERSION='0.1';
-
-function supports(){
-  const canCapture=typeof HTMLCanvasElement!=='undefined'&&!!HTMLCanvasElement.prototype.captureStream;
-  const canRecord=typeof MediaRecorder!=='undefined';
-  const canDraw=typeof document!=='undefined';
-  return {canCapture,canRecord,canDraw,localPreview:canDraw,localExport:canCapture&&canRecord};
+const VERSION='0.2';
+const SAFE_ZONE={left:.07,right:.25,top:.14,bottom:.25};
+function wait(target,event,message){return new Promise((resolve,reject)=>{const ok=()=>{clean();resolve();};const bad=()=>{clean();reject(new Error(message));};const clean=()=>{target.removeEventListener(event,ok);target.removeEventListener('error',bad);};target.addEventListener(event,ok,{once:true});target.addEventListener('error',bad,{once:true});});}
+function seek(video,time){return new Promise((resolve,reject)=>{const ok=()=>{clean();resolve();};const bad=()=>{clean();reject(new Error('Could not seek the source video.'));};const clean=()=>{video.removeEventListener('seeked',ok);video.removeEventListener('error',bad);};video.addEventListener('seeked',ok,{once:true});video.addEventListener('error',bad,{once:true});video.currentTime=Math.max(0,Math.min(time,Math.max(0,(video.duration||0)-.05)));});}
+function pickMime(){if(typeof MediaRecorder==='undefined'||typeof MediaRecorder.isTypeSupported!=='function')return '';const choices=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp8,opus','video/webm'];for(const m of choices){try{if(MediaRecorder.isTypeSupported(m))return m;}catch(e){}}return '';}
+function supports(){const mime=pickMime();const AudioCtx=window.AudioContext||window.webkitAudioContext;const canCapture=typeof HTMLCanvasElement!=='undefined'&&typeof HTMLCanvasElement.prototype.captureStream==='function';const canRecord=typeof MediaRecorder!=='undefined';const canRouteAudio=!!AudioCtx;return {canDraw:typeof document!=='undefined',canCapture,canRecord,canRouteAudio,recorderMime:mime||null,mp4Export:!!mime&&mime.indexOf('video/mp4')===0,editedPreview:true,exportImplementation:true,localExport:canCapture&&canRecord&&canRouteAudio&&!!mime};}
+function systemCheck(){const c=supports();const modules=['DoneRiteOneClickAdEditor','DoneRiteOneClickMediaStage','DoneRiteOneClickSceneScorer','DoneRiteOneClickRenderStage','DoneRiteOneClickBrowserExecutor'];const checks=modules.map(name=>({name:'Module: '+name,status:window[name]?'PASS':'BLOCKER'}));checks.push({name:'Video frame drawing',status:c.canDraw?'PASS':'BLOCKER'});checks.push({name:'Canvas capture',status:c.canCapture?'PASS':'BLOCKER'});checks.push({name:'MediaRecorder',status:c.canRecord?'PASS':'BLOCKER'});checks.push({name:'Original-audio routing at gain 1.0',status:c.canRouteAudio?'PASS':'BLOCKER'});checks.push({name:'MP4/AAC output',status:c.mp4Export?'PASS':'BLOCKER',detail:c.recorderMime||'No recorder format'});checks.push({name:'iPhone save/share',status:(navigator.share||'download' in HTMLAnchorElement.prototype)?'PASS':'WARN'});return {engine:'DONE RITE browser preflight',version:VERSION,userAgent:navigator.userAgent,online:navigator.onLine,checks,readyForRealVideo:checks.every(x=>x.status!=='BLOCKER'),note:'This check uses no video and uploads nothing.'};}
+function createPreviewUrl(file){if(!file)throw new Error('Missing source file.');return URL.createObjectURL(file);}
+function release(url){if(url)try{URL.revokeObjectURL(url);}catch(e){}}
+function makeCanvas(width,height){const canvas=document.createElement('canvas');canvas.width=Math.max(1,width||1080);canvas.height=Math.max(1,height||1920);return canvas;}
+function fitContain(ctx,video,w,h){const vw=video.videoWidth||w,vh=video.videoHeight||h,scale=Math.min(w/vw,h/vh),dw=vw*scale,dh=vh*scale,x=(w-dw)/2,y=(h-dh)/2;ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.drawImage(video,x,y,dw,dh);return {x,y,width:dw,height:dh};}
+function wrapLines(ctx,text,maxWidth,maxLines){const words=String(text||'').trim().split(/\s+/),lines=[];let line='';for(const word of words){const next=line?line+' '+word:word;if(ctx.measureText(next).width<=maxWidth){line=next;continue;}if(line)lines.push(line);line=word;if(lines.length===maxLines-1)break;}if(line&&lines.length<maxLines)lines.push(line);return lines;}
+function drawOverlay(ctx,overlay,w,h){if(!overlay||!overlay.text)return null;const left=w*SAFE_ZONE.left,right=w*(1-SAFE_ZONE.right),top=h*SAFE_ZONE.top,bottom=h*(1-SAFE_ZONE.bottom),maxWidth=right-left,fontSize=Math.max(30,Math.round(w*.052));ctx.font=`900 ${fontSize}px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif`;ctx.textBaseline='top';ctx.lineJoin='round';ctx.lineWidth=Math.max(4,Math.round(w*.005));ctx.strokeStyle='rgba(0,0,0,.92)';ctx.fillStyle='#ff8a00';const lines=wrapLines(ctx,String(overlay.text).slice(0,90),maxWidth,3),lineHeight=fontSize*1.12,total=lines.length*lineHeight,y=Math.min(Math.max(top,h*.18),bottom-total);lines.forEach((line,i)=>{ctx.strokeText(line,left,y+i*lineHeight);ctx.fillText(line,left,y+i*lineHeight);});return {left:Math.round(left),right:Math.round(right),top:Math.round(y),bottom:Math.round(y+total),safe:!!lines.length&&y>=top&&y+total<=bottom};}
+function activeOverlay(recipe,outputTime){const list=(recipe&&recipe.overlays)||[];return list.find(o=>outputTime>=Number(o.start||0)&&outputTime<Number(o.end||0))||null;}
+async function loadVideo(file){const video=document.createElement('video');video.preload='auto';video.playsInline=true;video.setAttribute('playsinline','');video.crossOrigin='anonymous';const url=URL.createObjectURL(file);video.src=url;await wait(video,'loadedmetadata','Could not load video metadata.');if(video.readyState<2)await wait(video,'loadeddata','Could not decode a preview frame.');return {video,url};}
+async function previewFrame(file,recipe,options){options=options||{};if(!file)throw new Error('Missing source file.');const holder=await loadVideo(file),video=holder.video;try{const cut=recipe&&recipe.selectedCuts&&recipe.selectedCuts[0];const time=cut?Math.min(cut.end-.05,cut.start+.25):Math.min(.25,Math.max(0,video.duration-.05));await seek(video,Math.max(0,time));const canvas=makeCanvas(options.width||video.videoWidth||1080,options.height||video.videoHeight||1920),ctx=canvas.getContext('2d');fitContain(ctx,video,canvas.width,canvas.height);const bounds=drawOverlay(ctx,activeOverlay(recipe,0)||(recipe&&recipe.overlays&&recipe.overlays[0]),canvas.width,canvas.height);return {canvas,dataUrl:canvas.toDataURL('image/jpeg',.9),sampleTime:time,overlayBounds:bounds,safeZone:SAFE_ZONE};}finally{release(holder.url);}}
+function buildExecutionState(session,recipe){const c=supports();return {engine:'DONE RITE One-Click Browser Executor',version:VERSION,status:c.localExport?(c.mp4Export?'MP4_EXPORT_READY':'NON_MP4_TEST_EXPORT_ONLY'):'PREVIEW_ONLY',sessionId:session&&session.id||null,originalPreserved:true,capabilities:c,voicePolicy:{source:'original audio track',gain:1,normalize:false,compress:false,playbackRate:1,pitchChange:false},exportWarning:!c.localExport?'This browser cannot run the edited export test.':(!c.mp4Export?'This browser can test export but cannot produce the required MP4 container.':null),requiresSeparateSaveGesture:true};}
+async function renderEditedVideo(file,recipe,onProgress){
+  const caps=supports();if(!caps.localExport)throw new Error('Edited export is blocked by this browser capability check.');if(!file)throw new Error('Missing source file.');
+  const AudioCtx=window.AudioContext||window.webkitAudioContext,audioContext=new AudioCtx();await audioContext.resume();const holder=await loadVideo(file),video=holder.video;video.volume=1;video.muted=false;video.playbackRate=1;video.preservesPitch=true;video.style.cssText='position:fixed;width:1px;height:1px;opacity:.001;left:-10px;top:-10px';document.body.appendChild(video);
+  const canvas=makeCanvas(video.videoWidth||1080,video.videoHeight||1920),ctx=canvas.getContext('2d'),canvasStream=canvas.captureStream(30),source=audioContext.createMediaElementSource(video),gain=audioContext.createGain(),audioDest=audioContext.createMediaStreamDestination();gain.gain.value=1;source.connect(gain);gain.connect(audioDest);
+  const stream=new MediaStream([...canvasStream.getVideoTracks(),...audioDest.stream.getAudioTracks()]),chunks=[],mime=caps.recorderMime,recorder=new MediaRecorder(stream,{mimeType:mime});recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error('The browser recorder failed.'));});
+  const cuts=(recipe&&recipe.selectedCuts||[]).filter(c=>c.end>c.start);if(!cuts.length)throw new Error('No valid cuts were selected.');let outputTime=0;
+  function draw(){fitContain(ctx,video,canvas.width,canvas.height);drawOverlay(ctx,activeOverlay(recipe,outputTime),canvas.width,canvas.height);}
+  async function playCut(cut,index){if(index&&recorder.state==='recording')recorder.pause();await seek(video,cut.start);draw();if(index&&recorder.state==='paused')recorder.resume();const completedBeforeCut=outputTime;await video.play();await new Promise((resolve,reject)=>{function tick(){if(video.error){reject(new Error('Source playback failed during export.'));return;}outputTime=completedBeforeCut+Math.max(0,Math.min(cut.end,video.currentTime)-cut.start);draw();if(onProgress)onProgress(Math.min(1,outputTime/Math.max(.01,recipe.outputDurationSeconds||1)));if(video.currentTime>=cut.end-.02||video.ended){video.pause();outputTime=completedBeforeCut+(cut.end-cut.start);resolve();return;}requestAnimationFrame(tick);}requestAnimationFrame(tick);});}
+  try{await seek(video,cuts[0].start);draw();recorder.start(500);for(let i=0;i<cuts.length;i++)await playCut(cuts[i],i);recorder.stop();await stopped;const blob=new Blob(chunks,{type:mime});if(!blob.size)throw new Error('The browser returned an empty export.');const wanted=(recipe.export&&recipe.export.fileName)||'done-rite-test.mp4',fileName=mime.indexOf('video/mp4')===0?wanted:wanted.replace(/\.mp4$/i,'.webm');return {blob,url:URL.createObjectURL(blob),mime,size:blob.size,fileName,voicePolicy:{gain:1,normalize:false,compress:false,playbackRate:1},originalPreserved:true};}
+  finally{try{video.pause();source.disconnect();gain.disconnect();stream.getTracks().forEach(t=>t.stop());await audioContext.close();}catch(e){}video.remove();release(holder.url);}
 }
-
-function pickMime(){
-  if(typeof MediaRecorder==='undefined'||typeof MediaRecorder.isTypeSupported!=='function') return '';
-  const choices=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
-  for(const m of choices){try{if(MediaRecorder.isTypeSupported(m)) return m;}catch(e){}}
-  return '';
-}
-
-function createPreviewUrl(file){
-  if(!file) throw new Error('Missing source file.');
-  return URL.createObjectURL(file);
-}
-
-function release(url){if(url) try{URL.revokeObjectURL(url);}catch(e){}}
-
-function buildExecutionState(session,recipe){
-  const caps=supports();
-  const mime=pickMime();
-  return {
-    engine:'DONE RITE One-Click Browser Executor',version:VERSION,
-    status:caps.localExport?'LOCAL_EXPORT_AVAILABLE':'PREVIEW_ONLY',
-    sessionId:session&&session.id||null,
-    originalPreserved:true,
-    recipe:recipe||null,
-    capabilities:caps,
-    recorderMime:mime||null,
-    exportWarning:caps.localExport?null:'This browser can preview the planned edit but cannot reliably encode the final local video in this path.',
-    requiresUserGestureForSave:true
-  };
-}
-
-function makeCanvas(width,height){
-  const canvas=document.createElement('canvas');
-  canvas.width=Math.max(1,width||1080);canvas.height=Math.max(1,height||1920);
-  return canvas;
-}
-
-function fitContain(ctx,video,w,h){
-  const vw=video.videoWidth||w,vh=video.videoHeight||h;
-  const scale=Math.min(w/vw,h/vh),dw=vw*scale,dh=vh*scale;
-  const x=(w-dw)/2,y=(h-dh)/2;
-  ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);ctx.drawImage(video,x,y,dw,dh);
-}
-
-function drawOverlay(ctx,overlay,w,h){
-  if(!overlay||!overlay.text)return;
-  const text=String(overlay.text).slice(0,90);
-  const x=Math.round(w*0.08),y=Math.round(h*0.18);
-  ctx.font=`900 ${Math.max(34,Math.round(w*0.055))}px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif`;
-  ctx.textBaseline='top';ctx.lineWidth=Math.max(3,Math.round(w*0.004));
-  ctx.strokeStyle='rgba(0,0,0,.9)';ctx.fillStyle='#fff';
-  ctx.strokeText(text,x,y);ctx.fillText(text,x,y);
-}
-
-async function previewFrame(file,recipe,options){
-  options=options||{};
-  if(!file) throw new Error('Missing source file.');
-  const video=document.createElement('video');video.muted=true;video.playsInline=true;video.preload='auto';
-  const url=URL.createObjectURL(file);video.src=url;
-  await new Promise((res,rej)=>{video.onloadedmetadata=res;video.onerror=()=>rej(new Error('Could not load video preview.'));});
-  const canvas=makeCanvas(options.width||video.videoWidth||1080,options.height||video.videoHeight||1920);
-  const ctx=canvas.getContext('2d');
-  fitContain(ctx,video,canvas.width,canvas.height);
-  const overlay=recipe&&recipe.overlays&&recipe.overlays[0];drawOverlay(ctx,overlay,canvas.width,canvas.height);
-  release(url);
-  return {canvas,dataUrl:canvas.toDataURL('image/jpeg',0.9)};
-}
-
-window.DoneRiteOneClickBrowserExecutor={version:VERSION,supports,pickMime,createPreviewUrl,release,buildExecutionState,previewFrame};
+window.DoneRiteOneClickBrowserExecutor={version:VERSION,safeZone:SAFE_ZONE,supports,systemCheck,pickMime,createPreviewUrl,release,buildExecutionState,previewFrame,renderEditedVideo,drawOverlay};
 })();
