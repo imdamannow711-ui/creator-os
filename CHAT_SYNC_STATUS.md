@@ -18,22 +18,36 @@ One-Click editor: `https://imdamannow711-ui.github.io/creator-os/one-click-ad-de
 
 ---
 
-## MULTI-CHAT RULES
+## LATEST SHARED PROJECT UPDATE — SCRIPT STUDIO RANDOMIZE FIX
 
-1. Always fetch current `main` before editing.
-2. Read the newest commits since the last chat's known commit.
-3. Compare current `main` against the last commit you personally touched.
-4. Do not assume another chat has not changed the same file.
-5. Do not overwrite unrelated work from another chat.
-6. Make the smallest targeted change possible.
-7. After changing a file, re-fetch that exact file from remote `main`.
-8. Report the exact commit SHA, files changed, and rollback point.
-9. Do not call iPhone behavior verified unless the user actually tested it.
-10. If another chat changed `main` while you were working, stop and reconcile before pushing anything else.
+User tested Script Studio on iPhone and reported:
+
+- `RANDOMIZE A LITTLE` appeared not to work.
+- `RANDOMIZE A LOT` appeared to work.
+- the original-restore behavior needed to be checked and made obvious.
+
+Implemented on 2026-09-05:
+
+- `teleprompter-script-studio.html`
+  - `RANDOMIZE A LITTLE` no longer depends only on a short list of very specific phrases.
+  - added safe general wording variations plus a structure-preserving fallback, so ordinary product scripts still receive a visible light rewrite.
+  - `RANDOMIZE AGAIN` in light mode retries and has a final fallback so it does not silently return the same visible result.
+  - the original button is now labeled `GO BACK TO ORIGINAL`.
+  - original restore explicitly copies the source/pasted script back to the Teleprompter-version box word-for-word.
+  - existing Exact/Light/Heavy workflow, manual editing, copy, navigation, compliance check, and Teleprompter handoff remain intact.
+- `sw.js`
+  - cache tag bumped to `done-rite-v25-script-randomize-hardened` so iPhone Safari receives the corrected Script Studio.
+  - network-first / no-store / navigation-only HTML fallback behavior remains unchanged.
+
+The last code commit before this status-file update was:
+
+`63cf08af40dc318862e1de104800b1de98e7bf86`
+
+This fix is **code-verified but not yet re-tested by the user on iPhone**.
 
 ---
 
-## LATEST SHARED PROJECT UPDATE — ONE-CLICK NAVIGATION
+## PREVIOUS SHARED PROJECT UPDATE — ONE-CLICK NAVIGATION
 
 User reported that One-Click felt disconnected and frustrating because there was no obvious route from a copied/edited script into the Teleprompter and no dependable Back control while editing.
 
@@ -57,16 +71,8 @@ Approved and implemented on 2026-09-05:
   - persistent `← BACK` button
   - Back returns to Script Studio/previous page when available
   - completed recording still gets `RETURN TO ONE-CLICK EDITOR →`
-- `sw.js`
-  - cache tag bumped to `done-rite-v23-one-click-navigation`
-  - network-first / `cache: "no-store"` behavior preserved
-  - navigation-only HTML fallback preserved
 
-The last code commit before this status-file update was:
-
-`949268296e9ba29be5784929a4049dd90b2443ae`
-
-This navigation work is **code-verified but not yet user-verified on iPhone**. Do not call it finished until the user tests the actual flow.
+Navigation work remains **code-verified and only partially user-tested**.
 
 ---
 
