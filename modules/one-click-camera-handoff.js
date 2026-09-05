@@ -1,28 +1,47 @@
-/* DONE RITE Creator OS — One-Click Camera Handoff v0.7
+/* DONE RITE Creator OS — One-Click Camera Handoff v0.8
    Adds a real iPhone camera capture path to the Hook + CTA recording guide.
    Loads gap removal, autosave/resume, creative controls and creative render,
-   and routes ONE CLICK SCRIPT STUDIO into the One-Click Teleprompter wrapper.
+   routes ONE CLICK SCRIPT STUDIO into the One-Click Teleprompter wrapper,
+   and keeps clear Back / Script Studio / Teleprompter navigation available.
 */
 (function(){
 'use strict';
-const VERSION='0.7';
+const VERSION='0.8';
 let lastPlan=null,capturedUrl='';
 function loadScriptOnce(selector,src,datasetKey,onload){const existing=document.querySelector(selector);if(existing){if(onload&&existing.dataset.loaded==='1')onload();return;}const s=document.createElement('script');s.src=src;s.async=false;s.dataset[datasetKey]='1';s.onload=()=>{s.dataset.loaded='1';if(onload)onload();};document.head.appendChild(s);}
 function loadGapRemover(){if(window.DoneRiteOneClickGapRemover)return;loadScriptOnce('script[data-done-rite-gap-remover]','modules/one-click-gap-remover.js?v=20260904-gap4','doneRiteGapRemover',()=>{try{window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.install();}catch(e){}});}
 function loadSessionState(){if(window.DoneRiteOneClickSessionState)return;loadScriptOnce('script[data-done-rite-session-state]','modules/one-click-session-state.js?v=20260904-session1','doneRiteSessionState');}
 function loadCreativeRender(){if(window.DoneRiteOneClickCreativeRender){try{window.DoneRiteOneClickCreativeRender.boot();}catch(e){}return;}loadScriptOnce('script[data-done-rite-creative-render]','modules/one-click-creative-render.js?v=20260904-creative3','doneRiteCreativeRender',()=>{try{window.DoneRiteOneClickCreativeRender&&window.DoneRiteOneClickCreativeRender.boot();}catch(e){}});}
 function loadCreativeControls(){if(window.DoneRiteOneClickCreativeControls){try{window.DoneRiteOneClickCreativeControls.install();}catch(e){}loadCreativeRender();return;}loadScriptOnce('script[data-done-rite-creative-controls]','modules/one-click-creative-controls.js?v=20260904-creative1','doneRiteCreativeControls',()=>{try{window.DoneRiteOneClickCreativeControls&&window.DoneRiteOneClickCreativeControls.install();}catch(e){}loadCreativeRender();});}
+function sameOriginUrl(raw,fallback){try{const u=new URL(raw||fallback||'./',location.href);return u.origin===location.origin?u.href:new URL(fallback||'./',location.href).href;}catch(e){return new URL(fallback||'./',location.href).href;}}
+function oneClickReturn(){return sameOriginUrl(location.href,'one-click-ad-dev.html');}
+function studioUrl(){const target=new URL('teleprompter-one-click.html',location.href);target.searchParams.set('session','1');target.searchParams.set('return',oneClickReturn());const studio=new URL('teleprompter-script-studio.html',location.href);studio.searchParams.set('target',target.toString());studio.searchParams.set('return',oneClickReturn());return studio.toString();}
+function teleprompterUrl(){const u=new URL('teleprompter-one-click.html',location.href);u.searchParams.set('session','1');u.searchParams.set('return',oneClickReturn());u.searchParams.set('back',oneClickReturn());return u.toString();}
+function installGlobalNavigation(){
+  if(document.getElementById('doneRiteOneClickNav'))return;
+  const wrap=document.querySelector('.wrap')||document.body;
+  const nav=document.createElement('div');nav.id='doneRiteOneClickNav';nav.style.cssText='position:sticky;top:0;z-index:80;margin:0 0 12px;padding:8px 0 10px;background:linear-gradient(180deg,rgba(8,10,14,.98) 70%,rgba(8,10,14,0));';
+  const back=document.createElement('button');back.type='button';back.textContent='← BACK';back.setAttribute('aria-label','Back to previous page');back.style.cssText='min-height:42px;padding:9px 14px;border:1px solid #344457;border-radius:12px;background:#171c25;color:#cfe7ff;font:900 14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;';back.onclick=()=>{try{if(history.length>1){history.back();return;}}catch(e){}location.href='index.html';};
+  nav.appendChild(back);wrap.insertBefore(nav,wrap.firstChild);
+  if(document.getElementById('doneRiteWorkflowShortcuts'))return;
+  const card=document.createElement('div');card.id='doneRiteWorkflowShortcuts';card.style.cssText='background:#10151d;border:1px solid #293544;border-radius:16px;padding:14px;margin-bottom:12px;';
+  const title=document.createElement('div');title.textContent='SCRIPT & TELEPROMPTER';title.style.cssText='font-weight:950;font-size:15px;margin-bottom:5px;color:#eef7ff';
+  const help=document.createElement('div');help.textContent='Already have a script? Paste/edit it in Script Studio, or open the Teleprompter directly. Your One-Click project stays saved while you move between screens.';help.style.cssText='color:#9aa7b6;font-size:13px;line-height:1.45;margin-bottom:8px';
+  const studio=document.createElement('a');studio.href=studioUrl();studio.textContent='📝 PASTE / EDIT SCRIPT → TELEPROMPTER';studio.style.cssText='display:block;text-align:center;text-decoration:none;min-height:52px;padding:15px 10px;border:1px solid #58a6ff;border-radius:13px;background:#197aff;color:#fff;font:900 15px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;margin-top:8px';
+  const tele=document.createElement('a');tele.href=teleprompterUrl();tele.textContent='🎙 OPEN TELEPROMPTER MANUALLY';tele.style.cssText='display:block;text-align:center;text-decoration:none;min-height:50px;padding:14px 10px;border:1px solid #344457;border-radius:13px;background:#171d27;color:#72bdff;font:900 15px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;margin-top:8px';
+  card.appendChild(title);card.appendChild(help);card.appendChild(studio);card.appendChild(tele);nav.insertAdjacentElement('afterend',card);
+}
 function routeTeleprompterThroughStudio(link){
   if(!link||link.dataset.scriptStudio==='1')return;
   const original=new URL(link.getAttribute('href')||'teleprompter.html',location.href);
   original.pathname=original.pathname.replace(/teleprompter\.html$/,'teleprompter-one-click.html');
-  if(!original.searchParams.get('return'))original.searchParams.set('return',location.href);
-  const studio=new URL('teleprompter-script-studio.html',location.href);studio.searchParams.set('target',original.toString());studio.searchParams.set('return',location.href);link.href=studio.toString();link.dataset.scriptStudio='1';
+  if(!original.searchParams.get('return'))original.searchParams.set('return',oneClickReturn());
+  const studio=new URL('teleprompter-script-studio.html',location.href);studio.searchParams.set('target',original.toString());studio.searchParams.set('return',oneClickReturn());link.href=studio.toString();link.dataset.scriptStudio='1';
 }
 function fileSignature(file){return [file&&file.name||'',file&&file.size||0,file&&file.lastModified||0].join('|');}
 function appendCapturedFile(captured){const source=document.getElementById('video');if(!source||!captured)return {ok:false,reason:'Raw clip picker is unavailable.'};if(typeof DataTransfer==='undefined')return {ok:false,reason:'This Safari build cannot append the camera file automatically.'};try{const dt=new DataTransfer(),seen=new Set();Array.from(source.files||[]).forEach(file=>{const key=fileSignature(file);if(!seen.has(key)){seen.add(key);dt.items.add(file);}});const captureKey=fileSignature(captured);if(!seen.has(captureKey))dt.items.add(captured);source.files=dt.files;source.dispatchEvent(new Event('change',{bubbles:true}));return {ok:true,count:dt.files.length};}catch(err){return {ok:false,reason:err&&err.message?err.message:'Safari did not allow the camera file to be appended.'};}}
 function install(plan){
-  loadGapRemover();loadSessionState();loadCreativeControls();if(plan)lastPlan=plan;const card=document.getElementById('doneRiteRecordingHandoff');if(!card||!lastPlan)return;if(card.dataset.cameraHandoff==='1')return;card.dataset.cameraHandoff='1';
+  installGlobalNavigation();loadGapRemover();loadSessionState();loadCreativeControls();if(plan)lastPlan=plan;const card=document.getElementById('doneRiteRecordingHandoff');if(!card||!lastPlan)return;if(card.dataset.cameraHandoff==='1')return;card.dataset.cameraHandoff='1';
   const oldLink=document.getElementById('doneRiteRecordMissing');if(oldLink){oldLink.textContent='📝 ONE CLICK SCRIPT STUDIO → TELEPROMPTER';oldLink.style.background='#171c25';oldLink.style.border='1px solid #58a6ff';oldLink.style.color='#72bdff';oldLink.style.marginTop='8px';routeTeleprompterThroughStudio(oldLink);}
   const cameraButton=document.createElement('button');cameraButton.type='button';cameraButton.id='doneRiteCameraButton';cameraButton.textContent='📹 RECORD MISSING CLIP NOW';cameraButton.style.cssText='display:block;width:100%;min-height:54px;padding:14px 10px;border:1px solid #2bd97c;border-radius:13px;background:#16864b;color:#fff;font:950 16px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;margin-top:8px';
   const cameraInput=document.createElement('input');cameraInput.type='file';cameraInput.id='doneRiteCameraCapture';cameraInput.accept='video/*';cameraInput.setAttribute('capture','environment');cameraInput.hidden=true;
@@ -31,8 +50,8 @@ function install(plan){
   cameraButton.addEventListener('click',()=>{cameraInput.value='';cameraInput.click();});
   cameraInput.addEventListener('change',()=>{const file=cameraInput.files&&cameraInput.files[0];if(!file){status.textContent='No new video was recorded.';return;}const result=appendCapturedFile(file);if(result.ok){status.style.color='#56ec9c';status.textContent='New camera clip added to this One-Click project. '+result.count+' raw clip'+(result.count===1?' is':'s are')+' loaded. Rebuild the edit when you are ready.';return;}status.style.color='#ffd166';status.textContent='The video was recorded, but Safari would not append it automatically. Save/share the recorded clip, then add it with your originals. '+result.reason;let save=document.getElementById('doneRiteSaveCaptured');if(!save){save=document.createElement('button');save.type='button';save.id='doneRiteSaveCaptured';save.textContent='SAVE / SHARE RECORDED CLIP';save.style.cssText='display:block;width:100%;min-height:48px;padding:12px 10px;border:1px solid #ffd166;border-radius:12px;background:#2a1c00;color:#ffd166;font-weight:900;margin-top:8px';status.insertAdjacentElement('afterend',save);}save.onclick=async()=>{try{if(typeof File!=='undefined'&&navigator.share&&navigator.canShare){const shareFile=new File([file],file.name||'done-rite-missing-clip.mov',{type:file.type||'video/quicktime'});if(navigator.canShare({files:[shareFile]})){await navigator.share({files:[shareFile],title:shareFile.name});return;}}if(capturedUrl)try{URL.revokeObjectURL(capturedUrl);}catch(e){}capturedUrl=URL.createObjectURL(file);const a=document.createElement('a');a.href=capturedUrl;a.download=file.name||'done-rite-missing-clip.mov';a.click();}catch(err){if(err&&err.name!=='AbortError')status.textContent='Could not open the save/share sheet. The recorded clip is still loaded on this page.';}};});
 }
-function bootHelpers(){loadGapRemover();loadSessionState();loadCreativeControls();}
+function bootHelpers(){installGlobalNavigation();loadGapRemover();loadSessionState();loadCreativeControls();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootHelpers,{once:true});else bootHelpers();
 window.addEventListener('pagehide',()=>{if(capturedUrl)try{URL.revokeObjectURL(capturedUrl);}catch(e){}});window.addEventListener('done-rite-one-click-plan',event=>{lastPlan=event&&event.detail||lastPlan;setTimeout(()=>install(lastPlan),0);});
-window.DoneRiteOneClickCameraHandoff={version:VERSION,install,appendCapturedFile,loadGapRemover,loadSessionState,loadCreativeControls,loadCreativeRender,routeTeleprompterThroughStudio};
+window.DoneRiteOneClickCameraHandoff={version:VERSION,install,appendCapturedFile,loadGapRemover,loadSessionState,loadCreativeControls,loadCreativeRender,routeTeleprompterThroughStudio,installGlobalNavigation,studioUrl,teleprompterUrl};
 })();
