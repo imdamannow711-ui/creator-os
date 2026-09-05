@@ -5,12 +5,13 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v20-voiceover-trim-safe";
+const CACHE_NAME = "done-rite-v21-split-react-runtime";
 
 const FILES = [
   "./",
   "./index.html",
   "./app.js",
+  "./vendor/react-offline.js",
   "./teleprompter.html",
   "./teleprompter-one-click.html",
   "./teleprompter-script-studio.html",
