@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v19-trim-audio";
+const CACHE_NAME = "done-rite-v20-voiceover-trim-safe";
 
 const FILES = [
   "./",
