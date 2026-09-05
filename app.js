@@ -1135,16 +1135,36 @@ function DoneRiteCreatorOS() {
                 gapImageRef.current.value = "";
         }
     };
-    const exportBackup = () => {
+    const exportBackup = async () => {
         const backup = { version: 1, exportedAt: new Date().toISOString(), saved, products, tasks, moneyRows, gapRows, hookLog };
+        const fileName = `done-rite-backup-${new Date().toISOString().slice(0, 10)}.json`;
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+        const file = new File([blob], fileName, { type: "application/json" });
+        if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+            try {
+                await navigator.share({ files: [file], title: "DONE RITE Creator OS Backup" });
+                setImportStatus("Backup Share Sheet completed. Choose Save to Files for a permanent copy.");
+                return;
+            }
+            catch (error) {
+                if (error && error.name === "AbortError") {
+                    setImportStatus("Backup save was canceled. Nothing was deleted.");
+                    return;
+                }
+            }
+        }
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `done-rite-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        link.download = fileName;
+        link.style.display = "none";
+        document.body.appendChild(link);
         link.click();
-        URL.revokeObjectURL(url);
-        setImportStatus("Backup downloaded.");
+        window.setTimeout(() => {
+            link.remove();
+            URL.revokeObjectURL(url);
+        }, 60000);
+        setImportStatus("Backup download started. Check Files or Downloads for " + fileName + ".");
     };
     const importBackup = async (file) => {
         if (!file)
