@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v22-split-app-libraries";
+const CACHE_NAME = "done-rite-v23-one-click-navigation";
 
 const FILES = [
   "./",
