@@ -1,17 +1,12 @@
 {
-  "version": "1.5",
-  "branch": "feature/one-click-ad-editor",
+  "version": "1.0",
+  "branch": "build/creator-os-next",
   "modules": [
     "creator-os-next-config.js",
     "media-vault.js",
     "content-gap-demand.js",
     "hook-ranking.js",
     "hands-only-quick-create.js",
-    "one-click-ad-editor.js",
-    "one-click-media-stage.js",
-    "one-click-scene-scorer.js",
-    "one-click-render-stage.js",
-    "one-click-browser-executor.js",
     "youtube-amazon.js",
     "product-picks.js",
     "performance-engine.js",
@@ -25,6 +20,5 @@
     "daily-hq-ui.js"
   ],
   "liveLoaderTouched": false,
-  "mergeStatus": "not-ready",
-  "developmentPages": ["one-click-ad-dev.html"]
+  "mergeStatus": "not-ready"
 }

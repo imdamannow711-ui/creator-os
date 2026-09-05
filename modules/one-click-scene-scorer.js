@@ -1,19 +1,76 @@
-/* DONE RITE Creator OS — One-Click Scene Scorer v0.2 */
+/* DONE RITE Creator OS — One-Click Scene Scorer v0.3
+   Source-aware scoring for candidate time windows. Does not alter source media.
+*/
 (function(){
 'use strict';
-const VERSION='0.2';
+const VERSION='0.3';
 function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
-function round(n){return Math.round(n*1000)/1000;}
-function numeric(v){return typeof v==='number'&&Number.isFinite(v);}
-function scoreCandidate(candidate,mode){
-  const f=(candidate&&candidate.features)||{};let sum=0,weight=0;
-  const add=(value,w)=>{if(numeric(value)){sum+=clamp(value,0,1)*w;weight+=w;}};
-  add(f.sharpness,.34);add(f.motion,mode==='AUTO_HOOK'?.38:.28);add(f.brightness,.18);add(f.audioActivity,.20);add(f.productVisibility,.34);
-  if(numeric(f.deadSpacePenalty)){sum-=clamp(f.deadSpacePenalty,0,1)*.28;weight+=.28;}
-  if(numeric(f.duplicatePenalty)){sum-=clamp(f.duplicatePenalty,0,1)*.18;weight+=.18;}
-  return weight?round(clamp(sum/weight,0,1)):0;
+function round(n){return Math.round(n*100)/100;}
+function normalizeFeatures(x){
+  x=x||{};
+  return {
+    motion:clamp(Number(x.motion||0),0,1),
+    sharpness:clamp(Number(x.sharpness||0),0,1),
+    brightness:clamp(Number(x.brightness||0),0,1),
+    facePenalty:clamp(Number(x.facePenalty||0),0,1),
+    productVisibility:clamp(Number(x.productVisibility||0),0,1),
+    audioActivity:clamp(Number(x.audioActivity||0),0,1),
+    duplicatePenalty:clamp(Number(x.duplicatePenalty||0),0,1),
+    deadSpacePenalty:clamp(Number(x.deadSpacePenalty||0),0,1),
+    semanticMatch:clamp(Number(x.semanticMatch||0),0,1)
+  };
 }
-function rank(candidates,mode){return (candidates||[]).map((c,i)=>Object.assign({id:c.id||('scene-'+i)},c,{score:scoreCandidate(c,mode)})).sort((a,b)=>b.score-a.score||a.start-b.start);}
-function chooseNonOverlapping(candidates,targetSeconds,mode){const ranked=rank(candidates,mode),chosen=[];let total=0;for(const c of ranked){const start=Number(c.start||0),end=Number(c.end||0),dur=Math.max(0,end-start);if(!dur||chosen.some(x=>start<x.end&&end>x.start))continue;const remaining=Math.max(0,Number(targetSeconds||0)-total);const usedEnd=remaining&&dur>remaining?start+remaining:end;chosen.push(Object.assign({},c,{start,end:+usedEnd.toFixed(3),duration:round(usedEnd-start)}));total+=usedEnd-start;if(total>=Number(targetSeconds||0))break;}chosen.sort((a,b)=>a.start-b.start);return {analysisSource:'real decoded frame samples',chosen,totalSeconds:round(total),targetSeconds:Number(targetSeconds||0),complete:total>=Number(targetSeconds||0)};}
+function scoreCandidate(candidate,mode){
+  const f=normalizeFeatures(candidate.features);
+  const hookBoost=mode==='AUTO_HOOK'?1.18:1;
+  const cleanBoost=mode==='AUTO_CLEAN'?1.08:1;
+  let score=0;
+  score+=f.semanticMatch*0.30;
+  score+=f.productVisibility*0.26;
+  score+=f.sharpness*0.16;
+  score+=f.motion*0.14*hookBoost;
+  score+=f.audioActivity*0.08;
+  score+=f.brightness*0.06;
+  score-=f.deadSpacePenalty*0.28*cleanBoost;
+  score-=f.duplicatePenalty*0.18;
+  score-=f.facePenalty*0.05;
+  return round(clamp(score,0,1.35));
+}
+function rank(candidates,mode){
+  return (candidates||[]).map((c,i)=>Object.assign({id:c.id||('scene-'+i)},c,{score:scoreCandidate(c,mode)})).sort((a,b)=>b.score-a.score);
+}
+function sourceKey(c){return Number.isInteger(c&&c.sourceIndex)?c.sourceIndex:0;}
+function overlapsChosen(c,chosen){
+  const start=Number(c.start||0),end=Number(c.end||0),key=sourceKey(c);
+  return chosen.some(x=>sourceKey(x)===key&&start<x.end&&end>x.start);
+}
+function chooseNonOverlapping(candidates,targetSeconds,mode){
+  const ranked=rank(candidates,mode),chosen=[];
+  const target=Math.max(0,Number(targetSeconds||0));
+  let total=0;
+  const sourceIds=[...new Set(ranked.map(sourceKey))];
+  function addCandidate(c){
+    const start=Number(c.start||0),end=Number(c.end||0),dur=Math.max(0,end-start);
+    if(!dur||overlapsChosen(c,chosen))return false;
+    chosen.push(Object.assign({},c,{start,end,duration:round(dur)}));total+=dur;return true;
+  }
+  if(sourceIds.length>1){
+    for(const sourceIndex of sourceIds){
+      const best=ranked.find(c=>sourceKey(c)===sourceIndex&&!overlapsChosen(c,chosen));
+      if(best)addCandidate(best);
+      if(total>=target)break;
+    }
+  }
+  if(total<target){
+    for(const c of ranked){
+      if(chosen.some(x=>x.id===c.id))continue;
+      addCandidate(c);
+      if(total>=target)break;
+    }
+  }
+  chosen.sort((a,b)=>sourceKey(a)-sourceKey(b)||a.start-b.start);
+  chosen.forEach((c,i)=>{c.sequenceIndex=i;});
+  return {chosen,totalSeconds:round(total),targetSeconds:target,complete:total>=target,sourceCountUsed:new Set(chosen.map(sourceKey)).size};
+}
 window.DoneRiteOneClickSceneScorer={version:VERSION,scoreCandidate,rank,chooseNonOverlapping};
 })();
