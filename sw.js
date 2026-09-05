@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v24-script-randomize-fix";
+const CACHE_NAME = "done-rite-v25-script-randomize-hardened";
 
 const FILES = [
   "./",
