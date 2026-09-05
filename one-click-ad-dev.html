@@ -23,7 +23,7 @@
   <div class="card">
     <h2>2. Choose your raw clips</h2>
     <label class="label">Same ad shoot — up to 20 videos</label>
-    <input id="video" class="input" type="file" accept="video/*" multiple>
+    <input id="video" class="input" type="file" accept="video/*" multiple disabled>
     <video id="preview" class="preview" controls playsinline></video>
     <div id="media" class="help">No videos selected.</div>
     <div id="fileList" class="filelist" style="display:none"></div>
@@ -39,7 +39,7 @@
     <select id="mode" class="select"><option value="AUTO_SELL">AUTO SELL</option><option value="AUTO_HOOK">AUTO HOOK</option><option value="AUTO_CLEAN">AUTO CLEAN</option></select>
     <label class="label">Target length</label>
     <select id="duration" class="select"><option>7</option><option>10</option><option selected>15</option><option>20</option><option>25</option><option>30</option></select>
-    <button id="go" class="button">BUILD MULTI-CLIP EDIT</button>
+    <button id="go" class="button" disabled>BUILD MULTI-CLIP EDIT</button>
   </div>
 
   <div id="resultCard" class="card" style="display:none">
@@ -82,7 +82,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const videoInput=$('video'),preview=$('preview'),media=$('media'),fileList=$('fileList'),frame=$('frame'),go=$('go'),renderBtn=$('renderBtn');
-let previewUrl='',renderedUrl='',currentRecipe=null,currentSession=null,currentPlan=null,currentSelection=null,currentRender=null;
+let systemPassed=false,previewUrl='',renderedUrl='',currentRecipe=null,currentSession=null,currentPlan=null,currentSelection=null,currentRender=null;
 function modulesReady(){return !!(window.DoneRiteOneClickAdEditor&&window.DoneRiteOneClickMediaStage&&window.DoneRiteOneClickSceneScorer&&window.DoneRiteOneClickRenderStage&&window.DoneRiteOneClickBrowserExecutor);}
 function files(){return Array.from(videoInput.files||[]);}
 function releasePreview(){if(previewUrl&&window.DoneRiteOneClickBrowserExecutor)window.DoneRiteOneClickBrowserExecutor.release(previewUrl);previewUrl='';}
@@ -92,14 +92,14 @@ function setCheck(ok,text){$('checkResult').className=ok?'ok':'bad';$('checkResu
 function resetRender(){releaseRendered();currentRender=null;$('renderBox').style.display='none';$('renderedVideo').style.display='none';$('shareBtn').style.display='none';$('tiktokBtn').style.display='none';$('tiktokHelp').style.display='none';$('progress').style.display='none';$('progress').firstElementChild.style.width='0%';$('renderState').textContent='';$('renderState').className='help';}
 $('check').addEventListener('click',()=>{
   if(!modulesReady()){setCheck(false,'System check failed: one or more editor modules did not load.');return;}
-  try{const caps=window.DoneRiteOneClickBrowserExecutor.supports(),mime=window.DoneRiteOneClickBrowserExecutor.pickMime();if(!caps.localExport||!mime){setCheck(false,'System check loaded, but local export is not available on this Safari build.');return;}setCheck(true,'PASS — multi-clip planner, local encoder, and audio path are available. Encoder: '+mime);}catch(err){setCheck(false,'System check failed: '+err.message);}
+  try{const caps=window.DoneRiteOneClickBrowserExecutor.supports(),mime=window.DoneRiteOneClickBrowserExecutor.pickMime();if(!caps.localExport||!mime||!/^video\/mp4/i.test(mime)){systemPassed=false;videoInput.disabled=true;go.disabled=true;setCheck(false,'System check blocked: this Safari build does not expose the required local MP4/AAC export path. Do not choose a video yet.');return;}systemPassed=true;videoInput.disabled=false;go.disabled=false;setCheck(true,'PASS — planner, local encoder, original-audio path, and MP4 export are available. You can choose a short raw video now. Encoder: '+mime);}catch(err){setCheck(false,'System check failed: '+err.message);}
 });
 videoInput.addEventListener('change',()=>{
   releasePreview();resetRender();preview.style.display='none';frame.style.display='none';$('resultCard').style.display='none';currentRecipe=currentSession=currentPlan=currentSelection=null;
   const list=files();fileList.innerHTML='';
-  if(!list.length){media.textContent='No videos selected.';fileList.style.display='none';return;}
+  if(!list.length){media.textContent='No videos selected.';fileList.style.display='none';go.disabled=!systemPassed;return;}
   if(list.length>20){media.textContent='Please choose 20 clips or fewer.';fileList.style.display='none';return;}
-  media.textContent=list.length===1?'1 raw clip selected.':list.length+' raw clips selected for one ad.';
+  previewUrl=window.DoneRiteOneClickBrowserExecutor.createPreviewUrl(list[0]);preview.src=previewUrl;preview.style.display='block';media.textContent=(list.length===1?'1 raw clip selected.':list.length+' raw clips selected for one ad.')+' First clip is shown above as the untouched original.';
   list.forEach((f,i)=>{const div=document.createElement('div');div.textContent=(i+1)+'. '+f.name+' • '+humanSize(f.size);fileList.appendChild(div);});fileList.style.display='block';
 });
 function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
@@ -139,7 +139,7 @@ async function analyzeSource(file,metadata,sourceIndex){
       }
       if(!samples)continue;
       sharp/=samples;bright/=samples;motion/=samples;const brightnessQuality=clamp(1-Math.abs(bright-.55)*1.7,0,1),dead=clamp((motion<.025?.55:0)+(brightnessQuality<.3?.35:0),0,1);
-      windows.push({id:'source-'+sourceIndex+'-candidate-'+index,sourceIndex,sourceName:file.name,start,end,scanMode:profile.longScan?'FAST_LONG_CLIP':'STANDARD',features:{productVisibility:.72,sharpness:sharp,motion:motion,audioActivity:.5,brightness:brightnessQuality,facePenalty:0,duplicatePenalty:0,deadSpacePenalty:dead}});
+      windows.push({id:'source-'+sourceIndex+'-candidate-'+index,sourceIndex,sourceName:file.name,start,end,scanMode:profile.longScan?'FAST_LONG_CLIP':'STANDARD',features:{sharpness:sharp,motion:motion,brightness:brightnessQuality,deadSpacePenalty:dead}});
     }
     if(!windows.length)throw new Error('Creator OS could not sample usable frames from this clip.');
     return windows;
@@ -157,7 +157,7 @@ async function buildCandidates(session,list){
   return all;
 }
 go.addEventListener('click',async()=>{
-  const list=files();if(!modulesReady()){alert('Run the system check first.');return;}if(!list.length){alert('Choose at least one raw clip first.');return;}if(list.length>20){alert('Choose 20 clips or fewer.');return;}
+  const list=files();if(!modulesReady()||!systemPassed){alert('Run and pass the no-video system check first.');return;}if(!list.length){alert('Choose at least one raw clip first.');return;}if(list.length>20){alert('Choose 20 clips or fewer.');return;}
   const product=$('product').value.trim(),feature=$('feature').value.trim();if(!product||!feature){alert('Enter the product name and one verified feature first.');return;}
   resetRender();go.disabled=true;go.textContent='ANALYZING CLIPS…';
   try{
@@ -170,7 +170,7 @@ go.addEventListener('click',async()=>{
     $('sourceInfo').textContent=list.length+' clip'+(list.length===1?'':'s')+' • '+totalSource.toFixed(1)+' sec';$('selectedInfo').textContent=(selection.sourceCountUsed||1)+' source'+((selection.sourceCountUsed||1)===1?'':'s');$('targetInfo').textContent=target.toFixed(1)+' sec';
     $('fileName').textContent=plan.packaging.videoFileName;$('caption').textContent=plan.packaging.caption;$('hashtags').textContent=plan.packaging.hashtags.join(' ');$('compliance').textContent=plan.packaging.compliance.flags.length?plan.packaging.compliance.flags.join(' • '):'No extra category flags.';
     const usedFast=candidates.some(c=>c.scanMode==='FAST_LONG_CLIP');
-    $('nextStep').textContent=usedFast?'Creator OS used the fast long-clip scan across the full source, then ranked the strongest sampled sections. Tap Render Finished Video to build the selected clip.':'Creator OS compared short sections for motion, sharpness, lighting, and dead-space signals across the selected clips. Tap Render Finished Video to combine the chosen sections.';renderBtn.style.display=execution.status==='LOCAL_EXPORT_AVAILABLE'?'block':'none';
+    $('nextStep').textContent=(usedFast?'Creator OS used the fast long-clip scan across the full source, then ranked the strongest measured sections.':'Creator OS compared measured motion, sharpness, lighting, and dead-space signals across the selected clips.')+' The preview overlay uses the central-left safe region. Tap Render Finished Video, then compare its voice with the untouched original above.';renderBtn.style.display=execution.status==='LOCAL_EXPORT_AVAILABLE'?'block':'none';
     try{const firstCut=recipe.selectedCuts[0],sourceIndex=firstCut&&Number.isInteger(firstCut.sourceIndex)?firstCut.sourceIndex:0,p=await window.DoneRiteOneClickBrowserExecutor.previewFrame(list[sourceIndex],recipe);frame.src=p.dataUrl;frame.style.display='block';}catch(e){frame.style.display='none';}
     $('tech').textContent=JSON.stringify({sessionId:session.id,sourceCount:list.length,hook:plan.hookExperiment,cta:plan.ctaExperiment,candidates:candidates.length,scanMode:usedFast?'FAST_LONG_CLIP':'STANDARD',selection:{totalSeconds:selection.totalSeconds,complete:selection.complete,sourceCountUsed:selection.sourceCountUsed,cuts:selection.chosen.map(c=>({sourceIndex:c.sourceIndex,sourceName:c.sourceName,start:c.start,end:c.end,score:c.score}))},execution:{status:execution.status,recorderMime:execution.recorderMime},rollback:session.rollback},null,2);media.textContent=list.length+' raw clip'+(list.length===1?'':'s')+' ready.';$('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(err){$('resultCard').style.display='block';$('status').className='status bad';$('status').textContent='EDIT PLAN FAILED';$('nextStep').textContent=err.message;$('tech').textContent=String(err&&err.stack||err);renderBtn.style.display='none';media.textContent='Analysis stopped.';}
@@ -178,7 +178,7 @@ go.addEventListener('click',async()=>{
 });
 renderBtn.addEventListener('click',async()=>{
   const list=files();if(!list.length||!currentRecipe)return;resetRender();renderBtn.disabled=true;renderBtn.textContent='RENDERING…';$('progress').style.display='block';$('renderState').textContent='Combining selected sections. Keep this page open until it finishes.';
-  try{const result=await window.DoneRiteOneClickBrowserExecutor.renderLocalBatch(list,currentRecipe,{maxLongEdge:1280,fps:30,onProgress:p=>{$('progress').firstElementChild.style.width=Math.round(p*100)+'%';}});currentRender=result;renderedUrl=result.url;$('progress').firstElementChild.style.width='100%';$('renderState').textContent='Finished • '+result.durationSeconds.toFixed(1)+' sec • '+result.sourceCount+' source clip'+(result.sourceCount===1?'':'s')+' available • originals preserved';$('renderedVideo').src=renderedUrl;$('renderedVideo').style.display='block';$('openLink').href=renderedUrl;$('renderBox').style.display='block';const canShare=window.DoneRiteOneClickBrowserExecutor.canShareFile(result.blob,result.fileName);$('shareBtn').style.display=canShare?'block':'none';$('tiktokBtn').style.display=canShare?'block':'none';$('tiktokHelp').style.display=canShare?'block':'none';$('renderBox').scrollIntoView({behavior:'smooth',block:'start'});}catch(err){$('renderState').className='bad';$('renderState').textContent='Render failed: '+err.message+' Your original clips were not changed.';}finally{renderBtn.disabled=false;renderBtn.textContent='RENDER FINISHED VIDEO';}
+  try{const result=await window.DoneRiteOneClickBrowserExecutor.renderLocalBatch(list,currentRecipe,{maxLongEdge:1280,fps:30,onProgress:p=>{$('progress').firstElementChild.style.width=Math.round(p*100)+'%';}});currentRender=result;renderedUrl=result.url;$('progress').firstElementChild.style.width='100%';$('renderState').textContent='Finished • '+result.durationSeconds.toFixed(1)+' sec • '+result.sourceCount+' source clip'+(result.sourceCount===1?'':'s')+' available • originals preserved. Play the untouched original above, then this render. Draft status stays blocked if voice volume, tone, pitch, timing, or word edges differ.';$('renderedVideo').src=renderedUrl;$('renderedVideo').style.display='block';$('openLink').href=renderedUrl;$('renderBox').style.display='block';const canShare=window.DoneRiteOneClickBrowserExecutor.canShareFile(result.blob,result.fileName);$('shareBtn').style.display=canShare?'block':'none';$('tiktokBtn').style.display=canShare?'block':'none';$('tiktokHelp').style.display=canShare?'block':'none';$('renderBox').scrollIntoView({behavior:'smooth',block:'start'});}catch(err){$('renderState').className='bad';$('renderState').textContent='Render failed: '+err.message+' Your original clips were not changed.';}finally{renderBtn.disabled=false;renderBtn.textContent='RENDER FINISHED VIDEO';}
 });
 function shareText(){if(!currentPlan)return'';return [currentPlan.packaging.caption,currentPlan.packaging.hashtags.join(' ')].filter(Boolean).join('\n\n');}
 $('tiktokBtn').addEventListener('click',async()=>{if(!currentRender)return;try{await window.DoneRiteOneClickBrowserExecutor.shareFile(currentRender.blob,currentRender.fileName,shareText());}catch(err){if(err&&err.name!=='AbortError')alert('TikTok handoff failed: '+err.message);}});
