@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - refactor-app-load-2026-09-04
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -46,8 +49,6 @@ jobs:
           sw_text = re.sub(r'const CACHE_NAME = "[^"]+";', 'const CACHE_NAME = "done-rite-v21-split-react-runtime";', sw_text, count=1)
           sw.write_text(sw_text, encoding='utf-8')
 
-          # Safety checks: shell must still have root + app loader, vendor must expose React globals,
-          # and no dashboard storage/media code is modified by this refactor.
           final_index = index.read_text(encoding='utf-8')
           vendor = Path('vendor/react-offline.js').read_text(encoding='utf-8')
           assert '<div id="root">' in final_index
@@ -64,8 +65,9 @@ jobs:
           node --check modules/one-click-browser-executor.js
           node --check modules/one-click-gap-remover.js
       - name: Commit refactor result
+        if: github.event_name == 'push'
         run: |
-          if git diff --quiet && git status --porcelain | grep -q '^$'; then
+          if git diff --quiet && [ -z "$(git status --porcelain)" ]; then
             echo "No changes needed"
             exit 0
           fi
