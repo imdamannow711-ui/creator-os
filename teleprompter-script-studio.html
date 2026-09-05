@@ -20,7 +20,7 @@
   <label class="label" for="sourceScript">Paste your script</label>
   <textarea id="sourceScript" class="script" placeholder="Paste the script exactly as you received it..."></textarea>
   <div class="modes">
-   <button id="exactBtn" class="btn green"><div class="modeTitle">EXACT</div><div class="modeSub">Keep every word exactly as pasted</div></button>
+   <button id="exactBtn" class="btn green"><div class="modeTitle">GO BACK TO ORIGINAL</div><div class="modeSub">Restore every word exactly as pasted</div></button>
    <button id="lightBtn" class="btn"><div class="modeTitle">RANDOMIZE A LITTLE</div><div class="modeSub">Same structure and message, fresh wording</div></button>
    <button id="heavyBtn" class="btn purple"><div class="modeTitle">RANDOMIZE A LOT</div><div class="modeSub">New hook, transitions and CTA while keeping the core idea</div></button>
   </div>
@@ -51,12 +51,64 @@ function hash(v){let h=5381;for(const ch of String(v||''))h=((h<<5)+h)^ch.charCo
 function sessionKey(){const u=targetObject(),identity=[u.pathname,u.searchParams.get('product')||'',u.searchParams.get('script')||u.searchParams.get('text')||'',u.searchParams.get('seconds')||''].join('|');return KEY_BASE+':'+hash(identity);}
 function save(){try{localStorage.setItem(sessionKey(),JSON.stringify({source:source.value,result:result.value,mode,updatedAt:Date.now()}));}catch(e){}}
 function load(){const target=targetObject(),incoming=target.searchParams.get('script')||target.searchParams.get('text')||'';let saved={};try{saved=JSON.parse(localStorage.getItem(sessionKey())||'{}')||{};}catch(e){}if(saved.source!=null)source.value=saved.source;else if(incoming)source.value=incoming;if(saved.result!=null)result.value=saved.result;if(saved.mode)mode=saved.mode;}
-function lightRewrite(text){let out=clean(text);const swaps=[[/I'm not afraid to admit it\.?/gi,()=>pick(["I'll say it plainly.","I'm comfortable saying that.","I'll admit that."])],[/I think it works/gi,()=>pick(["I've liked using it","I've kept it in my routine","I've chosen to keep using it"])],[/I'm going to keep taking it/gi,()=>pick(["I'm planning to keep it in my routine","I'm continuing to use it","I'm sticking with it for now"])],[/This is a form of/gi,()=>pick(["This is a form of","It's a form of","This product uses a form of"])],[/helps your body produce/gi,()=>pick(["is involved in pathways related to","supports processes related to","plays a role in pathways involving"])],[/Supposedly,/gi,()=>pick(["The idea is that","The reason people talk about it is that","What gets discussed most is that"])],[/so this helps\.?/gi,()=>pick(["which is why people are interested in it.","and that's why it gets attention.","which is the reason some people add it to a routine."])],[/I'm going to link the brand I've been taking/gi,()=>pick(["I'll link the brand I've been using","I'm linking the one I've been using","I'll put the brand I've been using in the product link"])],[/because they're having a limited-time offer/gi,()=>pick(["so you can check the current product-page offer","so you can see the current offer shown on the product page","so you can check what the product page is offering right now"])],[/Don't miss out!?/gi,()=>pick(["Take a look if it fits what you're looking for.","Check the product page if you want the details.","You can decide from there."])]];swaps.forEach(([re,fn])=>{out=out.replace(re,fn);});return clean(out);}
 function stripHeadings(text){return clean(text).replace(/^\s*#{1,6}\s*\[[^\n]+\]\s*$/gmi,'').replace(/^\s*\*\*([^*]+)\*\*\s*$/gmi,'$1').replace(/^\s*\[Scene[^\]]*\]\s*$/gmi,'');}
 function splitSentences(text){return stripHeadings(text).replace(/\n+/g,' ').match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s=>s.trim()).filter(Boolean)||[];}
+function lightRewrite(text){
+  const original=clean(text);let out=original;
+  const swaps=[
+    [/I'm not afraid to admit it\.?/gi,()=>pick(["I'll say it plainly.","I'm comfortable saying that.","I'll admit that."])],
+    [/I think it works/gi,()=>pick(["I've liked using it","I've kept it in my routine","I've chosen to keep using it"])],
+    [/I'm going to keep taking it/gi,()=>pick(["I'm planning to keep it in my routine","I'm continuing to use it","I'm sticking with it for now"])],
+    [/This is a form of/gi,()=>pick(["It's a form of","This product uses a form of"])],
+    [/helps your body produce/gi,()=>pick(["is involved in pathways related to","supports processes related to","plays a role in pathways involving"])],
+    [/Supposedly,/gi,()=>pick(["The idea is that","The reason people talk about it is that","What gets discussed most is that"])],
+    [/so this helps\.?/gi,()=>pick(["which is why people are interested in it.","and that's why it gets attention.","which is the reason some people add it to a routine."])],
+    [/I'm going to link the brand I've been taking/gi,()=>pick(["I'll link the brand I've been using","I'm linking the one I've been using","I'll put the brand I've been using in the product link"])],
+    [/because they're having a limited-time offer/gi,()=>pick(["so you can check the current product-page offer","so you can see the current offer shown on the product page","so you can check what the product page is offering right now"])],
+    [/Don't miss out!?/gi,()=>pick(["Take a look if it fits what you're looking for.","Check the product page if you want the details.","You can decide from there."])],
+    [/\bcheck this out\b/gi,()=>pick(["take a look at this","look at this","here's something worth seeing"])],
+    [/\bwhat I like about\b/gi,()=>pick(["what stands out to me about","one thing I like about","what I noticed about"])],
+    [/\bit has\b/gi,()=>pick(["it comes with","it includes"])],
+    [/\byou can\b/gi,()=>pick(["you're able to","you can"])],
+    [/\bI want to show you\b/gi,()=>pick(["let me show you","I want you to see"])],
+    [/\bthis is\b/gi,()=>pick(["here's","this is"])],
+    [/\bI like\b/gi,()=>pick(["what I like is","I really like"])],
+    [/\bworks well\b/gi,()=>pick(["does a good job","has worked well for me"])],
+    [/\beasy to use\b/gi,()=>pick(["simple to use","straightforward to use"])],
+    [/\bsmall and compact\b/gi,()=>pick(["compact and easy to carry","small enough to carry easily"])],
+    [/\bperfect for\b/gi,()=>pick(["a good fit for","made for"])],
+    [/\bgo ahead and\b/gi,()=>pick(["go ahead and","you can"])],
+    [/\bmake sure you\b/gi,()=>pick(["be sure to","make sure you"])],
+    [/\bthe good thing is\b/gi,()=>pick(["what's nice is","the nice part is"])],
+    [/\bthe best part is\b/gi,()=>pick(["my favorite part is","what stands out most is"])],
+    [/\bI use this\b/gi,()=>pick(["I've been using this","this is what I use"])],
+    [/\bif you want\b/gi,()=>pick(["if you're looking to","if you want to"])],
+    [/\bclick the link\b/gi,()=>pick(["check the product link","take a look at the product link"])],
+    [/\bcheck the link\b/gi,()=>pick(["check the product link","take a look at the link"])],
+    [/\bthat's why\b/gi,()=>pick(["which is why","and that's the reason"])],
+    [/\balso\b/gi,()=>pick(["plus","on top of that"])],
+    [/\breally\b/gi,()=>pick(["really","definitely"])],
+    [/\bjust\b/gi,()=>pick(["simply","just"])],
+    [/\ba lot\b/gi,()=>pick(["quite a bit","a lot"])],
+    [/\bright now\b/gi,()=>pick(["at the moment","right now"])]
+  ];
+  swaps.forEach(([re,fn])=>{out=out.replace(re,fn);});
+  out=clean(out);
+  if(out===original){
+    const sentences=splitSentences(original);
+    if(sentences.length>1){
+      const index=Math.min(1,sentences.length-1);
+      sentences[index]=pick(["Also, ","Plus, ","On top of that, "])+sentences[index];
+      out=clean(sentences.join(' '));
+    }else if(original){
+      out=pick(["Quick version: ","Here's the quick version: ","Quick take: "])+original;
+    }
+  }
+  return clean(out);
+}
 function heavyRewrite(text){const sentences=splitSentences(lightRewrite(text));if(!sentences.length)return '';const topic=sentences.find(s=>/NMN|product|vitamin|mic|kit|scooter|charger|cable/i.test(s))||sentences[0];const hookPool=[`This is the part I knew people were going to have opinions about: ${topic.replace(/[.!?]+$/,'')}.`,`I posted about this once and the comments went in every direction.`,`I knew this one would start a conversation, and it definitely did.`,`Here is the product I keep coming back to, even after all the debate.`];const body=sentences.slice(1,-1).filter(s=>!/(limited-time|don't miss|link the brand|product link)/i.test(s)),reordered=body.length>2?[body[1],body[0],...body.slice(2)]:body,bridges=["Here is why I kept looking into it.","The part that matters to me is what it actually is and why people use it.","What I wanted was a simple explanation without all the hype."],cta=pick(["I'll link the one I've been using so you can check the product page and decide for yourself.","If you want to look at the exact one I've been using, I'll put it in the product link.","I'll link the product so you can read the details and see whether it makes sense for you."]);return clean([pick(hookPool),pick(bridges),...reordered,cta].join(' '));}
-function complianceCheck(text,selectedMode){const flags=[],t=String(text||'');if(/\b(cure|treat|prevent|heal|fix)\b/i.test(t))flags.push('medical treatment/cure wording');if(/\b(works|guaranteed|100%|instantly)\b/i.test(t))flags.push('absolute or efficacy wording');if(/limited[- ]time|don't miss out|last chance|only today/i.test(t))flags.push('scarcity/offer wording — verify it is currently true');if(/NMN|supplement|vitamin|NAD\b/i.test(t))flags.push('supplement/health content — use careful support language and avoid disease/treatment claims');compliance.className=flags.length?'warning':'ok';compliance.textContent=flags.length?(selectedMode==='exact'?'Exact mode did not change your wording. Compliance flags: ':'Compliance flags: ')+flags.join(' • '):'Compliance check: no obvious high-risk wording detected by the local checker.';}
-function apply(nextMode){mode=nextMode;const raw=source.value;if(!raw.trim()){status.textContent='Paste a script first.';return;}let out=raw;if(mode==='light')out=lightRewrite(raw);if(mode==='heavy')out=heavyRewrite(raw);result.value=out;status.textContent=mode==='exact'?'EXACT selected — word-for-word copy.':mode==='light'?'LIGHT selected — same structure, fresh wording.':'HEAVY selected — larger rewrite with a new hook/flow/CTA.';complianceCheck(out,mode);save();}
+function complianceCheck(text,selectedMode){const flags=[],t=String(text||'');if(/\b(cure|treat|prevent|heal|fix)\b/i.test(t))flags.push('medical treatment/cure wording');if(/\b(works|guaranteed|100%|instantly)\b/i.test(t))flags.push('absolute or efficacy wording');if(/limited[- ]time|don't miss out|last chance|only today/i.test(t))flags.push('scarcity/offer wording — verify it is currently true');if(/NMN|supplement|vitamin|NAD\b/i.test(t))flags.push('supplement/health content — use careful support language and avoid disease/treatment claims');compliance.className=flags.length?'warning':'ok';compliance.textContent=flags.length?(selectedMode==='exact'?'Original wording restored. Compliance flags: ':'Compliance flags: ')+flags.join(' • '):'Compliance check: no obvious high-risk wording detected by the local checker.';}
+function apply(nextMode){mode=nextMode;const raw=source.value;if(!raw.trim()){status.textContent='Paste a script first.';return;}let out=raw;if(mode==='light'){let tries=0;do{out=lightRewrite(raw);tries++;}while(out===result.value&&tries<6);}if(mode==='heavy')out=heavyRewrite(raw);result.value=out;status.textContent=mode==='exact'?'ORIGINAL restored — word-for-word copy of the script you pasted.':mode==='light'?'RANDOMIZE A LITTLE — same structure and message with visible wording changes.':'RANDOMIZE A LOT — larger rewrite with a new hook/flow/CTA.';complianceCheck(out,mode);save();}
 function targetUrl(includeScript){const url=targetObject(),text=mode==='exact'?(result.value||source.value):clean(result.value||source.value);if(includeScript){url.searchParams.set('script',text);url.searchParams.set('text',text);}else{url.searchParams.delete('script');url.searchParams.delete('text');}url.searchParams.set('session','1');url.searchParams.set('scriptmode',mode);url.searchParams.set('return',returnUrl());url.searchParams.set('back',location.href);return url.toString();}
 $('exactBtn').onclick=()=>apply('exact');$('lightBtn').onclick=()=>apply('light');$('heavyBtn').onclick=()=>apply('heavy');$('rerollBtn').onclick=()=>apply(mode==='exact'?'light':mode);$('copyBtn').onclick=async()=>{const text=result.value||source.value;try{await navigator.clipboard.writeText(text);status.textContent='Script copied.';}catch(e){result.focus();result.select();status.textContent='Script selected — tap Copy.';}};
 $('sendBtn').onclick=()=>{const text=result.value||source.value;if(!text.trim()){status.textContent='Paste or create a script first.';return;}save();location.href=targetUrl(true);};
