@@ -3,80 +3,344 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>DONE RITE One-Click Ad Test</title>
+<title>DONE RITE Creator OS — One-Click Ad Builder</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:760px;margin:auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom))}.card{background:#11151c;border:1px solid #2a3442;border-radius:18px;padding:16px;margin-bottom:12px}.button{width:100%;min-height:52px;border:1px solid #58a6ff;border-radius:14px;background:linear-gradient(135deg,#1e7bff,#0f4fa8);color:#fff;font-size:17px;font-weight:900;margin-top:8px}.button.secondary{background:#171c25;color:#58a6ff}.button.good{background:linear-gradient(135deg,#16864b,#0d5e35);border-color:#2bd97c}.button.tiktok{background:#fff;color:#000;border-color:#fff}.button:disabled{opacity:.45}.input,.select{width:100%;margin-top:7px;margin-bottom:12px;padding:13px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#fff;font-size:16px}.label{font-size:12px;color:#c4ccd6;font-weight:900;letter-spacing:.07em;text-transform:uppercase}.help{color:#8793a1;font-size:13px;line-height:1.45}.preview{width:100%;border-radius:14px;background:#000;display:none;margin-top:10px}.preview-img{width:100%;border-radius:14px;background:#000;display:none;margin-top:10px}.pill{display:inline-flex;border:1px solid #2a3442;border-radius:999px;padding:5px 9px;color:#58a6ff;font-size:12px;margin-bottom:8px}.status{font-weight:900;font-size:18px;margin:6px 0}.ok{color:#2bd97c}.bad{color:#ff5d6c}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#171c25;border:1px solid #2a3442;border-radius:12px;padding:12px}.metric b{display:block;font-size:12px;color:#8793a1;text-transform:uppercase;margin-bottom:4px}.metric span{font-weight:800}.copybox,.filelist{background:#171c25;border:1px solid #2a3442;border-radius:12px;padding:12px;margin-top:8px;overflow-wrap:anywhere}.filelist div{padding:6px 0;border-bottom:1px solid #222b36}.filelist div:last-child{border-bottom:0}.progress{height:12px;border:1px solid #2a3442;background:#171c25;border-radius:999px;overflow:hidden;margin-top:12px;display:none}.progress span{display:block;height:100%;width:0;background:#2bd97c;transition:width .12s linear}.renderbox{display:none;margin-top:12px;padding-top:12px;border-top:1px solid #2a3442}details{margin-top:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;color:#8793a1;max-height:260px;overflow:auto}h1{font-size:23px;margin:8px 0 4px}h2{font-size:16px;margin:0 0 8px}@media(max-width:430px){.row{grid-template-columns:1fr}}
+:root{color-scheme:dark;--dr-bg:#05070d;--dr-panel:#0b0e16;--dr-card:#11151c;--dr-line:#243042;--dr-blue:#2ea8ff;--dr-blue-dim:#1e7bff;--dr-blue-deep:#0f4fa8;--dr-chrome:#eef3f8;--dr-muted:#8793a1;--dr-good:#2bd97c;--dr-bad:#ff5d6c}
+*{box-sizing:border-box}
+html,body{background:var(--dr-bg)}
+body{margin:0;color:var(--dr-chrome);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+.wrap{max-width:820px;margin:auto;padding:calc(10px + env(safe-area-inset-top)) 14px calc(40px + env(safe-area-inset-bottom));min-height:100vh}
+
+/* ---------- header ---------- */
+.os-header{text-align:center;padding:6px 4px 14px}
+.os-header .brand{font-size:12px;font-weight:900;letter-spacing:.16em;color:var(--dr-blue);text-transform:uppercase;text-shadow:0 0 12px rgba(46,168,255,.55)}
+.os-header h1{margin:6px 0 2px;font-size:22px;font-weight:900;color:var(--dr-chrome);letter-spacing:.01em;text-shadow:0 0 18px rgba(46,168,255,.25)}
+.os-header p{margin:0;color:var(--dr-muted);font-size:13px;line-height:1.45}
+
+/* ---------- 8-button command bar ---------- */
+.os-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 16px}
+@media(max-width:480px){.os-buttons{grid-template-columns:repeat(2,1fr)}}
+.os-btn{
+  position:relative;appearance:none;border:1px solid #2a3648;border-radius:16px;
+  min-height:78px;padding:10px 8px 9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  background:linear-gradient(160deg,#161c27,#0c0f16 62%);color:var(--dr-chrome);cursor:pointer;text-align:center;
+  box-shadow:0 0 0 1px rgba(46,168,255,.18) inset,0 10px 18px rgba(0,0,0,.45),0 0 14px rgba(46,168,255,.28);
+  transition:transform .1s ease,box-shadow .16s ease,border-color .16s ease;
+  -webkit-user-select:none;user-select:none;
+}
+.os-btn .os-icon{width:22px;height:22px;color:var(--dr-blue);filter:drop-shadow(0 0 6px rgba(46,168,255,.75))}
+.os-btn .os-icon svg{width:100%;height:100%;display:block}
+.os-btn .os-label{font-size:12px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
+.os-btn .os-sub{font-size:9.5px;color:var(--dr-muted);line-height:1.2;max-width:96px}
+.os-btn:active,.os-btn.is-pressed{
+  transform:translateY(2px) scale(.98);
+  box-shadow:0 0 0 1px rgba(46,168,255,.06) inset,inset 0 3px 10px rgba(0,0,0,.65),0 2px 4px rgba(0,0,0,.4);
+  border-color:#233043;
+}
+.os-btn.is-pressed .os-icon{filter:none;opacity:.7}
+.os-btn.is-active{
+  border-color:var(--dr-blue);
+  box-shadow:0 0 0 1px rgba(46,168,255,.55) inset,0 0 0 2px rgba(46,168,255,.22),0 10px 20px rgba(0,0,0,.5),0 0 22px rgba(46,168,255,.55);
+}
+.os-btn.is-active .os-label{color:#bfe3ff}
+.os-btn.is-active::after{content:"";position:absolute;left:14px;right:14px;bottom:6px;height:2px;border-radius:2px;background:var(--dr-blue);box-shadow:0 0 8px rgba(46,168,255,.9)}
+@media(prefers-reduced-motion:reduce){.os-btn{transition:none}}
+
+/* ---------- workspace panels ---------- */
+.os-workspace{position:relative}
+.os-panel{display:none;opacity:0;transform:translateY(-4px) scale(.985);transition:opacity .22s ease,transform .22s ease}
+.os-panel.is-active{display:block;opacity:1;transform:none}
+.os-panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+.os-panel-head h2.os-panel-title{margin:0;font-size:15px;letter-spacing:.03em;color:var(--dr-blue);text-transform:uppercase;font-weight:900}
+.os-stub{border:1px dashed #2a3648;border-radius:16px;padding:22px 16px;text-align:center;color:var(--dr-muted);background:rgba(255,255,255,.02)}
+.os-stub b{display:block;color:var(--dr-chrome);font-size:14px;margin-bottom:6px}
+
+/* ---------- shared controls (restyled, same class names) ---------- */
+.card{background:var(--dr-card);border:1px solid var(--dr-line);border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.button{width:100%;min-height:52px;border:1px solid var(--dr-blue);border-radius:14px;background:linear-gradient(135deg,var(--dr-blue-dim),var(--dr-blue-deep));color:#fff;font-size:17px;font-weight:900;margin-top:8px;box-shadow:0 6px 16px rgba(30,123,255,.35),inset 0 1px 0 rgba(255,255,255,.18);transition:transform .1s ease,box-shadow .12s ease}
+.button:active{transform:translateY(2px);box-shadow:inset 0 3px 8px rgba(0,0,0,.5)}
+.button.secondary{background:#171c25;color:var(--dr-blue)}
+.button.good{background:linear-gradient(135deg,#16864b,#0d5e35);border-color:var(--dr-good)}
+.button.tiktok{background:#fff;color:#000;border-color:#fff}
+.button:disabled{opacity:.45}
+.input,.select{width:100%;margin-top:7px;margin-bottom:12px;padding:13px;border-radius:12px;border:1px solid var(--dr-line);background:#171c25;color:#fff;font-size:16px;min-height:44px}
+.label{font-size:12px;color:#c4ccd6;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+.help{color:var(--dr-muted);font-size:13px;line-height:1.45}
+.preview{width:100%;border-radius:14px;background:#000;display:none;margin-top:10px}
+.preview-img{width:100%;border-radius:14px;background:#000;display:none;margin-top:10px}
+.pill{display:inline-flex;border:1px solid var(--dr-line);border-radius:999px;padding:5px 9px;color:var(--dr-blue);font-size:12px;margin-bottom:8px}
+.status{font-weight:900;font-size:18px;margin:6px 0}
+.ok{color:var(--dr-good)}
+.bad{color:var(--dr-bad)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.metric{background:#171c25;border:1px solid var(--dr-line);border-radius:12px;padding:12px}
+.metric b{display:block;font-size:12px;color:var(--dr-muted);text-transform:uppercase;margin-bottom:4px}
+.metric span{font-weight:800}
+.copybox,.filelist{background:#171c25;border:1px solid var(--dr-line);border-radius:12px;padding:12px;margin-top:8px;overflow-wrap:anywhere}
+.filelist div{padding:6px 0;border-bottom:1px solid #222b36}
+.filelist div:last-child{border-bottom:0}
+.progress{height:12px;border:1px solid var(--dr-line);background:#171c25;border-radius:999px;overflow:hidden;margin-top:12px;display:none}
+.progress span{display:block;height:100%;width:0;background:var(--dr-good);transition:width .12s linear}
+.renderbox{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--dr-line)}
+details{margin-top:10px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;color:var(--dr-muted);max-height:260px;overflow:auto}
+h1{font-size:23px;margin:8px 0 4px}
+h2{font-size:16px;margin:0 0 8px}
+@media(max-width:430px){.row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="pill">ONE-CLICK AD — MULTI-CLIP IPHONE TEST</div>
-  <h1>DONE RITE One-Click Ad</h1>
-  <p class="help">Choose one clip or several clips from the same ad shoot. Creator OS treats them as one project, compares short sections, builds one edit, and preserves every original file.</p>
 
-  <div class="card">
-    <h2>1. Check this iPhone first</h2>
-    <button id="check" class="button secondary">RUN SYSTEM CHECK — NO VIDEO</button>
-    <div id="checkResult" class="help" style="margin-top:10px">Not checked yet.</div>
+  <div class="os-header">
+    <div id="doneRiteBackSlot" style="position:absolute;left:14px;top:calc(8px + env(safe-area-inset-top))"></div>
+    <div class="brand">DONE RITE Creator OS</div>
+    <h1>One-Click Ad Builder</h1>
+    <p>Choose a module below. Every module keeps its own workspace open — nothing resets when you switch.</p>
   </div>
 
-  <div class="card">
-    <h2>2. Choose your raw clips</h2>
-    <label class="label">Same ad shoot — up to 20 videos</label>
-    <input id="video" class="input" type="file" accept="video/*" multiple>
-    <video id="preview" class="preview" controls playsinline></video>
-    <div id="media" class="help">No videos selected.</div>
-    <div id="fileList" class="filelist" style="display:none"></div>
-  </div>
+  <nav class="os-buttons" role="tablist" aria-label="One-Click Ad Builder modules" id="osButtons">
+    <button type="button" class="os-btn" data-panel="create" role="tab" aria-selected="false" aria-controls="panel-create" aria-label="Create: build the ad plan">
+      <span class="os-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16"/></svg></span>
+      <span class="os-label">Create</span><span class="os-sub">Build the ad plan</span>
+    </button>
+    <button type="button" class="os-btn" data-panel="upload" role="tab" aria-selected="false" aria-controls="panel-upload" aria-label="Upload: add raw clips and media">
+      <span class="os-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg></span>
+      <span class="os-label">Upload</span><span class="os-sub">Add raw clips &amp; media</span>
+    </button>
+    <button type="button" class="os-btn" data-panel="text" role="tab" aria-selected="false" aria-controls="panel-text" aria-label="Text: send a script to the teleprompter">
+      <span class="os-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
+      <span class="os-label">Text</span><span class="os-sub">Script → Teleprompter</span>
+    </button>
+    <button type="button" class="os-btn" data-panel="voiceover" role="tab" aria-selected="false" aria-controls="panel-voiceover" aria-label="Voiceover: record or attach audio">
+      <span class="os-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></span>
+      <span class="os-label">Voiceover</span><span class="os-sub">Record or attach VO</span>
+    </button>
+    <button type="button" class="os-btn" data-panel="autotrim" role="tab" aria-selected="false" aria-controls="panel-autotrim" aria-label="Auto Trim: trim clips with manual control">
+      <span class="os-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5 20 19M20 5 14 11M8.5 16.5 12 13"/></svg></span>
+      <span class="os-label">Auto Trim</span><span class="os-sub">Trim without limits</span>
+    </button>
+    <button type="button" class="os-btn" data-panel="sfx" role="tab" aria-selected="false" aria-controls="panel-sfx" aria-label="SFX: browse and assign sound effects">
+      <span class="os-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4h4l5 4V6L7 10H3z"/><path d="M16 9a5 5 0 0 1 0 6M19 6a9 9 0 0 1 0 12"/></svg></span>
+      <span class="os-label">SFX</span><span class="os-sub">Sound effects &amp; mapping</span>
+    </button>
+    <button type="button" class="os-btn" data-panel="render" role="tab" aria-selected="false" aria-controls="panel-render" aria-label="Render: build the final video">
+      <span class="os-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/></svg></span>
+      <span class="os-label">Render</span><span class="os-sub">Build final video</span>
+    </button>
+    <button type="button" class="os-btn" data-panel="export" role="tab" aria-selected="false" aria-controls="panel-export" aria-label="Export: save and share deliverables">
+      <span class="os-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M8 8l4-4 4 4M5 20h14"/></svg></span>
+      <span class="os-label">Export</span><span class="os-sub">Save &amp; share</span>
+    </button>
+  </nav>
 
-  <div class="card">
-    <h2>3. Ad setup</h2>
-    <label class="label">Product</label>
-    <input id="product" class="input" placeholder="Product name">
-    <label class="label">Verified feature</label>
-    <input id="feature" class="input" placeholder="One feature you can verify">
-    <label class="label">Mode</label>
-    <select id="mode" class="select"><option value="AUTO_SELL">AUTO SELL</option><option value="AUTO_HOOK">AUTO HOOK</option><option value="AUTO_CLEAN">AUTO CLEAN</option></select>
-    <label class="label">Target length</label>
-    <select id="duration" class="select"><option>7</option><option>10</option><option selected>15</option><option>20</option><option>25</option><option>30</option></select>
-    <button id="go" class="button">BUILD MULTI-CLIP EDIT</button>
-  </div>
+  <main class="os-workspace" id="osWorkspace">
 
-  <div id="resultCard" class="card" style="display:none">
-    <h2>Test result</h2>
-    <div id="status" class="status"></div>
-    <div class="row">
-      <div class="metric"><b>Raw clips</b><span id="sourceInfo">—</span></div>
-      <div class="metric"><b>Selected clips</b><span id="selectedInfo">—</span></div>
-      <div class="metric"><b>Target</b><span id="targetInfo">—</span></div>
-      <div class="metric"><b>Originals</b><span>Preserved</span></div>
-    </div>
-    <img id="frame" class="preview-img" alt="Generated preview frame">
-    <div class="copybox"><b>Video file</b><div id="fileName"></div></div>
-    <div class="copybox"><b>Caption</b><div id="caption"></div></div>
-    <div class="copybox"><b>Hashtags</b><div id="hashtags"></div></div>
-    <div class="copybox"><b>Compliance review</b><div id="compliance"></div></div>
-    <p id="nextStep" class="help"></p>
-    <button id="renderBtn" class="button good" style="display:none">RENDER FINISHED VIDEO</button>
-    <div id="progress" class="progress"><span></span></div>
-    <div id="renderState" class="help" style="margin-top:10px"></div>
-    <div id="renderBox" class="renderbox">
-      <div class="status ok">RENDER COMPLETE</div>
-      <video id="renderedVideo" class="preview" controls playsinline></video>
-      <button id="tiktokBtn" class="button tiktok" style="display:none">SEND TO TIKTOK</button>
-      <div id="tiktokHelp" class="help" style="display:none;margin-top:8px">Choose TikTok in the iPhone share sheet, attach the TikTok Shop product, and post.</div>
-      <button id="shareBtn" class="button good" style="display:none">SAVE / SHARE FINISHED VIDEO</button>
-      <a id="openLink" class="button secondary" style="display:block;text-align:center;text-decoration:none" download>DOWNLOAD FINISHED VIDEO</a>
-    </div>
-    <details><summary>Technical details</summary><pre id="tech"></pre></details>
-  </div>
+    <!-- CREATE -->
+    <section class="os-panel" id="panel-create" data-panel="create" role="tabpanel" aria-labelledby="panel-create">
+      <div class="os-panel-head"><h2 class="os-panel-title">Create</h2></div>
+      <div id="doneRiteResumeSlot"></div>
+      <div class="card">
+        <h2>Ad setup</h2>
+        <label class="label">Product</label>
+        <input id="product" class="input" placeholder="Product name">
+        <label class="label">Verified feature</label>
+        <input id="feature" class="input" placeholder="One feature you can verify">
+        <label class="label">Mode</label>
+        <select id="mode" class="select"><option value="AUTO_SELL">AUTO SELL</option><option value="AUTO_HOOK">AUTO HOOK</option><option value="AUTO_CLEAN">AUTO CLEAN</option></select>
+        <label class="label">Target length</label>
+        <select id="duration" class="select"><option>7</option><option>10</option><option selected>15</option><option>20</option><option>25</option><option>30</option></select>
+        <button id="go" class="button">BUILD MULTI-CLIP EDIT</button>
+      </div>
+      <div id="resultCard" class="card" style="display:none">
+        <h2>Ad plan</h2>
+        <div id="status" class="status"></div>
+        <div class="row">
+          <div class="metric"><b>Raw clips</b><span id="sourceInfo">—</span></div>
+          <div class="metric"><b>Selected clips</b><span id="selectedInfo">—</span></div>
+          <div class="metric"><b>Target</b><span id="targetInfo">—</span></div>
+          <div class="metric"><b>Originals</b><span>Preserved</span></div>
+        </div>
+        <img id="frame" class="preview-img" alt="Generated preview frame">
+        <div class="copybox"><b>Video file</b><div id="fileName"></div></div>
+        <div class="copybox"><b>Caption</b><div id="caption"></div></div>
+        <div class="copybox"><b>Hashtags</b><div id="hashtags"></div></div>
+        <div class="copybox"><b>Compliance review</b><div id="compliance"></div></div>
+        <p id="nextStep" class="help"></p>
+        <button type="button" id="goToRenderBtn" class="button secondary" style="display:none">CONTINUE TO RENDER →</button>
+        <details><summary>Technical details</summary><pre id="tech"></pre></details>
+      </div>
+    </section>
+
+    <!-- UPLOAD -->
+    <section class="os-panel" id="panel-upload" data-panel="upload" role="tabpanel" aria-labelledby="panel-upload">
+      <div class="os-panel-head"><h2 class="os-panel-title">Upload</h2></div>
+      <div class="card">
+        <h2>1. Check this iPhone first</h2>
+        <button id="check" class="button secondary">RUN SYSTEM CHECK — NO VIDEO</button>
+        <div id="checkResult" class="help" style="margin-top:10px">Not checked yet.</div>
+      </div>
+      <div class="card">
+        <h2>2. Choose your raw clips</h2>
+        <label class="label">Same ad shoot — up to 20 videos</label>
+        <input id="video" class="input" type="file" accept="video/*" multiple>
+        <video id="preview" class="preview" controls playsinline></video>
+        <div id="media" class="help">No videos selected.</div>
+        <div id="fileList" class="filelist" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- TEXT: reuses the existing Script Studio / Teleprompter handoff -->
+    <section class="os-panel" id="panel-text" data-panel="text" role="tabpanel" aria-labelledby="panel-text">
+      <div class="os-panel-head"><h2 class="os-panel-title">Text</h2></div>
+      <div id="doneRiteTextSlot"></div>
+      <div class="os-stub"><b>Full paste-and-send workspace is next</b>A dedicated paste-script field with character/line counts is scheduled for a later phase. For now, use Script Studio above — it opens the same Teleprompter your recordings already use.</div>
+    </section>
+
+    <!-- VOICEOVER: existing gap remover / render-attach module -->
+    <section class="os-panel" id="panel-voiceover" data-panel="voiceover" role="tabpanel" aria-labelledby="panel-voiceover">
+      <div class="os-panel-head"><h2 class="os-panel-title">Voiceover</h2></div>
+      <div id="doneRiteVoiceoverSlot"></div>
+      <div class="os-stub"><b>Waveform &amp; live recording are next</b>Attaching your latest Teleprompter voiceover or an audio file, removing silence, and keeping the original gain already works above. In-page recording and a visual waveform are scheduled for a later phase.</div>
+    </section>
+
+    <!-- AUTO TRIM (Phase 6 not yet wired) -->
+    <section class="os-panel" id="panel-autotrim" data-panel="autotrim" role="tabpanel" aria-labelledby="panel-autotrim">
+      <div class="os-panel-head"><h2 class="os-panel-title">Auto Trim</h2></div>
+      <div class="os-stub"><b>Workspace reserved</b>Independent left/right trim handles with persistent, reload-safe trims arrive in a later phase.</div>
+    </section>
+
+    <!-- SFX: existing text/motion/SFX styling module -->
+    <section class="os-panel" id="panel-sfx" data-panel="sfx" role="tabpanel" aria-labelledby="panel-sfx">
+      <div class="os-panel-head"><h2 class="os-panel-title">SFX</h2></div>
+      <div id="doneRiteSfxSlot"></div>
+      <div class="os-stub"><b>Manifest browsing is next</b>Hook/Demo/CTA sound and text styling for the generated plan already works above. Browsing assets/sfx/manifest.json and assigning a sound to each of these 8 buttons is scheduled for a later phase. Button taps already play a short generated tone on its own layer that never lowers voiceover level.</div>
+    </section>
+
+    <!-- RENDER -->
+    <section class="os-panel" id="panel-render" data-panel="render" role="tabpanel" aria-labelledby="panel-render">
+      <div class="os-panel-head"><h2 class="os-panel-title">Render</h2></div>
+      <div class="card" id="renderCard">
+        <h2>Build the final video</h2>
+        <p class="help">Build an ad plan in Create first, then render it here.</p>
+        <button id="renderBtn" class="button good" style="display:none">RENDER FINISHED VIDEO</button>
+        <div id="progress" class="progress"><span></span></div>
+        <div id="renderState" class="help" style="margin-top:10px"></div>
+      </div>
+    </section>
+
+    <!-- EXPORT -->
+    <section class="os-panel" id="panel-export" data-panel="export" role="tabpanel" aria-labelledby="panel-export">
+      <div class="os-panel-head"><h2 class="os-panel-title">Export</h2></div>
+      <div class="card" id="exportCard">
+        <h2>Save &amp; share</h2>
+        <p class="help" id="exportEmptyHelp">Render a video first — the finished file, TikTok handoff and download link will appear here.</p>
+        <div id="renderBox" class="renderbox">
+          <div class="status ok">RENDER COMPLETE</div>
+          <video id="renderedVideo" class="preview" controls playsinline></video>
+          <button id="tiktokBtn" class="button tiktok" style="display:none">SEND TO TIKTOK</button>
+          <div id="tiktokHelp" class="help" style="display:none;margin-top:8px">Choose TikTok in the iPhone share sheet, attach the TikTok Shop product, and post.</div>
+          <button id="shareBtn" class="button good" style="display:none">SAVE / SHARE FINISHED VIDEO</button>
+          <a id="openLink" class="button secondary" style="display:block;text-align:center;text-decoration:none" download>DOWNLOAD FINISHED VIDEO</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
 </div>
-<script src="modules/one-click-ad-editor.js?v=20260904-0527"></script>
-<script src="modules/one-click-media-stage.js?v=20260904-0527"></script>
-<script src="modules/one-click-scene-scorer.js?v=20260904-0527"></script>
-<script src="modules/one-click-render-stage.js?v=20260904-0527"></script>
-<script src="modules/one-click-browser-executor.js?v=20260904-0527"></script>
-<script src="modules/one-click-camera-handoff.js?v=20260904-0527"></script>
+
+<script src="modules/one-click-ad-editor.js?v=20260907-command-center-1"></script>
+<script src="modules/one-click-media-stage.js?v=20260907-command-center-1"></script>
+<script src="modules/one-click-scene-scorer.js?v=20260907-command-center-1"></script>
+<script src="modules/one-click-render-stage.js?v=20260907-command-center-1"></script>
+<script src="modules/one-click-browser-executor.js?v=20260907-command-center-1"></script>
+<script src="modules/one-click-camera-handoff.js?v=20260907-command-center-1"></script>
+<script>
+/* ---------------------------------------------------------------
+   Command-center shell: 8-button switching, press/glow feedback,
+   short generated tap tones, and last-active-panel persistence.
+   This block only controls navigation chrome — it does not touch
+   ad-plan, media, scoring, render or camera-handoff logic below.
+------------------------------------------------------------------ */
+(function(){
+'use strict';
+const PANEL_KEY='done-rite-one-click-active-panel:v1';
+const TONE_MAP={create:'click',upload:'pop',text:'click',voiceover:'whoosh',autotrim:'snap',sfx:'click',render:'impact',export:'ding'};
+const PANELS=['create','upload','text','voiceover','autotrim','sfx','render','export'];
+const reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let audioCtx=null;
+function getAudioCtx(){
+  if(audioCtx)return audioCtx;
+  const Ctx=window.AudioContext||window.webkitAudioContext;
+  if(!Ctx)return null;
+  try{audioCtx=new Ctx();}catch(e){audioCtx=null;}
+  return audioCtx;
+}
+function playTone(kind){
+  try{
+    const ctx=getAudioCtx();
+    if(!ctx)return;
+    if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+    const now=ctx.currentTime,g=ctx.createGain();g.connect(ctx.destination);
+    if(kind==='whoosh'){
+      const dur=.2,buf=ctx.createBuffer(1,Math.max(1,Math.round(ctx.sampleRate*dur)),ctx.sampleRate),data=buf.getChannelData(0);
+      for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
+      const src=ctx.createBufferSource(),filter=ctx.createBiquadFilter();
+      filter.type='bandpass';filter.frequency.setValueAtTime(900,now);filter.frequency.exponentialRampToValueAtTime(2000,now+dur);
+      g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.14,now+.03);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+      src.buffer=buf;src.connect(filter);filter.connect(g);src.start(now);src.stop(now+dur);
+      return;
+    }
+    const osc=ctx.createOscillator();
+    const table={click:[1500,650,.06],pop:[520,120,.13],snap:[1700,700,.06],impact:[220,70,.16],ding:[1760,1760,.28]};
+    const [f1,f2,dur]=table[kind]||table.click;
+    osc.type=kind==='ding'?'sine':kind==='impact'?'triangle':'square';
+    osc.frequency.setValueAtTime(f1,now);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(60,f2),now+dur);
+    g.gain.setValueAtTime(.001,now);g.gain.exponentialRampToValueAtTime(.16,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+    osc.connect(g);osc.start(now);osc.stop(now+dur);
+  }catch(e){/* autoplay/audio restrictions must never block the UI */}
+}
+function savePanel(name){try{localStorage.setItem(PANEL_KEY,name);}catch(e){}}
+function readPanel(){let v='create';try{v=localStorage.getItem(PANEL_KEY)||'create';}catch(e){}return PANELS.includes(v)?v:'create';}
+function switchPanel(name,opts){
+  opts=opts||{};
+  if(!PANELS.includes(name))return;
+  document.querySelectorAll('.os-panel').forEach(function(panel){
+    const match=panel.getAttribute('data-panel')===name;
+    if(match){
+      panel.style.display='block';
+      if(reduceMotion){panel.classList.add('is-active');}
+      else requestAnimationFrame(function(){requestAnimationFrame(function(){panel.classList.add('is-active');});});
+    }else if(panel.classList.contains('is-active')){
+      panel.classList.remove('is-active');
+      setTimeout(function(){if(panel.getAttribute('data-panel')!==name)panel.style.display='none';},reduceMotion?0:220);
+    }else{
+      panel.style.display='none';
+    }
+  });
+  document.querySelectorAll('.os-btn').forEach(function(btn){
+    const active=btn.getAttribute('data-panel')===name;
+    btn.classList.toggle('is-active',active);
+    btn.setAttribute('aria-selected',active?'true':'false');
+  });
+  if(!opts.silent)savePanel(name);
+}
+document.querySelectorAll('.os-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    const name=btn.getAttribute('data-panel');
+    if(!reduceMotion){
+      btn.classList.add('is-pressed');
+      setTimeout(function(){btn.classList.remove('is-pressed');},100);
+    }
+    playTone(TONE_MAP[name]||'click');
+    switchPanel(name);
+  });
+});
+window.DoneRiteOneClickCommandCenter={switchPanel:switchPanel,version:'1.0'};
+switchPanel(readPanel(),{silent:true});
+})();
+</script>
 <script>
 (function(){
 'use strict';
@@ -89,13 +353,14 @@ function releasePreview(){if(previewUrl&&window.DoneRiteOneClickBrowserExecutor)
 function releaseRendered(){if(renderedUrl&&window.DoneRiteOneClickBrowserExecutor)window.DoneRiteOneClickBrowserExecutor.release(renderedUrl);renderedUrl='';}
 function humanSize(bytes){return !bytes?'0 MB':(bytes/1024/1024).toFixed(1)+' MB';}
 function setCheck(ok,text){$('checkResult').className=ok?'ok':'bad';$('checkResult').textContent=text;}
-function resetRender(){releaseRendered();currentRender=null;$('renderBox').style.display='none';$('renderedVideo').style.display='none';$('shareBtn').style.display='none';$('tiktokBtn').style.display='none';$('tiktokHelp').style.display='none';$('progress').style.display='none';$('progress').firstElementChild.style.width='0%';$('renderState').textContent='';$('renderState').className='help';}
+function goToPanel(name){if(window.DoneRiteOneClickCommandCenter)window.DoneRiteOneClickCommandCenter.switchPanel(name);}
+function resetRender(){releaseRendered();currentRender=null;$('renderBox').style.display='none';$('renderedVideo').style.display='none';$('shareBtn').style.display='none';$('tiktokBtn').style.display='none';$('tiktokHelp').style.display='none';$('progress').style.display='none';$('progress').firstElementChild.style.width='0%';$('renderState').textContent='';$('renderState').className='help';$('exportEmptyHelp').style.display='block';}
 $('check').addEventListener('click',()=>{
   if(!modulesReady()){setCheck(false,'System check failed: one or more editor modules did not load.');return;}
   try{const caps=window.DoneRiteOneClickBrowserExecutor.supports(),mime=window.DoneRiteOneClickBrowserExecutor.pickMime();if(!caps.localExport||!mime){setCheck(false,'System check loaded, but local export is not available on this Safari build.');return;}setCheck(true,'PASS — multi-clip planner, local encoder, and audio path are available. Encoder: '+mime);}catch(err){setCheck(false,'System check failed: '+err.message);}
 });
 videoInput.addEventListener('change',()=>{
-  releasePreview();resetRender();preview.style.display='none';frame.style.display='none';$('resultCard').style.display='none';currentRecipe=currentSession=currentPlan=currentSelection=null;
+  releasePreview();resetRender();preview.style.display='none';frame.style.display='none';$('resultCard').style.display='none';$('goToRenderBtn').style.display='none';currentRecipe=currentSession=currentPlan=currentSelection=null;
   const list=files();fileList.innerHTML='';
   if(!list.length){media.textContent='No videos selected.';fileList.style.display='none';return;}
   if(list.length>20){media.textContent='Please choose 20 clips or fewer.';fileList.style.display='none';return;}
@@ -170,16 +435,19 @@ go.addEventListener('click',async()=>{
     $('sourceInfo').textContent=list.length+' clip'+(list.length===1?'':'s')+' • '+totalSource.toFixed(1)+' sec';$('selectedInfo').textContent=(selection.sourceCountUsed||1)+' source'+((selection.sourceCountUsed||1)===1?'':'s');$('targetInfo').textContent=target.toFixed(1)+' sec';
     $('fileName').textContent=plan.packaging.videoFileName;$('caption').textContent=plan.packaging.caption;$('hashtags').textContent=plan.packaging.hashtags.join(' ');$('compliance').textContent=plan.packaging.compliance.flags.length?plan.packaging.compliance.flags.join(' • '):'No extra category flags.';
     const usedFast=candidates.some(c=>c.scanMode==='FAST_LONG_CLIP');
-    $('nextStep').textContent=usedFast?'Creator OS used the fast long-clip scan across the full source, then ranked the strongest sampled sections. Tap Render Finished Video to build the selected clip.':'Creator OS compared short sections for motion, sharpness, lighting, and dead-space signals across the selected clips. Tap Render Finished Video to combine the chosen sections.';renderBtn.style.display=execution.status==='LOCAL_EXPORT_AVAILABLE'?'block':'none';
+    $('nextStep').textContent=usedFast?'Creator OS used the fast long-clip scan across the full source, then ranked the strongest sampled sections. Open Render to build the selected clip.':'Creator OS compared short sections for motion, sharpness, lighting, and dead-space signals across the selected clips. Open Render to combine the chosen sections.';
+    const renderReady=execution.status==='LOCAL_EXPORT_AVAILABLE';renderBtn.style.display=renderReady?'block':'none';$('goToRenderBtn').style.display=renderReady?'block':'none';
     try{const firstCut=recipe.selectedCuts[0],sourceIndex=firstCut&&Number.isInteger(firstCut.sourceIndex)?firstCut.sourceIndex:0,p=await window.DoneRiteOneClickBrowserExecutor.previewFrame(list[sourceIndex],recipe);frame.src=p.dataUrl;frame.style.display='block';}catch(e){frame.style.display='none';}
     $('tech').textContent=JSON.stringify({sessionId:session.id,sourceCount:list.length,hook:plan.hookExperiment,cta:plan.ctaExperiment,candidates:candidates.length,scanMode:usedFast?'FAST_LONG_CLIP':'STANDARD',selection:{totalSeconds:selection.totalSeconds,complete:selection.complete,sourceCountUsed:selection.sourceCountUsed,cuts:selection.chosen.map(c=>({sourceIndex:c.sourceIndex,sourceName:c.sourceName,start:c.start,end:c.end,score:c.score}))},execution:{status:execution.status,recorderMime:execution.recorderMime},rollback:session.rollback},null,2);media.textContent=list.length+' raw clip'+(list.length===1?'':'s')+' ready.';$('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(err){$('resultCard').style.display='block';$('status').className='status bad';$('status').textContent='EDIT PLAN FAILED';$('nextStep').textContent=err.message;$('tech').textContent=String(err&&err.stack||err);renderBtn.style.display='none';media.textContent='Analysis stopped.';}
+  }catch(err){$('resultCard').style.display='block';$('status').className='status bad';$('status').textContent='EDIT PLAN FAILED';$('nextStep').textContent=err.message;$('tech').textContent=String(err&&err.stack||err);renderBtn.style.display='none';$('goToRenderBtn').style.display='none';media.textContent='Analysis stopped.';}
   finally{go.disabled=false;go.textContent='BUILD MULTI-CLIP EDIT';}
 });
+$('goToRenderBtn').addEventListener('click',()=>goToPanel('render'));
 renderBtn.addEventListener('click',async()=>{
   const list=files();if(!list.length||!currentRecipe)return;resetRender();renderBtn.disabled=true;renderBtn.textContent='RENDERING…';$('progress').style.display='block';$('renderState').textContent='Combining selected sections. Keep this page open until it finishes.';
-  try{const result=await window.DoneRiteOneClickBrowserExecutor.renderLocalBatch(list,currentRecipe,{maxLongEdge:1280,fps:30,onProgress:p=>{$('progress').firstElementChild.style.width=Math.round(p*100)+'%';}});currentRender=result;renderedUrl=result.url;$('progress').firstElementChild.style.width='100%';$('renderState').textContent='Finished • '+result.durationSeconds.toFixed(1)+' sec • '+result.sourceCount+' source clip'+(result.sourceCount===1?'':'s')+' available • originals preserved';$('renderedVideo').src=renderedUrl;$('renderedVideo').style.display='block';$('openLink').href=renderedUrl;$('openLink').download=result.fileName;$('renderBox').style.display='block';const canShare=window.DoneRiteOneClickBrowserExecutor.canShareFile(result.blob,result.fileName);$('shareBtn').style.display=canShare?'block':'none';$('tiktokBtn').style.display=canShare?'block':'none';$('tiktokHelp').style.display=canShare?'block':'none';$('renderBox').scrollIntoView({behavior:'smooth',block:'start'});}catch(err){$('renderState').className='bad';$('renderState').textContent='Render failed: '+err.message+' Your original clips were not changed.';}finally{renderBtn.disabled=false;renderBtn.textContent='RENDER FINISHED VIDEO';}
+  try{const result=await window.DoneRiteOneClickBrowserExecutor.renderLocalBatch(list,currentRecipe,{maxLongEdge:1280,fps:30,onProgress:p=>{$('progress').firstElementChild.style.width=Math.round(p*100)+'%';}});currentRender=result;renderedUrl=result.url;$('progress').firstElementChild.style.width='100%';$('renderState').textContent='Finished • '+result.durationSeconds.toFixed(1)+' sec • '+result.sourceCount+' source clip'+(result.sourceCount===1?'':'s')+' available • originals preserved';$('renderedVideo').src=renderedUrl;$('renderedVideo').style.display='block';$('openLink').href=renderedUrl;$('openLink').download=result.fileName;$('exportEmptyHelp').style.display='none';$('renderBox').style.display='block';const canShare=window.DoneRiteOneClickBrowserExecutor.canShareFile(result.blob,result.fileName);$('shareBtn').style.display=canShare?'block':'none';$('tiktokBtn').style.display=canShare?'block':'none';$('tiktokHelp').style.display=canShare?'block':'none';goToPanel('export');setTimeout(()=>{$('renderBox').scrollIntoView({behavior:'smooth',block:'start'});},reduceMotionSafe()?0:260);}catch(err){$('renderState').className='bad';$('renderState').textContent='Render failed: '+err.message+' Your original clips were not changed.';}finally{renderBtn.disabled=false;renderBtn.textContent='RENDER FINISHED VIDEO';}
 });
+function reduceMotionSafe(){try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}}
 function shareText(){if(!currentPlan)return'';return [currentPlan.packaging.caption,currentPlan.packaging.hashtags.join(' ')].filter(Boolean).join('\n\n');}
 $('tiktokBtn').addEventListener('click',async()=>{if(!currentRender)return;try{await window.DoneRiteOneClickBrowserExecutor.shareFile(currentRender.blob,currentRender.fileName,shareText());}catch(err){if(err&&err.name!=='AbortError')alert('TikTok handoff failed: '+err.message);}});
 $('shareBtn').addEventListener('click',async()=>{if(!currentRender)return;try{await window.DoneRiteOneClickBrowserExecutor.shareFile(currentRender.blob,currentRender.fileName,shareText());}catch(err){if(err&&err.name!=='AbortError')alert('Share failed: '+err.message);}});

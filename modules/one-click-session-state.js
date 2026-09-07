@@ -26,7 +26,8 @@ function createResumeCard(state){
   const wrap=document.querySelector('.wrap')||document.body,card=document.createElement('div');card.id='doneRiteResumeCard';card.className='card';card.style.cssText='border-color:#2bd97c;background:linear-gradient(145deg,#0d1a15,#0b1522)';
   const when=state.updatedAt?new Date(state.updatedAt).toLocaleString():'';
   card.innerHTML='<div style="font-weight:950;color:#56ec9c">💾 LAST SESSION SAVED</div><div id="drResumeSummary" class="help" style="margin-top:7px"></div><button id="drResumeBtn" class="button good">RESUME LAST SESSION</button><button id="drClearSession" class="button secondary">START FRESH</button>';
-  const first=wrap.firstElementChild;first?wrap.insertBefore(card,first):wrap.appendChild(card);
+  const resumeSlot=document.getElementById('doneRiteResumeSlot');
+  if(resumeSlot){resumeSlot.appendChild(card);}else{const first=wrap.firstElementChild;first?wrap.insertBefore(card,first):wrap.appendChild(card);}
   const bits=[];if(state.product)bits.push(state.product);if(state.gapPreset)bits.push('Gap remover: '+(state.gapPreset==='tight'?'Tight':'Natural'));if(state.lastVoiceoverFile)bits.push('Audio: '+state.lastVoiceoverFile);if(when)bits.push('Saved '+when);
   card.querySelector('#drResumeSummary').textContent=bits.length?bits.join(' • '):'Creator OS saved your previous One-Click settings.';
   card.querySelector('#drResumeBtn').addEventListener('click',()=>{restoreFields(state);setTimeout(()=>window.scrollTo({top:Number(state.scrollY||0),behavior:'smooth'}),80);card.style.display='none';});

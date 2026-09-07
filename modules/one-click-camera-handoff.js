@@ -20,16 +20,21 @@ function teleprompterUrl(){const u=new URL('teleprompter-one-click.html',locatio
 function installGlobalNavigation(){
   if(document.getElementById('doneRiteOneClickNav'))return;
   const wrap=document.querySelector('.wrap')||document.body;
-  const nav=document.createElement('div');nav.id='doneRiteOneClickNav';nav.style.cssText='position:sticky;top:0;z-index:80;margin:0 0 12px;padding:8px 0 10px;background:linear-gradient(180deg,rgba(8,10,14,.98) 70%,rgba(8,10,14,0));';
+  const backSlot=document.getElementById('doneRiteBackSlot');
+  const textSlot=document.getElementById('doneRiteTextSlot');
+  const nav=document.createElement('div');nav.id='doneRiteOneClickNav';
+  nav.style.cssText=backSlot?'display:inline-flex':'position:sticky;top:0;z-index:80;margin:0 0 12px;padding:8px 0 10px;background:linear-gradient(180deg,rgba(8,10,14,.98) 70%,rgba(8,10,14,0));';
   const back=document.createElement('button');back.type='button';back.textContent='← BACK';back.setAttribute('aria-label','Back to previous page');back.style.cssText='min-height:42px;padding:9px 14px;border:1px solid #344457;border-radius:12px;background:#171c25;color:#cfe7ff;font:900 14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;';back.onclick=()=>{try{if(history.length>1){history.back();return;}}catch(e){}location.href='index.html';};
-  nav.appendChild(back);wrap.insertBefore(nav,wrap.firstChild);
+  nav.appendChild(back);
+  if(backSlot)backSlot.appendChild(nav);else wrap.insertBefore(nav,wrap.firstChild);
   if(document.getElementById('doneRiteWorkflowShortcuts'))return;
   const card=document.createElement('div');card.id='doneRiteWorkflowShortcuts';card.style.cssText='background:#10151d;border:1px solid #293544;border-radius:16px;padding:14px;margin-bottom:12px;';
   const title=document.createElement('div');title.textContent='SCRIPT & TELEPROMPTER';title.style.cssText='font-weight:950;font-size:15px;margin-bottom:5px;color:#eef7ff';
   const help=document.createElement('div');help.textContent='Already have a script? Paste/edit it in Script Studio, or open the Teleprompter directly. Your One-Click project stays saved while you move between screens.';help.style.cssText='color:#9aa7b6;font-size:13px;line-height:1.45;margin-bottom:8px';
   const studio=document.createElement('a');studio.href=studioUrl();studio.textContent='📝 PASTE / EDIT SCRIPT → TELEPROMPTER';studio.style.cssText='display:block;text-align:center;text-decoration:none;min-height:52px;padding:15px 10px;border:1px solid #58a6ff;border-radius:13px;background:#197aff;color:#fff;font:900 15px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;margin-top:8px';
   const tele=document.createElement('a');tele.href=teleprompterUrl();tele.textContent='🎙 OPEN TELEPROMPTER MANUALLY';tele.style.cssText='display:block;text-align:center;text-decoration:none;min-height:50px;padding:14px 10px;border:1px solid #344457;border-radius:13px;background:#171d27;color:#72bdff;font:900 15px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;margin-top:8px';
-  card.appendChild(title);card.appendChild(help);card.appendChild(studio);card.appendChild(tele);nav.insertAdjacentElement('afterend',card);
+  card.appendChild(title);card.appendChild(help);card.appendChild(studio);card.appendChild(tele);
+  if(textSlot)textSlot.appendChild(card);else nav.insertAdjacentElement('afterend',card);
 }
 function routeTeleprompterThroughStudio(link){
   if(!link||link.dataset.scriptStudio==='1')return;
