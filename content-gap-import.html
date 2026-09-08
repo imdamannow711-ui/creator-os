@@ -28,7 +28,7 @@
   </div>
 
   <div class="card">
-    <p class="help">Select TikTok Creator Search Insights list-view screenshots. Each row is read as phrase, K-range search volume and blue search-increase percentage. Only rows with a verified <strong>1,000%+</strong> increase are shown and saved.</p>
+    <p class="help">Select TikTok Creator Search Insights list-view screenshots. Each row is read as phrase, K-range search volume and blue search-increase percentage. Only rows with a verified <strong>900%+</strong> blue growth increase are shown and saved &mdash; <strong>1,000%+</strong> is marked Priority, <strong>900%&ndash;999%</strong> is marked Qualified.</p>
     <input id="files" class="picker" type="file" accept="image/*" multiple>
     <div id="selected" class="count">No screenshots selected.</div>
     <button id="run" class="btn">Import Qualified Screenshots</button>
@@ -44,7 +44,9 @@
 </div>
 <script>
 const STORAGE_KEY='done-rite-creator-os:v1';
-const MIN_GROWTH_PERCENT=1000;
+const PRIORITY_MIN_PERCENT=1000;
+const QUALIFIED_MIN_PERCENT=900;
+function gapTier(pct){pct=Number(pct);if(!Number.isFinite(pct))return'';if(pct>=PRIORITY_MIN_PERCENT)return'Priority';if(pct>=QUALIFIED_MIN_PERCENT)return'Qualified';return''}
 let libPromise=null;
 const $=id=>document.getElementById(id);
 function uid(){return Date.now()+'-'+Math.random().toString(36).slice(2,8)}
@@ -107,7 +109,7 @@ function extractRows(text){
  return[...best.values()];
 }
 function extractQualified(text){
- return extractRows(text).filter(item=>item.searchIncreasePct!==''&&Number(item.searchIncreasePct)>=MIN_GROWTH_PERCENT).sort((a,b)=>Number(b.searchIncreasePct)-Number(a.searchIncreasePct));
+ return extractRows(text).filter(item=>item.searchIncreasePct!==''&&Number(item.searchIncreasePct)>=QUALIFIED_MIN_PERCENT).sort((a,b)=>Number(b.searchIncreasePct)-Number(a.searchIncreasePct));
 }
 function cleanupExisting(){
  const data=loadData();const rows=Array.isArray(data.gapRows)?data.gapRows:[];
@@ -132,8 +134,9 @@ function saveQualified(items){
  const createdAt=new Date().toISOString();const saved=[];let added=0,updated=0;
  items.forEach(item=>{
    const phrase=stripPhraseNoise(item.phrase),searchIncreasePct=item.searchIncreasePct===''?'':Number(item.searchIncreasePct),key=phrase.toLowerCase();
-   if(searchIncreasePct===''||searchIncreasePct<MIN_GROWTH_PERCENT||!phrase||isUiOrJunk(phrase))return;
-   const record={phrase,searches:item.searches===''?'':Number(item.searches),searchVolumeLabel:item.searchVolumeLabel||'',searchIncreasePct,growthLabel:growthLabel(searchIncreasePct),rawGrowth:item.rawGrowth||'',category:'Electronics & Gadgets',gapLevel:'High',note:`Qualified screenshot import · ${growthLabel(searchIncreasePct)} search increase${item.searchVolumeLabel?' · '+item.searchVolumeLabel+' searches':''}`,status:'queued',source:'qualified multi-screenshot import',createdAt,needsGrowthReview:undefined,needsVolumeReview:item.needsVolumeReview||undefined};
+   if(searchIncreasePct===''||searchIncreasePct<QUALIFIED_MIN_PERCENT||!phrase||isUiOrJunk(phrase))return;
+   const tier=gapTier(searchIncreasePct);
+   const record={phrase,searches:item.searches===''?'':Number(item.searches),searchVolumeLabel:item.searchVolumeLabel||'',searchIncreasePct,growthLabel:growthLabel(searchIncreasePct),rawGrowth:item.rawGrowth||'',category:'Electronics & Gadgets',gapLevel:tier==='Priority'?'High':'Medium',tier,note:`${tier} screenshot import · ${growthLabel(searchIncreasePct)} search increase${item.searchVolumeLabel?' · '+item.searchVolumeLabel+' searches':''}`,status:'queued',source:'qualified multi-screenshot import',createdAt,needsGrowthReview:undefined,needsVolumeReview:item.needsVolumeReview||undefined};
    if(existing.has(key)){const index=existing.get(key);rows[index]={...rows[index],...record,id:rows[index].id||uid()};updated++;saved.push(rows[index]);}
    else{const created={...record,id:uid()};rows.unshift(created);existing.set(key,0);added++;saved.push(created);}
  });
@@ -171,8 +174,9 @@ $('run').onclick=async()=>{
   const best=new Map();all.forEach(x=>{const k=x.phrase.toLowerCase(),prev=best.get(k);if(!prev||Number(x.searchIncreasePct)>Number(prev.searchIncreasePct))best.set(k,x)});
   const qualified=[...best.values()].sort((a,b)=>Number(b.searchIncreasePct)-Number(a.searchIncreasePct));
   const result=saveQualified(qualified);
-  $('bar').style.width='100%';$('status').textContent=`Done — ${files.length} screenshot${files.length===1?'':'s'} processed. ${qualified.length} verified 1,000%+ row${qualified.length===1?'':'s'} detected; ${result.added} new and ${result.updated} updated.`;$('status').className='status ok';
-  result.saved.forEach(x=>{const d=document.createElement('div');d.className='row';d.innerHTML=`<strong>${x.growthLabel}</strong>${x.searchVolumeLabel?' · '+x.searchVolumeLabel:''} · ${x.phrase}`;$('preview').appendChild(d)});
+  const priorityCount=result.saved.filter(x=>x.tier==='Priority').length,qualifiedCount=result.saved.filter(x=>x.tier==='Qualified').length;
+  $('bar').style.width='100%';$('status').textContent=`Done — ${files.length} screenshot${files.length===1?'':'s'} processed. ${qualified.length} verified 900%+ row${qualified.length===1?'':'s'} detected (${priorityCount} Priority, ${qualifiedCount} Qualified); ${result.added} new and ${result.updated} updated.`;$('status').className='status ok';
+  result.saved.forEach(x=>{const d=document.createElement('div');d.className='row';d.innerHTML=`<strong>${x.tier||''} ${x.growthLabel}</strong>${x.searchVolumeLabel?' · '+x.searchVolumeLabel:''} · ${x.phrase}`;$('preview').appendChild(d)});
   $('files').value='';$('selected').textContent='No screenshots selected.';
  }catch(e){$('status').textContent=((e&&e.message)||'Batch import failed.')+' Try 3–5 screenshots at a time.';$('status').className='status bad';$('bar').style.width='0%'}finally{window.__drCurrent=null;if(worker){try{await worker.terminate()}catch(e){}}$('run').disabled=false}
 };
