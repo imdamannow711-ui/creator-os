@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v25-script-randomize-hardened";
+const CACHE_NAME = "done-rite-v26-one-click-builder-ui";
 
 const FILES = [
   "./",
@@ -13,6 +13,7 @@ const FILES = [
   "./app.js",
   "./modules/creator-content-libraries.js",
   "./styles/dashboard.css",
+  "./styles/one-click-builder.css",
   "./vendor/react-offline.js",
   "./teleprompter.html",
   "./teleprompter-one-click.html",
@@ -30,6 +31,7 @@ const FILES = [
   "./modules/one-click-render-stage.js",
   "./modules/one-click-browser-executor.js",
   "./modules/one-click-camera-handoff.js",
+  "./modules/one-click-builder-ui.js",
   "./modules/one-click-gap-remover.js",
   "./modules/one-click-session-state.js",
   "./modules/one-click-creative-controls.js",
