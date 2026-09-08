@@ -346,9 +346,10 @@ switchPanel(readPanel(),{silent:true});
 'use strict';
 const $=id=>document.getElementById(id);
 const videoInput=$('video'),preview=$('preview'),media=$('media'),fileList=$('fileList'),frame=$('frame'),go=$('go'),renderBtn=$('renderBtn');
-let previewUrl='',renderedUrl='',currentRecipe=null,currentSession=null,currentPlan=null,currentSelection=null,currentRender=null;
+let previewUrl='',renderedUrl='',currentRecipe=null,currentSession=null,currentPlan=null,currentSelection=null,currentRender=null,selectedFiles=[];
 function modulesReady(){return !!(window.DoneRiteOneClickAdEditor&&window.DoneRiteOneClickMediaStage&&window.DoneRiteOneClickSceneScorer&&window.DoneRiteOneClickRenderStage&&window.DoneRiteOneClickBrowserExecutor);}
-function files(){return Array.from(videoInput.files||[]);}
+function fileKey(f){return f.name+'|'+f.size+'|'+f.lastModified;}
+function files(){return selectedFiles;}
 function releasePreview(){if(previewUrl&&window.DoneRiteOneClickBrowserExecutor)window.DoneRiteOneClickBrowserExecutor.release(previewUrl);previewUrl='';}
 function releaseRendered(){if(renderedUrl&&window.DoneRiteOneClickBrowserExecutor)window.DoneRiteOneClickBrowserExecutor.release(renderedUrl);renderedUrl='';}
 function humanSize(bytes){return !bytes?'0 MB':(bytes/1024/1024).toFixed(1)+' MB';}
@@ -361,10 +362,18 @@ $('check').addEventListener('click',()=>{
 });
 videoInput.addEventListener('change',()=>{
   releasePreview();resetRender();preview.style.display='none';frame.style.display='none';$('resultCard').style.display='none';$('goToRenderBtn').style.display='none';currentRecipe=currentSession=currentPlan=currentSelection=null;
-  const list=files();fileList.innerHTML='';
+  const picked=Array.from(videoInput.files||[]);
+  let overflow=false;
+  if(picked.length){
+    const seen=new Set(selectedFiles.map(fileKey));
+    picked.forEach(f=>{const k=fileKey(f);if(!seen.has(k)){selectedFiles.push(f);seen.add(k);}});
+    if(selectedFiles.length>20){selectedFiles=selectedFiles.slice(0,20);overflow=true;}
+  }
+  videoInput.value='';
+  fileList.innerHTML='';
+  const list=files();
   if(!list.length){media.textContent='No videos selected.';fileList.style.display='none';return;}
-  if(list.length>20){media.textContent='Please choose 20 clips or fewer.';fileList.style.display='none';return;}
-  media.textContent=list.length===1?'1 raw clip selected.':list.length+' raw clips selected for one ad.';
+  media.textContent=(list.length===1?'1 raw clip selected.':list.length+' raw clips selected for one ad.')+(overflow?' Capped at 20 — extra clips from this pick were not added.':'');
   list.forEach((f,i)=>{const div=document.createElement('div');div.textContent=(i+1)+'. '+f.name+' • '+humanSize(f.size);fileList.appendChild(div);});fileList.style.display='block';
 });
 function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
