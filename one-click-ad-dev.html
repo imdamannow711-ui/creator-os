@@ -204,10 +204,11 @@ h2{font-size:16px;margin:0 0 8px}
       <div class="os-stub"><b>Waveform &amp; live recording are next</b>Attaching your latest Teleprompter voiceover or an audio file, removing silence, and keeping the original gain already works above. In-page recording and a visual waveform are scheduled for a later phase.</div>
     </section>
 
-    <!-- AUTO TRIM (Phase 6 not yet wired) -->
+    <!-- AUTO TRIM: independent left/right trim handles, persisted per clip -->
     <section class="os-panel" id="panel-autotrim" data-panel="autotrim" role="tabpanel" aria-labelledby="panel-autotrim">
       <div class="os-panel-head"><h2 class="os-panel-title">Auto Trim</h2></div>
-      <div class="os-stub"><b>Workspace reserved</b>Independent left/right trim handles with persistent, reload-safe trims arrive in a later phase.</div>
+      <div id="doneRiteAutoTrimSlot"></div>
+      <div class="os-stub"><b>Automatic hookup to Create is next</b>Setting and saving a reload-safe trim for any clip already works above. Having Create automatically apply the saved trim when you build the multi-clip edit is scheduled for a later phase — for now the trimmed range is saved and ready to be picked up.</div>
     </section>
 
     <!-- SFX: existing text/motion/SFX styling module -->
@@ -257,6 +258,7 @@ h2{font-size:16px;margin:0 0 8px}
 <script src="modules/one-click-camera-handoff.js?v=20260907-command-center-1"></script>
 <script src="modules/one-click-gap-remover.js?v=20260907-command-center-1"></script>
 <script src="modules/one-click-creative-controls.js?v=20260907-command-center-1"></script>
+<script src="modules/one-click-auto-trim.js?v=20260908-command-center-1"></script>
 <script>
 /* ---------------------------------------------------------------
    Command-center shell: 8-button switching, press/glow feedback,
