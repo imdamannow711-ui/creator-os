@@ -13,5 +13,6 @@ These modules are staged on `build/creator-os-next` and are not loaded by the li
 - `cross-platform-package.js` — platform-specific packaging from one shoot
 - `daily-hq.js` — daily summary and next-action logic
 - `ui-loader-dev.js` — development-only module list
+- `voice-suggestion.js` — suggests a narration tone + Gemini TTS voice name per clip (One-Click Ad page, right after clips are chosen) and per project script (One-Click Ad build step and Script Studio). Recommendation only — does not synthesize audio; loaded live on `one-click-ad-dev.html` and `teleprompter-script-studio.html`.
 
 The live React bootstrap remains untouched until a staged UI integration is verified.
