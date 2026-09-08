@@ -364,6 +364,24 @@ function drAudio() {
 const { HOOK_LIBRARY, pickHooks, CTA_LIBRARY, hookOptions, ctaOptions, RESEARCH_NOTES, SHOT_PATTERNS } = window.DoneRiteContentLibraries || {};
 if (!HOOK_LIBRARY || !CTA_LIBRARY || !SHOT_PATTERNS) throw new Error('Creator content libraries did not load.');
 
+/* 30-day Content Gap archive cycle. A phrase is archived (never deleted)
+   once 30 days pass with no repeat screenshot hit, no "Mark filmed" use,
+   and no explicit Keep. Re-importing it at 900%+ or tapping Keep clears
+   the archive flag and resets the clock. */
+const GAP_ARCHIVE_MS = 30 * 24 * 60 * 60 * 1000;
+function sweepGapArchive(rows) {
+  const now = Date.now();
+  return (rows || []).map((row) => {
+    if (row.archived) return row;
+    const lastActivity = Date.parse(row.lastActivityAt || row.createdAt || "");
+    if (!Number.isFinite(lastActivity)) return row;
+    if (now - lastActivity > GAP_ARCHIVE_MS) {
+      return { ...row, archived: true, archivedAt: new Date().toISOString() };
+    }
+    return row;
+  });
+}
+
 /* Scores logged Content Gap phrases against products already in the vault.
    Deliberately dumb word matching — it suggests, it does not decide. */
 function matchProducts(phrase, products) {
@@ -778,6 +796,8 @@ function DoneRiteCreatorOS() {
     const [gapScanBusy, setGapScanBusy] = useState(false);
     const [gapScanProgress, setGapScanProgress] = useState(0);
     const [gapScanStatus, setGapScanStatus] = useState("");
+    const activeGapRows = useMemo(() => gapRows.filter((r) => !r.archived), [gapRows]);
+    const archivedGapRows = useMemo(() => gapRows.filter((r) => r.archived), [gapRows]);
     const gapImageRef = useRef(null);
     const [hookLog, setHookLog] = useState([]);
     const [hookSpin, setHookSpin] = useState(0);
@@ -837,7 +857,7 @@ function DoneRiteCreatorOS() {
                 if (Array.isArray(data.hookLog))
                     setHookLog(data.hookLog);
                 if (Array.isArray(data.gapRows))
-                    setGapRows(data.gapRows);
+                    setGapRows(sweepGapArchive(data.gapRows));
                 if (typeof data.hookSpin === "number")
                     setHookSpin(data.hookSpin);
             }
@@ -1110,6 +1130,8 @@ function DoneRiteCreatorOS() {
                             status: "queued",
                             source: "screenshot import",
                             createdAt,
+                            lastActivityAt: createdAt,
+                            archived: false,
                         }));
                     return [...additions, ...current];
                 });
@@ -1177,7 +1199,7 @@ function DoneRiteCreatorOS() {
             setProducts(Array.isArray(data.products) ? data.products : []);
             setTasks(Array.isArray(data.tasks) ? data.tasks : DEFAULT_TASKS);
             setMoneyRows(Array.isArray(data.moneyRows) ? data.moneyRows : []);
-            setGapRows(Array.isArray(data.gapRows) ? data.gapRows : []);
+            setGapRows(sweepGapArchive(Array.isArray(data.gapRows) ? data.gapRows : []));
             if (Array.isArray(data.hookLog))
                 setHookLog(data.hookLog);
             setImportStatus("Backup restored successfully.");
@@ -1575,7 +1597,7 @@ function DoneRiteCreatorOS() {
                         React.createElement("input", { className: "dr-input", value: gapDraft.note, onChange: (e) => setGapDraft({ ...gapDraft, note: e.target.value }), placeholder: "Optional — anything you noticed" })),
                     React.createElement("button", { className: "dr-button", type: "button", onClick: () => {
                         if (!gapDraft.phrase.trim()) { setCopyStatus("Type the search phrase first."); return; }
-                        setGapRows((current) => [{ ...gapDraft, phrase: gapDraft.phrase.trim(), note: gapDraft.note.trim(), id: uid(), status: "queued", createdAt: new Date().toISOString() }, ...current]);
+                        setGapRows((current) => { const createdAt = new Date().toISOString(); return [{ ...gapDraft, phrase: gapDraft.phrase.trim(), note: gapDraft.note.trim(), id: uid(), status: "queued", createdAt, lastActivityAt: createdAt, archived: false }, ...current]; });
                         setGapDraft({ ...EMPTY_GAP, category: gapDraft.category, gapLevel: gapDraft.gapLevel });
                         setCopyStatus("Phrase logged.");
                     } }, "Log This Phrase")),
@@ -1583,11 +1605,11 @@ function DoneRiteCreatorOS() {
                 React.createElement(Card, null,
                     React.createElement("div", { className: "dr-output-head" },
                         React.createElement("h3", null, "Queue"),
-                        React.createElement("span", { className: "dr-pill" }, `${gapRows.filter((r) => r.status !== "filmed").length} waiting`)),
+                        React.createElement("span", { className: "dr-pill" }, `${activeGapRows.filter((r) => r.status !== "filmed").length} waiting`)),
                     React.createElement("p", { className: "dr-help" }, "Products you already own are matched by keyword. A match is a suggestion, not a verdict — you decide whether the phrase honestly describes the product."),
                     React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
-                        gapRows.length === 0 && React.createElement("p", { className: "dr-help" }, "Nothing logged yet. Open Creator Search Insights and bring back five phrases."),
-                        gapRows.map((row) => {
+                        activeGapRows.length === 0 && React.createElement("p", { className: "dr-help" }, "Nothing logged yet. Open Creator Search Insights and bring back five phrases."),
+                        activeGapRows.map((row) => {
                             const matches = matchProducts(row.phrase, products);
                             const filmed = row.status === "filmed";
                             return React.createElement("div", { className: "dr-item", key: row.id, style: { flexDirection: "column", alignItems: "stretch", opacity: filmed ? 0.55 : 1 } },
@@ -1609,9 +1631,25 @@ function DoneRiteCreatorOS() {
                                         setTab("create");
                                         setCopyStatus("Loaded into Quick Create.");
                                     } }, "Use in Quick Create"),
-                                    React.createElement("button", { className: "dr-copy", type: "button", onClick: () => setGapRows((c) => c.map((x) => x.id === row.id ? { ...x, status: filmed ? "queued" : "filmed" } : x)) }, filmed ? "Reopen" : "Mark filmed"),
+                                    React.createElement("button", { className: "dr-copy", type: "button", onClick: () => setGapRows((c) => c.map((x) => x.id === row.id ? { ...x, status: filmed ? "queued" : "filmed", lastActivityAt: new Date().toISOString() } : x)) }, filmed ? "Reopen" : "Mark filmed"),
+                                    React.createElement("button", { className: "dr-copy", type: "button", onClick: () => setGapRows((c) => c.map((x) => x.id === row.id ? { ...x, lastActivityAt: new Date().toISOString() } : x)) }, "Keep"),
                                     React.createElement("button", { className: "dr-danger", type: "button", onClick: () => setGapRows((c) => c.filter((x) => x.id !== row.id)) }, "Remove")));
-                        })))
+                        })),
+                    archivedGapRows.length > 0 && React.createElement("div", { style: { marginTop: 18, paddingTop: 14, borderTop: `1px solid ${COLORS.line || "#2a3442"}` } },
+                        React.createElement("div", { className: "dr-output-head" },
+                            React.createElement("h3", null, "Archived"),
+                            React.createElement("span", { className: "dr-pill" }, `${archivedGapRows.length}`)),
+                        React.createElement("p", { className: "dr-help" }, "Nothing here was deleted. A phrase moves here after 30 days with no repeat screenshot hit, no \"Mark filmed\", and no Keep. Re-importing it at 900%+ or tapping Keep brings it back."),
+                        React.createElement("div", { className: "dr-list", style: { marginTop: 12 } },
+                            archivedGapRows.map((row) => {
+                                const archivedWhen = row.archivedAt ? new Date(row.archivedAt).toLocaleDateString() : "";
+                                return React.createElement("div", { className: "dr-item", key: row.id, style: { flexDirection: "column", alignItems: "stretch", opacity: 0.6 } },
+                                    React.createElement("div", { className: "dr-item-title", style: { color: COLORS.dim } }, row.phrase),
+                                    React.createElement("div", { className: "dr-help", style: { marginTop: 4 } }, `${row.gapLevel} gap · ${row.category}${archivedWhen ? " · Archived " + archivedWhen : ""}`),
+                                    React.createElement("div", { className: "dr-row", style: { marginTop: 10 } },
+                                        React.createElement("button", { className: "dr-copy", type: "button", onClick: () => setGapRows((c) => c.map((x) => x.id === row.id ? { ...x, archived: false, archivedAt: null, lastActivityAt: new Date().toISOString() } : x)) }, "Keep — Reactivate"),
+                                        React.createElement("button", { className: "dr-danger", type: "button", onClick: () => setGapRows((c) => c.filter((x) => x.id !== row.id)) }, "Remove")));
+                            }))))
             )),
             tab === "products" && (React.createElement(Card, null,
                 React.createElement("div", { className: "dr-output-head" },

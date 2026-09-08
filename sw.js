@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v26-teleprompter-clean-content-gap-900";
+const CACHE_NAME = "done-rite-v27-content-gap-30day-archive";
 
 const FILES = [
   "./",

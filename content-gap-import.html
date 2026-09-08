@@ -136,7 +136,8 @@ function saveQualified(items){
    const phrase=stripPhraseNoise(item.phrase),searchIncreasePct=item.searchIncreasePct===''?'':Number(item.searchIncreasePct),key=phrase.toLowerCase();
    if(searchIncreasePct===''||searchIncreasePct<QUALIFIED_MIN_PERCENT||!phrase||isUiOrJunk(phrase))return;
    const tier=gapTier(searchIncreasePct);
-   const record={phrase,searches:item.searches===''?'':Number(item.searches),searchVolumeLabel:item.searchVolumeLabel||'',searchIncreasePct,growthLabel:growthLabel(searchIncreasePct),rawGrowth:item.rawGrowth||'',category:'Electronics & Gadgets',gapLevel:tier==='Priority'?'High':'Medium',tier,note:`${tier} screenshot import · ${growthLabel(searchIncreasePct)} search increase${item.searchVolumeLabel?' · '+item.searchVolumeLabel+' searches':''}`,status:'queued',source:'qualified multi-screenshot import',createdAt,needsGrowthReview:undefined,needsVolumeReview:item.needsVolumeReview||undefined};
+   const wasArchived=existing.has(key)&&rows[existing.get(key)]&&rows[existing.get(key)].archived;
+   const record={phrase,searches:item.searches===''?'':Number(item.searches),searchVolumeLabel:item.searchVolumeLabel||'',searchIncreasePct,growthLabel:growthLabel(searchIncreasePct),rawGrowth:item.rawGrowth||'',category:'Electronics & Gadgets',gapLevel:tier==='Priority'?'High':'Medium',tier,note:`${tier} screenshot import · ${growthLabel(searchIncreasePct)} search increase${item.searchVolumeLabel?' · '+item.searchVolumeLabel+' searches':''}${wasArchived?' · Reactivated from Archived':''}`,status:'queued',source:'qualified multi-screenshot import',createdAt,lastActivityAt:createdAt,archived:false,archivedAt:null,needsGrowthReview:undefined,needsVolumeReview:item.needsVolumeReview||undefined};
    if(existing.has(key)){const index=existing.get(key);rows[index]={...rows[index],...record,id:rows[index].id||uid()};updated++;saved.push(rows[index]);}
    else{const created={...record,id:uid()};rows.unshift(created);existing.set(key,0);added++;saved.push(created);}
  });
@@ -176,7 +177,7 @@ $('run').onclick=async()=>{
   const result=saveQualified(qualified);
   const priorityCount=result.saved.filter(x=>x.tier==='Priority').length,qualifiedCount=result.saved.filter(x=>x.tier==='Qualified').length;
   $('bar').style.width='100%';$('status').textContent=`Done — ${files.length} screenshot${files.length===1?'':'s'} processed. ${qualified.length} verified 900%+ row${qualified.length===1?'':'s'} detected (${priorityCount} Priority, ${qualifiedCount} Qualified); ${result.added} new and ${result.updated} updated.`;$('status').className='status ok';
-  result.saved.forEach(x=>{const d=document.createElement('div');d.className='row';d.innerHTML=`<strong>${x.tier||''} ${x.growthLabel}</strong>${x.searchVolumeLabel?' · '+x.searchVolumeLabel:''} · ${x.phrase}`;$('preview').appendChild(d)});
+  result.saved.forEach(x=>{const d=document.createElement('div');d.className='row';const reactivated=String(x.note||'').includes('Reactivated from Archived');d.innerHTML=`<strong>${x.tier||''} ${x.growthLabel}</strong>${x.searchVolumeLabel?' · '+x.searchVolumeLabel:''} · ${x.phrase}${reactivated?' · <span style="color:#2bd97c">Reactivated</span>':''}`;$('preview').appendChild(d)});
   $('files').value='';$('selected').textContent='No screenshots selected.';
  }catch(e){$('status').textContent=((e&&e.message)||'Batch import failed.')+' Try 3–5 screenshots at a time.';$('status').className='status bad';$('bar').style.width='0%'}finally{window.__drCurrent=null;if(worker){try{await worker.terminate()}catch(e){}}$('run').disabled=false}
 };
