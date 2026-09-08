@@ -1,4 +1,4 @@
-/* DONE RITE Creator OS — One-Click Camera Handoff v0.8
+/* DONE RITE Creator OS — One-Click Camera Handoff v0.8.1
    Adds a real iPhone camera capture path to the Hook + CTA recording guide.
    Loads gap removal, autosave/resume, creative controls and creative render,
    routes ONE CLICK SCRIPT STUDIO into the One-Click Teleprompter wrapper,
@@ -6,7 +6,7 @@
 */
 (function(){
 'use strict';
-const VERSION='0.8';
+const VERSION='0.8.1';
 let lastPlan=null,capturedUrl='';
 function loadScriptOnce(selector,src,datasetKey,onload){const existing=document.querySelector(selector);if(existing){if(onload&&existing.dataset.loaded==='1')onload();return;}const s=document.createElement('script');s.src=src;s.async=false;s.dataset[datasetKey]='1';s.onload=()=>{s.dataset.loaded='1';if(onload)onload();};document.head.appendChild(s);}
 function loadGapRemover(){if(window.DoneRiteOneClickGapRemover)return;loadScriptOnce('script[data-done-rite-gap-remover]','modules/one-click-gap-remover.js?v=20260904-gap4','doneRiteGapRemover',()=>{try{window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.install();}catch(e){}});}
@@ -24,7 +24,7 @@ function installGlobalNavigation(){
   const textSlot=document.getElementById('doneRiteTextSlot');
   const nav=document.createElement('div');nav.id='doneRiteOneClickNav';
   nav.style.cssText=backSlot?'display:inline-flex':'position:sticky;top:0;z-index:80;margin:0 0 12px;padding:8px 0 10px;background:linear-gradient(180deg,rgba(8,10,14,.98) 70%,rgba(8,10,14,0));';
-  const back=document.createElement('button');back.type='button';back.textContent='← BACK';back.setAttribute('aria-label','Back to previous page');back.style.cssText='min-height:42px;padding:9px 14px;border:1px solid #344457;border-radius:12px;background:#171c25;color:#cfe7ff;font:900 14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;';back.onclick=()=>{try{if(history.length>1){history.back();return;}}catch(e){}location.href='index.html';};
+  const back=document.createElement('button');back.type='button';back.textContent='← BACK';back.setAttribute('aria-label','Back to previous page');back.style.cssText='min-height:42px;padding:9px 14px;border:1px solid #344457;border-radius:12px;background:#171c25;color:#cfe7ff;font:900 14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;';back.onclick=()=>{try{location.assign(new URL('index.html',location.href).href);}catch(e){location.href='index.html';}};
   nav.appendChild(back);
   if(backSlot)backSlot.appendChild(nav);else wrap.insertBefore(nav,wrap.firstChild);
   if(document.getElementById('doneRiteWorkflowShortcuts'))return;
