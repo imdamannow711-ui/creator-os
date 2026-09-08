@@ -36,7 +36,7 @@
     </div>
     <label class="label" for="notes">Notes for the ad</label>
     <input id="notes" class="field" placeholder="Example: strongest clip first, electric-blue text">
-    <div id="gapStatus" class="status">Checking saved 1,000%+ Content Gap phrases…</div>
+    <div id="gapStatus" class="status">Checking saved 900%+ Content Gap phrases…</div>
   </div>
 
   <div class="card">
@@ -59,7 +59,9 @@
 <script>
 const $=id=>document.getElementById(id);
 const STORAGE_KEY='done-rite-creator-os:v1';
-const MIN_GROWTH_PERCENT=1000;
+const PRIORITY_MIN_PERCENT=1000;
+const QUALIFIED_MIN_PERCENT=900;
+function gapTier(pct){pct=Number(pct);if(!Number.isFinite(pct))return'';if(pct>=PRIORITY_MIN_PERCENT)return'Priority';if(pct>=QUALIFIED_MIN_PERCENT)return'Qualified';return''}
 let selectedFiles=[];
 let objectUrls=[];
 const sizeLabel=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(1)+' MB';
@@ -89,15 +91,16 @@ function bestGap(){
  let data={};try{data=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){}
  const product=$('product').value.trim();
  return (Array.isArray(data.gapRows)?data.gapRows:[])
-  .map(row=>({phrase:String(row&&row.phrase||'').trim(),searchIncreasePct:rowGrowthPercent(row),score:relevance(product,row&&row.phrase),needsGrowthReview:Boolean(row&&row.needsGrowthReview)}))
-  .filter(item=>item.phrase&&item.searchIncreasePct!==''&&item.searchIncreasePct>=MIN_GROWTH_PERCENT&&!item.needsGrowthReview&&item.score>0)
+  .map(row=>({phrase:String(row&&row.phrase||'').trim(),searchIncreasePct:rowGrowthPercent(row),score:relevance(product,row&&row.phrase),needsGrowthReview:Boolean(row&&row.needsGrowthReview),archived:Boolean(row&&row.archived)}))
+  .filter(item=>item.phrase&&item.searchIncreasePct!==''&&item.searchIncreasePct>=QUALIFIED_MIN_PERCENT&&!item.needsGrowthReview&&!item.archived&&item.score>0)
+  .map(item=>Object.assign(item,{tier:gapTier(item.searchIncreasePct)}))
   .sort((a,b)=>b.score-a.score||b.searchIncreasePct-a.searchIncreasePct)[0]||null;
 }
-function refreshGapSelection(){const gap=bestGap();$('gapStatus').textContent=gap?`Content Gap selected: ${gap.phrase} — ${gap.searchIncreasePct.toLocaleString()}% increase`:'No relevant saved phrase with a verified 1,000%+ increase was found for this product.';$('gapStatus').className='status '+(gap?'ok':'bad')}
+function refreshGapSelection(){const gap=bestGap();$('gapStatus').textContent=gap?`Content Gap selected: ${gap.phrase} — ${gap.searchIncreasePct.toLocaleString()}% increase (${gap.tier})`:'No relevant saved, non-archived phrase with a verified 900%+ increase was found for this product.';$('gapStatus').className='status '+(gap?'ok':'bad')}
 function brief(){
  const notes=$('notes').value.trim();
  const gap=bestGap();
- const gapLines=gap?`\nSelected Content Gap phrase: ${gap.phrase}\nSearch increase: ${gap.searchIncreasePct}%\nContent Gap instruction: Use the exact phrase naturally. Do not alter or invent its percentage.`:`\nSelected Content Gap phrase: None verified for this product\nSearch increase: Not available\nContent Gap instruction: Do not claim that a 1,000%+ phrase was used.`;
+ const gapLines=gap?`\nSelected Content Gap phrase: ${gap.phrase}\nSearch increase: ${gap.searchIncreasePct}% (${gap.tier})\nContent Gap instruction: Use the exact phrase naturally. Do not alter or invent its percentage.`:`\nSelected Content Gap phrase: None verified for this product\nSearch increase: Not available\nContent Gap instruction: Do not claim that a 900%+ phrase was used.`;
  return `DONE RITE Creator OS ad request\nProduct: ${$('product').value.trim()||'Not entered'}\nLength: ${$('length').value}\nFormat: ${$('style').value}\nClips: ${selectedFiles.length}${gapLines}\nInstructions: Create a complete 9:16 TikTok Shop ad with a compliant hook, shot-by-shot edit plan, voiceover lines and timing, on-screen text, sound-effect cues, CTA, caption, cover text and five hashtags including #ad.${notes?'\nCreator notes: '+notes:''}`;
 }
 function releaseUrls(){objectUrls.forEach(URL.revokeObjectURL);objectUrls=[]}
