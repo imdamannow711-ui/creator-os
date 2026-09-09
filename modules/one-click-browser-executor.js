@@ -1,4 +1,4 @@
-/* DONE RITE Creator OS — One-Click Browser Executor v1.3
+/* DONE RITE Creator OS — One-Click Browser Executor v1.4
    iPhone-safe local preview, persistent manual trim, multi-source timed render,
    and attached voiceover mixing at original gain.
    Originals are never overwritten.
@@ -15,7 +15,7 @@
 */
 (function(){
 'use strict';
-const VERSION='1.3';
+const VERSION='1.4';
 const TRIM_KEY='done-rite-one-click-trims:v1';
 const TRIM_LIMIT=300;
 const manualTrims=new Map();
@@ -259,7 +259,8 @@ function installMultiClipReviewUI(){
   const counter=wrap.querySelector('#doneRiteClipCounter'),prev=wrap.querySelector('#doneRitePrevClip'),next=wrap.querySelector('#doneRiteNextClip');
   const track=wrap.querySelector('#doneRiteTrimTrack'),fill=wrap.querySelector('#doneRiteTrimFill'),startHandle=wrap.querySelector('#doneRiteStartHandle'),endHandle=wrap.querySelector('#doneRiteEndHandle');
   const startTime=wrap.querySelector('#doneRiteStartTime'),endTime=wrap.querySelector('#doneRiteEndTime'),durationText=wrap.querySelector('#doneRiteTrimDuration'),previewTrim=wrap.querySelector('#doneRitePreviewTrim'),resetTrim=wrap.querySelector('#doneRiteResetTrim');
-  function list(){return Array.from(input.files||[]);}
+  const projectStore=window.DoneRiteOneClickProjectStore;
+  function list(){return projectStore?projectStore.getFiles():Array.from(input.files||[]);}
   function percent(t){return duration>0?Math.max(0,Math.min(100,t/duration*100)):0;}
   function updateTrimUI(){
     const ps=percent(start),pe=percent(end);startHandle.style.left=ps+'%';endHandle.style.left=pe+'%';fill.style.left=ps+'%';fill.style.width=Math.max(0,pe-ps)+'%';
@@ -308,7 +309,9 @@ function installMultiClipReviewUI(){
   }
   previewTrim.addEventListener('click',()=>{if(!duration)return;try{preview.pause();}catch(e){}preview.currentTime=Math.max(0,start);if(previewStopHandler)preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=()=>{if(preview.currentTime>=end-.03){preview.pause();preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=null;}};preview.addEventListener('timeupdate',previewStopHandler);preview.play().catch(()=>{});});
   resetTrim.addEventListener('click',()=>{if(!duration)return;const files=list();start=0;end=duration;if(files[index])forgetManualTrim(files[index]);updateTrimUI();try{preview.currentTime=0;}catch(e){}});
-  input.addEventListener('change',()=>setTimeout(()=>{loadToken++;detachMeta();const files=list();if(!files.length){wrap.style.display='none';duration=0;start=0;end=0;updateTrimUI();if(url){release(url);url='';}return;}wrap.style.display='block';show(0,false);},0));
+  function refreshClips(detail){setTimeout(()=>{loadToken++;detachMeta();const files=list();if(!files.length){wrap.style.display='none';duration=0;start=0;end=0;updateTrimUI();if(url){release(url);url='';}preview.style.display='none';return;}wrap.style.display='block';index=Math.max(0,Math.min(index,files.length-1));show(index,false);},0);}
+  if(projectStore)projectStore.subscribe(refreshClips);else input.addEventListener('change',refreshClips);
+  if(projectStore)projectStore.ready().then(()=>refreshClips({reason:'restore'})).catch(()=>{});
   prev.addEventListener('click',()=>show(index-1,false));next.addEventListener('click',()=>show(index+1,false));
   window.addEventListener('pagehide',()=>{loadToken++;detachMeta();if(url)release(url);});
 }

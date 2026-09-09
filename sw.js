@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v27-content-gap-30day-archive";
+const CACHE_NAME = "done-rite-v28-one-click-project-media";
 
 const FILES = [
   "./",
@@ -28,11 +28,13 @@ const FILES = [
   "./modules/one-click-media-stage.js",
   "./modules/one-click-scene-scorer.js",
   "./modules/one-click-render-stage.js",
+  "./modules/one-click-project-store.js",
   "./modules/one-click-browser-executor.js",
   "./modules/one-click-camera-handoff.js",
   "./modules/one-click-gap-remover.js",
   "./modules/one-click-session-state.js",
   "./modules/one-click-creative-controls.js",
+  "./modules/one-click-auto-trim.js",
   "./modules/one-click-creative-render.js"
 ];
 

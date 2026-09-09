@@ -144,6 +144,8 @@ h2{font-size:16px;margin:0 0 8px}
         <h2>Ad setup</h2>
         <label class="label">Product</label>
         <input id="product" class="input" placeholder="Product name">
+        <label class="label">Product listing link or ID</label>
+        <input id="productListing" class="input" placeholder="Paste the product listing link or ID">
         <label class="label">Verified feature</label>
         <input id="feature" class="input" placeholder="One feature you can verify">
         <label class="label">Mode</label>
@@ -183,6 +185,7 @@ h2{font-size:16px;margin:0 0 8px}
       <div class="card">
         <h2>2. Choose your raw clips</h2>
         <label class="label">Same ad shoot — up to 20 videos</label>
+        <label for="video" class="button secondary" style="display:block;text-align:center;padding:14px 10px">CHOOSE / ADD RAW CLIPS</label>
         <input id="video" class="input" type="file" accept="video/*" multiple>
         <video id="preview" class="preview" controls playsinline></video>
         <div id="media" class="help">No videos selected.</div>
@@ -243,7 +246,10 @@ h2{font-size:16px;margin:0 0 8px}
           <div id="tiktokHelp" class="help" style="display:none;margin-top:8px">Choose TikTok in the iPhone share sheet, attach the TikTok Shop product, and post.</div>
           <button id="shareBtn" class="button good" style="display:none">SAVE / SHARE FINISHED VIDEO</button>
           <a id="openLink" class="button secondary" style="display:block;text-align:center;text-decoration:none" download>DOWNLOAD FINISHED VIDEO</a>
+          <button id="saveVersionBtn" class="button good" style="display:none">SAVE AS NEW VIDEO VERSION</button>
+          <div id="versionStatus" class="help" style="margin-top:8px"></div>
         </div>
+        <div id="savedVersions" class="filelist" style="display:none;margin-top:12px"></div>
       </div>
     </section>
 
@@ -254,9 +260,11 @@ h2{font-size:16px;margin:0 0 8px}
 <script src="modules/one-click-media-stage.js?v=20260907-command-center-1"></script>
 <script src="modules/one-click-scene-scorer.js?v=20260907-command-center-1"></script>
 <script src="modules/one-click-render-stage.js?v=20260907-command-center-1"></script>
-<script src="modules/one-click-browser-executor.js?v=20260907-command-center-1"></script>
+<script src="modules/one-click-project-store.js?v=20260909-project-media-1"></script>
+<script src="modules/one-click-session-state.js?v=20260909-project-media-1"></script>
+<script src="modules/one-click-browser-executor.js?v=20260909-project-media-1"></script>
 <script src="modules/one-click-camera-handoff.js?v=20260908-back-button-1"></script>
-<script src="modules/one-click-gap-remover.js?v=20260907-command-center-1"></script>
+<script src="modules/one-click-gap-remover.js?v=20260909-project-media-1"></script>
 <script src="modules/one-click-creative-controls.js?v=20260907-command-center-1"></script>
 <script src="modules/one-click-auto-trim.js?v=20260908-command-center-1"></script>
 <script>
@@ -350,36 +358,42 @@ switchPanel(readPanel(),{silent:true});
 'use strict';
 const $=id=>document.getElementById(id);
 const videoInput=$('video'),preview=$('preview'),media=$('media'),fileList=$('fileList'),frame=$('frame'),go=$('go'),renderBtn=$('renderBtn');
-let previewUrl='',renderedUrl='',currentRecipe=null,currentSession=null,currentPlan=null,currentSelection=null,currentRender=null,selectedFiles=[];
-function modulesReady(){return !!(window.DoneRiteOneClickAdEditor&&window.DoneRiteOneClickMediaStage&&window.DoneRiteOneClickSceneScorer&&window.DoneRiteOneClickRenderStage&&window.DoneRiteOneClickBrowserExecutor);}
-function fileKey(f){return f.name+'|'+f.size+'|'+f.lastModified;}
-function files(){return selectedFiles;}
+const clipStore=window.DoneRiteOneClickProjectStore;
+let previewUrl='',renderedUrl='',currentRecipe=null,currentSession=null,currentPlan=null,currentSelection=null,currentRender=null;
+function modulesReady(){return !!(window.DoneRiteOneClickAdEditor&&window.DoneRiteOneClickMediaStage&&window.DoneRiteOneClickSceneScorer&&window.DoneRiteOneClickRenderStage&&window.DoneRiteOneClickBrowserExecutor&&clipStore);}
+function fileKey(f){return clipStore.fileKey(f);}
+function files(){return clipStore.getFiles();}
 function releasePreview(){if(previewUrl&&window.DoneRiteOneClickBrowserExecutor)window.DoneRiteOneClickBrowserExecutor.release(previewUrl);previewUrl='';}
 function releaseRendered(){if(renderedUrl&&window.DoneRiteOneClickBrowserExecutor)window.DoneRiteOneClickBrowserExecutor.release(renderedUrl);renderedUrl='';}
 function humanSize(bytes){return !bytes?'0 MB':(bytes/1024/1024).toFixed(1)+' MB';}
 function setCheck(ok,text){$('checkResult').className=ok?'ok':'bad';$('checkResult').textContent=text;}
 function goToPanel(name){if(window.DoneRiteOneClickCommandCenter)window.DoneRiteOneClickCommandCenter.switchPanel(name);}
-function resetRender(){releaseRendered();currentRender=null;$('renderBox').style.display='none';$('renderedVideo').style.display='none';$('shareBtn').style.display='none';$('tiktokBtn').style.display='none';$('tiktokHelp').style.display='none';$('progress').style.display='none';$('progress').firstElementChild.style.width='0%';$('renderState').textContent='';$('renderState').className='help';$('exportEmptyHelp').style.display='block';}
+function resetRender(){releaseRendered();currentRender=null;$('renderBox').style.display='none';$('renderedVideo').style.display='none';$('shareBtn').style.display='none';$('tiktokBtn').style.display='none';$('tiktokHelp').style.display='none';$('saveVersionBtn').style.display='none';$('progress').style.display='none';$('progress').firstElementChild.style.width='0%';$('renderState').textContent='';$('renderState').className='help';$('exportEmptyHelp').style.display='block';}
+function resetDerived(){releasePreview();resetRender();preview.style.display='none';frame.style.display='none';$('resultCard').style.display='none';$('goToRenderBtn').style.display='none';currentRecipe=currentSession=currentPlan=currentSelection=null;}
+function renderClipList(detail){
+  const list=files();fileList.innerHTML='';
+  if(!list.length){media.textContent='No videos selected.';fileList.style.display='none';return;}
+  let note=list.length===1?'1 raw clip selected.':list.length+' raw clips selected for one ad.';
+  if(detail&&detail.duplicates)note+=' '+detail.duplicates+' duplicate'+(detail.duplicates===1?' was':'s were')+' skipped.';
+  if(detail&&detail.overflow)note+=' Capped at 20 — '+detail.overflow+' extra clip'+(detail.overflow===1?' was':'s were')+' not added.';
+  media.textContent=note;
+  list.forEach((file,index)=>{const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center';const name=document.createElement('span');name.textContent=(index+1)+'. '+file.name+' • '+humanSize(file.size);const remove=document.createElement('button');remove.type='button';remove.textContent='REMOVE';remove.setAttribute('aria-label','Remove '+file.name);remove.style.cssText='min-height:40px;padding:8px 10px;border:1px solid #ff5d6c;border-radius:10px;background:#261117;color:#ff8b95;font-weight:900';remove.addEventListener('click',async()=>{remove.disabled=true;try{await clipStore.removeFile(fileKey(file));}catch(err){media.textContent='Could not remove clip: '+err.message;}finally{remove.disabled=false;}});row.append(name,remove);fileList.appendChild(row);});
+  fileList.style.display='block';
+}
 $('check').addEventListener('click',()=>{
   if(!modulesReady()){setCheck(false,'System check failed: one or more editor modules did not load.');return;}
   try{const caps=window.DoneRiteOneClickBrowserExecutor.supports(),mime=window.DoneRiteOneClickBrowserExecutor.pickMime();if(!caps.localExport||!mime){setCheck(false,'System check loaded, but local export is not available on this Safari build.');return;}setCheck(true,'PASS — multi-clip planner, local encoder, and audio path are available. Encoder: '+mime);}catch(err){setCheck(false,'System check failed: '+err.message);}
 });
-videoInput.addEventListener('change',()=>{
-  releasePreview();resetRender();preview.style.display='none';frame.style.display='none';$('resultCard').style.display='none';$('goToRenderBtn').style.display='none';currentRecipe=currentSession=currentPlan=currentSelection=null;
+videoInput.addEventListener('change',async()=>{
   const picked=Array.from(videoInput.files||[]);
-  let overflow=false;
-  if(picked.length){
-    const seen=new Set(selectedFiles.map(fileKey));
-    picked.forEach(f=>{const k=fileKey(f);if(!seen.has(k)){selectedFiles.push(f);seen.add(k);}});
-    if(selectedFiles.length>20){selectedFiles=selectedFiles.slice(0,20);overflow=true;}
-  }
   videoInput.value='';
-  fileList.innerHTML='';
-  const list=files();
-  if(!list.length){media.textContent='No videos selected.';fileList.style.display='none';return;}
-  media.textContent=(list.length===1?'1 raw clip selected.':list.length+' raw clips selected for one ad.')+(overflow?' Capped at 20 — extra clips from this pick were not added.':'');
-  list.forEach((f,i)=>{const div=document.createElement('div');div.textContent=(i+1)+'. '+f.name+' • '+humanSize(f.size);fileList.appendChild(div);});fileList.style.display='block';
+  if(!picked.length)return;
+  resetDerived();media.textContent='Saving selected clips on this iPhone…';
+  try{const result=await clipStore.addFiles(picked);renderClipList(result);}
+  catch(err){media.className='bad';media.textContent='Clips could not be saved: '+err.message;}
 });
+clipStore.subscribe(detail=>{if(detail.reason==='add'||detail.reason==='remove'||detail.reason==='version-load')resetDerived();renderClipList(detail);if(detail.reason==='fresh'||detail.reason==='version-load'||detail.reason==='version-save')renderVersions();});
+clipStore.ready().then(()=>{renderClipList({restored:true});renderVersions();}).catch(err=>{media.className='bad';media.textContent='Saved-session storage is unavailable: '+err.message;});
 function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
 function waitEvent(target,name,timeout){return new Promise((resolve,reject)=>{let timer;const done=()=>{clean();resolve();};const fail=()=>{clean();reject(new Error('Could not analyze video.'));};function clean(){target.removeEventListener(name,done);target.removeEventListener('error',fail);if(timer)clearTimeout(timer);}target.addEventListener(name,done,{once:true});target.addEventListener('error',fail,{once:true});timer=setTimeout(()=>{clean();reject(new Error('Video analysis timed out.'));},timeout||15000);});}
 async function seek(video,time){
@@ -439,6 +453,7 @@ go.addEventListener('click',async()=>{
   const product=$('product').value.trim(),feature=$('feature').value.trim();if(!product||!feature){alert('Enter the product name and one verified feature first.');return;}
   resetRender();go.disabled=true;go.textContent='ANALYZING CLIPS…';
   try{
+    await clipStore.updateProject({productName:product,productListing:$('productListing').value.trim(),feature,mode:$('mode').value,duration:$('duration').value});
     const plan=window.DoneRiteOneClickAdEditor.createPlan({productName:product,verifiedFeature:feature,mode:$('mode').value,durationSeconds:$('duration').value,category:'Electronics & Gadgets',batteryPowered:false,hashtags:['#Gadgets']});
     const session=await window.DoneRiteOneClickMediaStage.createMultiSession(list,plan),candidates=await buildCandidates(session,list),totalSource=session.sources.reduce((n,s)=>n+Number(s.metadata.duration||0),0),target=Math.min(Number(plan.durationSeconds||15),totalSource);
     const selection=window.DoneRiteOneClickSceneScorer.chooseNonOverlapping(candidates,target,plan.mode);
@@ -458,12 +473,43 @@ go.addEventListener('click',async()=>{
 $('goToRenderBtn').addEventListener('click',()=>goToPanel('render'));
 renderBtn.addEventListener('click',async()=>{
   const list=files();if(!list.length||!currentRecipe)return;resetRender();renderBtn.disabled=true;renderBtn.textContent='RENDERING…';$('progress').style.display='block';$('renderState').textContent='Combining selected sections. Keep this page open until it finishes.';
-  try{const result=await window.DoneRiteOneClickBrowserExecutor.renderLocalBatch(list,currentRecipe,{maxLongEdge:1280,fps:30,onProgress:p=>{$('progress').firstElementChild.style.width=Math.round(p*100)+'%';}});currentRender=result;renderedUrl=result.url;$('progress').firstElementChild.style.width='100%';$('renderState').textContent='Finished • '+result.durationSeconds.toFixed(1)+' sec • '+result.sourceCount+' source clip'+(result.sourceCount===1?'':'s')+' available • originals preserved';$('renderedVideo').src=renderedUrl;$('renderedVideo').style.display='block';$('openLink').href=renderedUrl;$('openLink').download=result.fileName;$('exportEmptyHelp').style.display='none';$('renderBox').style.display='block';const canShare=window.DoneRiteOneClickBrowserExecutor.canShareFile(result.blob,result.fileName);$('shareBtn').style.display=canShare?'block':'none';$('tiktokBtn').style.display=canShare?'block':'none';$('tiktokHelp').style.display=canShare?'block':'none';goToPanel('export');setTimeout(()=>{$('renderBox').scrollIntoView({behavior:'smooth',block:'start'});},reduceMotionSafe()?0:260);}catch(err){$('renderState').className='bad';$('renderState').textContent='Render failed: '+err.message+' Your original clips were not changed.';}finally{renderBtn.disabled=false;renderBtn.textContent='RENDER FINISHED VIDEO';}
+  try{const result=await window.DoneRiteOneClickBrowserExecutor.renderLocalBatch(list,currentRecipe,{maxLongEdge:1280,fps:30,onProgress:p=>{$('progress').firstElementChild.style.width=Math.round(p*100)+'%';}});currentRender=result;renderedUrl=result.url;$('progress').firstElementChild.style.width='100%';$('renderState').textContent='Finished • '+result.durationSeconds.toFixed(1)+' sec • '+result.sourceCount+' source clip'+(result.sourceCount===1?'':'s')+' available • originals preserved';$('renderedVideo').src=renderedUrl;$('renderedVideo').style.display='block';$('openLink').href=renderedUrl;$('openLink').download=result.fileName;$('exportEmptyHelp').style.display='none';$('renderBox').style.display='block';$('saveVersionBtn').style.display='block';const canShare=window.DoneRiteOneClickBrowserExecutor.canShareFile(result.blob,result.fileName);$('shareBtn').style.display=canShare?'block':'none';$('tiktokBtn').style.display=canShare?'block':'none';$('tiktokHelp').style.display=canShare?'block':'none';goToPanel('export');setTimeout(()=>{$('renderBox').scrollIntoView({behavior:'smooth',block:'start'});},reduceMotionSafe()?0:260);}catch(err){$('renderState').className='bad';$('renderState').textContent='Render failed: '+err.message+' Your original clips were not changed.';}finally{renderBtn.disabled=false;renderBtn.textContent='RENDER FINISHED VIDEO';}
 });
 function reduceMotionSafe(){try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}}
 function shareText(){if(!currentPlan)return'';return [currentPlan.packaging.caption,currentPlan.packaging.hashtags.join(' ')].filter(Boolean).join('\n\n');}
 $('tiktokBtn').addEventListener('click',async()=>{if(!currentRender)return;try{await window.DoneRiteOneClickBrowserExecutor.shareFile(currentRender.blob,currentRender.fileName,shareText());}catch(err){if(err&&err.name!=='AbortError')alert('TikTok handoff failed: '+err.message);}});
 $('shareBtn').addEventListener('click',async()=>{if(!currentRender)return;try{await window.DoneRiteOneClickBrowserExecutor.shareFile(currentRender.blob,currentRender.fileName,shareText());}catch(err){if(err&&err.name!=='AbortError')alert('Share failed: '+err.message);}});
+function versionSnapshot(){
+  const list=files(),trims=list.map((file,index)=>({key:fileKey(file),trim:window.DoneRiteOneClickBrowserExecutor.getManualTrim(file,index)}));
+  return {productName:$('product').value.trim(),productListing:$('productListing').value.trim(),feature:$('feature').value.trim(),mode:$('mode').value,duration:$('duration').value,trims,recipe:currentRecipe,plan:currentPlan,renderedBlob:currentRender&&currentRender.blob||null,renderedFileName:currentRender&&currentRender.fileName||'',renderedMimeType:currentRender&&currentRender.mimeType||''};
+}
+async function renderVersions(){
+  const box=$('savedVersions');if(!box)return;
+  try{
+    const versions=await clipStore.listVersions();box.innerHTML='';
+    if(!versions.length){box.style.display='none';return;}
+    const title=document.createElement('div');title.style.cssText='font-weight:900;color:#56ec9c;margin-bottom:6px';title.textContent='SAVED VIDEO VERSIONS';box.appendChild(title);
+    versions.forEach(version=>{const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center';const text=document.createElement('span');text.textContent=version.label+' • '+(version.productName||'Product')+(version.voiceoverId?' • Voiceover linked':' • No voiceover');const load=document.createElement('button');load.type='button';load.textContent='LOAD';load.style.cssText='min-height:40px;padding:8px 12px;border:1px solid #58a6ff;border-radius:10px;background:#171c25;color:#72bdff;font-weight:900';load.addEventListener('click',()=>loadSavedVersion(version.id));row.append(text,load);box.appendChild(row);});
+    box.style.display='block';
+  }catch(err){$('versionStatus').textContent='Could not read saved video versions: '+err.message;}
+}
+async function loadSavedVersion(id){
+  const status=$('versionStatus');status.textContent='Restoring saved video version…';
+  try{
+    const version=await clipStore.loadVersion(id);
+    [['product','productName'],['productListing','productListing'],['feature','feature'],['mode','mode'],['duration','duration']].forEach(([field,key])=>{if($(field)&&version[key]!=null)$(field).value=version[key];});
+    const byKey=new Map((version.trims||[]).map(row=>[row.key,row.trim]));files().forEach((file,index)=>{const trim=byKey.get(fileKey(file));if(trim)window.DoneRiteOneClickBrowserExecutor.setManualTrim(file,index,trim.start,trim.end,trim.duration);});
+    currentRecipe=version.recipe||null;currentPlan=version.plan||null;
+    if(version.renderedBlob){releaseRendered();renderedUrl=URL.createObjectURL(version.renderedBlob);currentRender={blob:version.renderedBlob,url:renderedUrl,fileName:version.renderedFileName||'done-rite-ad.mp4',mimeType:version.renderedMimeType||version.renderedBlob.type};$('renderedVideo').src=renderedUrl;$('renderedVideo').style.display='block';$('openLink').href=renderedUrl;$('openLink').download=currentRender.fileName;$('renderBox').style.display='block';$('exportEmptyHelp').style.display='none';$('saveVersionBtn').style.display='block';const canShare=window.DoneRiteOneClickBrowserExecutor.canShareFile(currentRender.blob,currentRender.fileName);$('shareBtn').style.display=canShare?'block':'none';$('tiktokBtn').style.display=canShare?'block':'none';}
+    status.style.color='#56ec9c';status.textContent=version.label+' restored with its clips, adjustments, voiceover, and product listing.';goToPanel('create');
+  }catch(err){status.style.color='#ff7b86';status.textContent='Could not restore saved video version: '+err.message;}
+}
+$('saveVersionBtn').addEventListener('click',async()=>{
+  if(!currentRender)return;const btn=$('saveVersionBtn'),status=$('versionStatus');btn.disabled=true;status.textContent='Saving this video, its adjustments, and linked voiceover…';
+  try{const version=await clipStore.saveVersion(versionSnapshot());status.style.color='#56ec9c';status.textContent=version.label+' saved separately and linked to '+(version.productName||'this product')+'.';await renderVersions();}
+  catch(err){status.style.color='#ff7b86';status.textContent='Video version could not be saved: '+err.message;}
+  finally{btn.disabled=false;}
+});
 window.addEventListener('pagehide',()=>{releasePreview();releaseRendered();});
 })();
 </script>

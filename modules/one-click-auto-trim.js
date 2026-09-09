@@ -7,10 +7,10 @@
 */
 (function(){
 'use strict';
-const VERSION='0.1';
+const VERSION='0.2';
 const STORE_KEY='done-rite-autotrim-trims:v1';
 const MIN_GAP=0.2;
-let currentFile=null,currentKey='',currentDuration=0,previewTimer=null,renderTrim=null;
+let currentFile=null,currentKey='',currentDuration=0,previewTimer=null,previewUrl='',renderTrim=null;
 function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
 function fileKey(f){return f?f.name+'|'+f.size+'|'+f.lastModified:'';}
 function fmt(sec){sec=Math.max(0,Number(sec||0));const m=Math.floor(sec/60),s=(sec-m*60).toFixed(1).padStart(4,'0');return m+':'+s;}
@@ -28,8 +28,8 @@ function install(){
   const card=document.createElement('div');
   card.id='doneRiteAutoTrim';card.className='card';card.style.cssText='border-color:#2bd97c;background:#0b1a13';
   card.innerHTML='<h2>✂️ Independent Trim Handles</h2>'+
-    '<p class="help">Choose a clip and set where it starts and ends. Creator OS only remembers the in/out points — the original file is never re-encoded or altered. The same trim comes back automatically if you pick this exact clip again, even after closing and reopening.</p>'+
-    '<input id="atFile" class="input" type="file" accept="video/*">'+
+    '<p class="help">Choose one of the clips already saved in this project and set where it starts and ends. The trim is linked to that clip and is used by Render. The original file is never re-encoded or altered.</p>'+
+    '<select id="atClip" class="select"><option value="">Upload project clips first</option></select>'+
     '<video id="atPreview" class="preview" controls playsinline></video>'+
     '<div id="atStatus" class="help" style="margin:8px 0">No clip selected.</div>'+
     '<div id="atHandles" style="display:none">'+
@@ -48,7 +48,7 @@ function install(){
       '<div id="atKeepStatus" class="help" style="margin-top:8px;color:#72bdff">No trim attached to the next render yet.</div>'+
     '</div>';
   slot.appendChild(card);
-  const fileInput=card.querySelector('#atFile'),preview=card.querySelector('#atPreview'),status=card.querySelector('#atStatus'),
+  const clipSelect=card.querySelector('#atClip'),preview=card.querySelector('#atPreview'),status=card.querySelector('#atStatus'),
     handles=card.querySelector('#atHandles'),startRange=card.querySelector('#atStart'),endRange=card.querySelector('#atEnd'),
     startVal=card.querySelector('#atStartVal'),endVal=card.querySelector('#atEndVal'),kept=card.querySelector('#atKept'),
     removed=card.querySelector('#atRemoved'),previewBtn=card.querySelector('#atPreviewBtn'),keepBtn=card.querySelector('#atKeepBtn'),
@@ -64,20 +64,20 @@ function install(){
     const rangeStart=clamp(trim.inSec||0,0,currentDuration),rangeEnd=clamp(currentDuration-(trim.outSec||0),0,currentDuration);
     startRange.value=rangeStart;endRange.value=rangeEnd;refreshReadout();
   }
-  fileInput.addEventListener('change',async()=>{
-    const f=fileInput.files&&fileInput.files[0];
+  async function loadFile(f){
     if(previewTimer){clearInterval(previewTimer);previewTimer=null;}
-    if(!f){currentFile=null;currentKey='';currentDuration=0;handles.style.display='none';status.textContent='No clip selected.';preview.style.display='none';return;}
+    if(previewUrl){try{URL.revokeObjectURL(previewUrl);}catch(e){}previewUrl='';}
+    if(!f){currentFile=null;currentKey='';currentDuration=0;handles.style.display='none';status.textContent='No project clip selected.';preview.style.display='none';return;}
     currentFile=f;currentKey=fileKey(f);
     status.textContent='Reading '+f.name+'…';
-    const url=URL.createObjectURL(f);preview.src=url;preview.style.display='block';
+    previewUrl=URL.createObjectURL(f);preview.src=previewUrl;preview.style.display='block';
     try{
       if(preview.readyState<1)await waitEvent(preview,'loadedmetadata',20000);
       currentDuration=Number(preview.duration||0);
       if(!currentDuration||!isFinite(currentDuration)){status.textContent='Could not read this clip\u2019s length.';handles.style.display='none';return;}
       startRange.min='0';startRange.max=String(currentDuration);endRange.min='0';endRange.max=String(currentDuration);
-      const saved=getTrim(currentKey);
-      if(saved&&saved.duration===currentDuration){
+      const executor=window.DoneRiteOneClickBrowserExecutor,manual=executor&&executor.getManualTrim(f,Number(clipSelect.value||0)),stored=getTrim(currentKey),saved=manual?{inSec:manual.start,outSec:currentDuration-manual.end,duration:manual.duration}:stored;
+      if(saved&&Math.abs(Number(saved.duration)-currentDuration)<.05){
         loadTrimIntoUI(saved);
         status.textContent='Restored saved trim for '+f.name+' • '+fmt(currentDuration)+' total.';
       }else{
@@ -87,7 +87,15 @@ function install(){
       handles.style.display='block';
       keepStatus.style.color='#72bdff';keepStatus.textContent='No trim attached to the next render yet.';
     }catch(err){status.textContent='Could not read this clip: '+err.message;handles.style.display='none';}
-  });
+  }
+  clipSelect.addEventListener('change',()=>{const store=window.DoneRiteOneClickProjectStore,files=store?store.getFiles():[];loadFile(files[Number(clipSelect.value)]||null);});
+  function refreshProjectClips(){
+    const store=window.DoneRiteOneClickProjectStore,files=store?store.getFiles():[],wanted=currentKey;clipSelect.innerHTML='';
+    if(!files.length){const option=document.createElement('option');option.value='';option.textContent='Upload project clips first';clipSelect.appendChild(option);loadFile(null);return;}
+    files.forEach((file,index)=>{const option=document.createElement('option');option.value=String(index);option.textContent=(index+1)+'. '+file.name;clipSelect.appendChild(option);});
+    let index=files.findIndex(file=>fileKey(file)===wanted);if(index<0)index=0;clipSelect.value=String(index);loadFile(files[index]);
+  }
+  const projectStore=window.DoneRiteOneClickProjectStore;if(projectStore){projectStore.subscribe(refreshProjectClips);projectStore.ready().then(refreshProjectClips).catch(()=>{});}else refreshProjectClips();
   startRange.addEventListener('input',refreshReadout);
   endRange.addEventListener('input',refreshReadout);
   previewBtn.addEventListener('click',()=>{
@@ -102,9 +110,11 @@ function install(){
     if(!currentFile||!currentDuration)return;
     const r=refreshReadout(),trim={inSec:r.inSec,outSec:r.outSec,duration:currentDuration};
     saveTrim(currentKey,trim);setRenderTrim(currentFile,trim);
+    const executor=window.DoneRiteOneClickBrowserExecutor;if(executor)executor.setManualTrim(currentFile,Number(clipSelect.value||0),r.rangeStart,r.rangeEnd,currentDuration);
     keepStatus.style.color='#56ec9c';
     keepStatus.textContent='Trim saved for '+currentFile.name+' • keeps '+fmt(r.rangeEnd-r.rangeStart)+' of '+fmt(currentDuration)+' • original file unchanged.';
   });
+  window.addEventListener('pagehide',()=>{if(previewUrl)try{URL.revokeObjectURL(previewUrl);}catch(e){};});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else setTimeout(install,0);
 window.DoneRiteOneClickAutoTrim={version:VERSION,install,getTrim,saveTrim,setRenderTrim,getRenderTrim,fileKey};
