@@ -1,0 +1,221 @@
+/* DONE RITE Creator OS — One-Click Builder visual system v0.1 */
+:root {
+  --dr-bg: #030711;
+  --dr-panel: rgba(7, 17, 35, 0.94);
+  --dr-panel-strong: rgba(9, 25, 53, 0.98);
+  --dr-line: #1777da;
+  --dr-line-soft: rgba(45, 157, 255, 0.35);
+  --dr-blue: #2ea8ff;
+  --dr-blue-bright: #78d4ff;
+  --dr-text: #f4f9ff;
+  --dr-muted: #9bb0c9;
+  --dr-good: #56ec9c;
+  color-scheme: dark;
+}
+
+html { background: var(--dr-bg); }
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(0, 128, 255, 0.35), transparent 38rem),
+    linear-gradient(135deg, #02050b 0%, #07152e 48%, #02050b 100%);
+  color: var(--dr-text);
+  overflow-x: hidden;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background:
+    linear-gradient(115deg, transparent 0 44%, rgba(38, 154, 255, 0.08) 45%, transparent 46%),
+    linear-gradient(65deg, transparent 0 68%, rgba(78, 188, 255, 0.07) 69%, transparent 70%);
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  padding: max(12px, env(safe-area-inset-top)) 14px calc(42px + env(safe-area-inset-bottom));
+}
+
+.dr-builder-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 16px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(82, 186, 255, 0.7);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(12, 37, 78, 0.98), rgba(3, 10, 22, 0.98));
+  box-shadow: 0 0 0 1px rgba(179, 227, 255, 0.08) inset, 0 0 30px rgba(0, 123, 255, 0.22);
+  text-align: center;
+}
+.dr-builder-hero::after {
+  content: "";
+  position: absolute;
+  inset: -40% -20%;
+  pointer-events: none;
+  background: conic-gradient(from 220deg, transparent, rgba(57, 166, 255, 0.18), transparent 18%);
+  animation: dr-electric-sweep 8s linear infinite;
+}
+@keyframes dr-electric-sweep { to { transform: rotate(1turn); } }
+.dr-builder-kicker {
+  color: var(--dr-blue-bright);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.dr-builder-hero h1 {
+  position: relative;
+  z-index: 1;
+  margin: 5px 0 2px;
+  font-size: clamp(25px, 7vw, 48px);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  color: #fff;
+  text-shadow: 0 0 18px rgba(56, 173, 255, 0.72);
+}
+.dr-builder-hero strong { color: var(--dr-blue-bright); }
+.dr-builder-tagline {
+  position: relative;
+  z-index: 1;
+  margin: 7px 0 0;
+  color: #cbe9ff;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}
+
+.dr-workflow-rail {
+  position: sticky;
+  top: 58px;
+  z-index: 70;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(94px, 1fr);
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  padding: 9px;
+  margin-bottom: 12px;
+  border: 1px solid var(--dr-line-soft);
+  border-radius: 18px;
+  background: rgba(2, 8, 19, 0.94);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45), 0 0 18px rgba(17, 130, 255, 0.16);
+  backdrop-filter: blur(16px);
+}
+.dr-workflow-rail::-webkit-scrollbar { display: none; }
+.dr-stage-button {
+  min-height: 66px;
+  padding: 8px 7px;
+  border: 1px solid #235fa1;
+  border-radius: 13px;
+  background: linear-gradient(180deg, #102c57, #071327);
+  color: #eaf7ff;
+  font: 900 11px/1.1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 0 0 1px rgba(129, 208, 255, 0.06) inset;
+}
+.dr-stage-button .dr-stage-icon { display: block; margin-bottom: 5px; font-size: 21px; }
+.dr-stage-button[aria-current="step"],
+.dr-stage-button.is-ready {
+  border-color: #62c9ff;
+  background: linear-gradient(180deg, #1462bd, #0a3471);
+  box-shadow: 0 0 18px rgba(30, 149, 255, 0.42), 0 0 0 1px rgba(196, 235, 255, 0.22) inset;
+}
+.dr-stage-button:active { transform: scale(0.97); }
+
+.dr-builder-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.dr-status-chip {
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border: 1px solid rgba(46, 168, 255, 0.3);
+  border-radius: 13px;
+  background: rgba(5, 16, 33, 0.86);
+  color: var(--dr-muted);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 850;
+}
+.dr-status-chip b { color: #fff; }
+
+#doneRiteOneClickNav {
+  top: 0 !important;
+  padding-top: max(6px, env(safe-area-inset-top)) !important;
+  background: linear-gradient(180deg, rgba(3, 7, 17, 0.99) 76%, transparent) !important;
+}
+#doneRiteOneClickNav button {
+  border-color: #246db7 !important;
+  background: linear-gradient(180deg, #10294e, #071225) !important;
+  color: #dff3ff !important;
+  box-shadow: 0 0 14px rgba(35, 144, 255, 0.2);
+}
+#doneRiteWorkflowShortcuts { display: none; }
+
+.card {
+  scroll-margin-top: 148px;
+  border-color: var(--dr-line-soft);
+  background: linear-gradient(145deg, var(--dr-panel-strong), var(--dr-panel));
+  box-shadow: 0 0 0 1px rgba(123, 206, 255, 0.04) inset, 0 16px 38px rgba(0, 0, 0, 0.26);
+}
+.card h2 { color: #eaf7ff; letter-spacing: 0.015em; }
+.button {
+  border-color: #4cb8ff;
+  background: linear-gradient(135deg, #1685f2, #0b3f91);
+  box-shadow: 0 0 16px rgba(33, 149, 255, 0.23), 0 0 0 1px rgba(213, 242, 255, 0.1) inset;
+}
+.button.secondary { background: linear-gradient(180deg, #102745, #091526); color: #7ed4ff; }
+.input, .select, .copybox, .filelist, .metric {
+  border-color: rgba(65, 157, 234, 0.32);
+  background: rgba(3, 12, 27, 0.88);
+}
+.input:focus, .select:focus {
+  outline: 2px solid rgba(72, 181, 255, 0.55);
+  outline-offset: 1px;
+}
+.help { color: var(--dr-muted); }
+.pill { display: none; }
+.wrap > h1, .wrap > h1 + .help { display: none; }
+
+.dr-stage-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 120;
+  width: min(92vw, 520px);
+  transform: translate(-50%, 16px);
+  padding: 12px 14px;
+  border: 1px solid #58a6ff;
+  border-radius: 13px;
+  background: rgba(3, 13, 29, 0.97);
+  color: #eaf7ff;
+  box-shadow: 0 0 24px rgba(36, 151, 255, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.2s ease;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+.dr-stage-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+
+@media (min-width: 800px) {
+  .wrap { padding-inline: 24px; }
+  .dr-workflow-rail { grid-auto-columns: minmax(105px, 1fr); }
+  .dr-builder-status { max-width: 700px; margin-inline: auto; }
+  .card { padding: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dr-builder-hero::after { animation: none; }
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
