@@ -1,6 +1,37 @@
 # DONE RITE Creator OS — Shared Chat Sync Status
 
-Updated: 2026-09-05
+Updated: 2026-09-09
+
+## LATEST ISOLATED TEST UPDATE — ONE-CLICK PROJECT MEDIA PERSISTENCE
+
+Implemented on branch `fix/one-click-persistent-project-media` from protected Plex/Command Center commit `6988d44835ab2eee1271c55371970566c71aada7`.
+
+Remote code commit: `67e475055ab790c694c06581f9d86b9d1a0e9eab`
+
+Changed behavior:
+
+- Added isolated IndexedDB project storage in `modules/one-click-project-store.js`; existing Creator OS localStorage and IndexedDB schemas were not renamed, cleared, or migrated.
+- Upload now uses one canonical persistent clip collection for later adds, duplicate suppression, individual removal, review, trim, analysis, and render.
+- Project clips and setup restore after refresh/reopen; Start Fresh opens a new project without deleting earlier saved video versions.
+- Auto Trim now selects saved project clips and writes the same manual trim state used by Render.
+- Original and gap-removed voiceovers are saved separately, restored with the project, kept at gain 1, and linked to saved video versions.
+- Product listing link/ID, clip adjustments, render output, and selected voiceover are captured by `SAVE AS NEW VIDEO VERSION`; previous versions are retained and loadable.
+- Service-worker cache list includes the new project store and Auto Trim module.
+
+Verification completed:
+
+- JavaScript syntax checks passed for every changed module and `sw.js`.
+- Both inline scripts in `one-click-ad-dev.html` parsed successfully.
+- `tests/one-click-project-persistence.js` passed add/retain, duplicate, remove-one, 20-clip cap, loader, voiceover-link, and cache contract checks.
+- Existing `tests/video-upload-gap.js` still passed.
+- `git diff --check` passed.
+
+Still unverified:
+
+- Real iPhone 13 Safari picker, IndexedDB media round-trip, clip preview/trim, voiceover restoration, render fidelity, download, Share Sheet, and Home Screen PWA cache behavior.
+- PR #5 remains separate, draft, diverged, and untouched.
+
+Rollback point: `6988d44835ab2eee1271c55371970566c71aada7`.
 
 ## PURPOSE
 
