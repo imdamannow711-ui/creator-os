@@ -27,6 +27,7 @@
     <video id="preview" class="preview" controls playsinline></video>
     <div id="media" class="help">No videos selected.</div>
     <div id="fileList" class="filelist" style="display:none"></div>
+    <div id="clipVoiceSuggestions" class="help" style="margin-top:8px"></div>
   </div>
 
   <div class="card">
@@ -56,6 +57,7 @@
     <div class="copybox"><b>Caption</b><div id="caption"></div></div>
     <div class="copybox"><b>Hashtags</b><div id="hashtags"></div></div>
     <div class="copybox"><b>Compliance review</b><div id="compliance"></div></div>
+    <div id="voiceSuggestionBox" class="copybox" style="display:none"><b>🎤 Suggested narration voice</b><div id="voiceSuggestion"></div></div>
     <p id="nextStep" class="help"></p>
     <button id="renderBtn" class="button good" style="display:none">RENDER FINISHED VIDEO</button>
     <div id="progress" class="progress"><span></span></div>
@@ -77,6 +79,7 @@
 <script src="modules/one-click-render-stage.js?v=20260904-0527"></script>
 <script src="modules/one-click-browser-executor.js?v=20260904-0527"></script>
 <script src="modules/one-click-camera-handoff.js?v=20260908-back-button-1"></script>
+<script src="modules/voice-suggestion.js?v=20260908-voice-suggest-1"></script>
 <script>
 (function(){
 'use strict';
@@ -94,13 +97,23 @@ $('check').addEventListener('click',()=>{
   if(!modulesReady()){setCheck(false,'System check failed: one or more editor modules did not load.');return;}
   try{const caps=window.DoneRiteOneClickBrowserExecutor.supports(),mime=window.DoneRiteOneClickBrowserExecutor.pickMime();if(!caps.localExport||!mime){setCheck(false,'System check loaded, but local export is not available on this Safari build.');return;}setCheck(true,'PASS — multi-clip planner, local encoder, and audio path are available. Encoder: '+mime);}catch(err){setCheck(false,'System check failed: '+err.message);}
 });
+function renderClipVoiceSuggestions(list){
+  const box=$('clipVoiceSuggestions');if(!box)return;
+  if(!window.DoneRiteVoiceSuggestion||!list.length){box.innerHTML='';return;}
+  const lines=list.map((f,i)=>{
+    const s=window.DoneRiteVoiceSuggestion.suggestForClip({name:f.name,type:f.type});
+    return '🎤 Clip '+(i+1)+' suggested voice: <b>'+s.voice+'</b> — '+s.toneLabel.toLowerCase()+' ('+s.voiceDescription+')';
+  });
+  box.innerHTML=lines.join('<br>');
+}
 videoInput.addEventListener('change',()=>{
   releasePreview();resetRender();preview.style.display='none';frame.style.display='none';$('resultCard').style.display='none';currentRecipe=currentSession=currentPlan=currentSelection=null;
   const list=files();fileList.innerHTML='';
-  if(!list.length){media.textContent='No videos selected.';fileList.style.display='none';return;}
-  if(list.length>20){media.textContent='Please choose 20 clips or fewer.';fileList.style.display='none';return;}
+  if(!list.length){media.textContent='No videos selected.';fileList.style.display='none';renderClipVoiceSuggestions([]);return;}
+  if(list.length>20){media.textContent='Please choose 20 clips or fewer.';fileList.style.display='none';renderClipVoiceSuggestions([]);return;}
   media.textContent=list.length===1?'1 raw clip selected.':list.length+' raw clips selected for one ad.';
   list.forEach((f,i)=>{const div=document.createElement('div');div.textContent=(i+1)+'. '+f.name+' • '+humanSize(f.size);fileList.appendChild(div);});fileList.style.display='block';
+  renderClipVoiceSuggestions(list);
 });
 function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
 function waitEvent(target,name,timeout){return new Promise((resolve,reject)=>{let timer;const done=()=>{clean();resolve();};const fail=()=>{clean();reject(new Error('Could not analyze video.'));};function clean(){target.removeEventListener(name,done);target.removeEventListener('error',fail);if(timer)clearTimeout(timer);}target.addEventListener(name,done,{once:true});target.addEventListener('error',fail,{once:true});timer=setTimeout(()=>{clean();reject(new Error('Video analysis timed out.'));},timeout||15000);});}
@@ -169,11 +182,16 @@ go.addEventListener('click',async()=>{
     $('resultCard').style.display='block';$('status').className='status ok';$('status').textContent=list.length>1?'MULTI-CLIP EDIT PLAN BUILT':'EDIT PLAN BUILT';
     $('sourceInfo').textContent=list.length+' clip'+(list.length===1?'':'s')+' • '+totalSource.toFixed(1)+' sec';$('selectedInfo').textContent=(selection.sourceCountUsed||1)+' source'+((selection.sourceCountUsed||1)===1?'':'s');$('targetInfo').textContent=target.toFixed(1)+' sec';
     $('fileName').textContent=plan.packaging.videoFileName;$('caption').textContent=plan.packaging.caption;$('hashtags').textContent=plan.packaging.hashtags.join(' ');$('compliance').textContent=plan.packaging.compliance.flags.length?plan.packaging.compliance.flags.join(' • '):'No extra category flags.';
+    if(window.DoneRiteVoiceSuggestion&&plan.recordingGuide&&plan.recordingGuide.voiceover){
+      const vs=window.DoneRiteVoiceSuggestion.suggestForScript(plan.recordingGuide.voiceover);
+      $('voiceSuggestion').innerHTML='<b>'+vs.voice+'</b> — '+vs.toneLabel.toLowerCase()+' ('+vs.voiceDescription+')<br>Alternate: '+vs.alternateVoice+' ('+vs.alternateVoiceDescription+')<br><span style="color:#8793a1">'+vs.howToGenerate+'</span>';
+      $('voiceSuggestionBox').style.display='block';
+    }else{$('voiceSuggestionBox').style.display='none';}
     const usedFast=candidates.some(c=>c.scanMode==='FAST_LONG_CLIP');
     $('nextStep').textContent=usedFast?'Creator OS used the fast long-clip scan across the full source, then ranked the strongest sampled sections. Tap Render Finished Video to build the selected clip.':'Creator OS compared short sections for motion, sharpness, lighting, and dead-space signals across the selected clips. Tap Render Finished Video to combine the chosen sections.';renderBtn.style.display=execution.status==='LOCAL_EXPORT_AVAILABLE'?'block':'none';
     try{const firstCut=recipe.selectedCuts[0],sourceIndex=firstCut&&Number.isInteger(firstCut.sourceIndex)?firstCut.sourceIndex:0,p=await window.DoneRiteOneClickBrowserExecutor.previewFrame(list[sourceIndex],recipe);frame.src=p.dataUrl;frame.style.display='block';}catch(e){frame.style.display='none';}
     $('tech').textContent=JSON.stringify({sessionId:session.id,sourceCount:list.length,hook:plan.hookExperiment,cta:plan.ctaExperiment,candidates:candidates.length,scanMode:usedFast?'FAST_LONG_CLIP':'STANDARD',selection:{totalSeconds:selection.totalSeconds,complete:selection.complete,sourceCountUsed:selection.sourceCountUsed,cuts:selection.chosen.map(c=>({sourceIndex:c.sourceIndex,sourceName:c.sourceName,start:c.start,end:c.end,score:c.score}))},execution:{status:execution.status,recorderMime:execution.recorderMime},rollback:session.rollback},null,2);media.textContent=list.length+' raw clip'+(list.length===1?'':'s')+' ready.';$('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(err){$('resultCard').style.display='block';$('status').className='status bad';$('status').textContent='EDIT PLAN FAILED';$('nextStep').textContent=err.message;$('tech').textContent=String(err&&err.stack||err);renderBtn.style.display='none';media.textContent='Analysis stopped.';}
+  }catch(err){$('resultCard').style.display='block';$('status').className='status bad';$('status').textContent='EDIT PLAN FAILED';$('nextStep').textContent=err.message;$('tech').textContent=String(err&&err.stack||err);renderBtn.style.display='none';media.textContent='Analysis stopped.';$('voiceSuggestionBox').style.display='none';}
   finally{go.disabled=false;go.textContent='BUILD MULTI-CLIP EDIT';}
 });
 renderBtn.addEventListener('click',async()=>{
