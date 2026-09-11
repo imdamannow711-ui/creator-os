@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v25-script-randomize-hardened";
+const CACHE_NAME = "done-rite-v26-speech-safe-teleprompter";
 
 const FILES = [
   "./",
