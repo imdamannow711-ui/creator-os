@@ -32,15 +32,17 @@
   <textarea id="resultScript" class="script" placeholder="Your selected version appears here."></textarea>
   <div class="row"><button id="rerollBtn" class="btn secondary">↻ RANDOMIZE AGAIN</button><button id="copyBtn" class="btn secondary">COPY SCRIPT</button></div>
   <div id="compliance"></div>
+  <div id="voiceSuggestion" class="ok" style="display:none"></div>
   <button id="sendBtn" class="btn orange">USE THIS SCRIPT IN TELEPROMPTER →</button>
   <button id="manualBtn" class="btn secondary">🎙 OPEN TELEPROMPTER MANUALLY</button>
  </div>
 </main>
+<script src="modules/voice-suggestion.js?v=20260908-voice-suggest-1"></script>
 <script>
 (function(){
 'use strict';
 const $=id=>document.getElementById(id),KEY_BASE='done-rite-one-click-script-studio:v2';
-const source=$('sourceScript'),result=$('resultScript'),status=$('modeStatus'),compliance=$('compliance');
+const source=$('sourceScript'),result=$('resultScript'),status=$('modeStatus'),compliance=$('compliance'),voiceSuggestion=$('voiceSuggestion');
 let mode='exact';
 function pick(a){return a[Math.floor(Math.random()*a.length)];}
 function clean(s){return String(s||'').replace(/\r/g,'').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();}
@@ -96,15 +98,22 @@ function lightRewrite(text){
   return clean(out);
 }
 function heavyRewrite(text){const sentences=splitSentences(lightRewrite(text));if(!sentences.length)return '';const topic=sentences.find(s=>/NMN|product|vitamin|mic|kit|scooter|charger|cable/i.test(s))||sentences[0];const hookPool=[`This is the part I knew people were going to have opinions about: ${topic.replace(/[.!?]+$/,'')}.`,`I posted about this once and the comments went in every direction.`,`I knew this one would start a conversation, and it definitely did.`,`Here is the product I keep coming back to, even after all the debate.`];const body=sentences.slice(1,-1).filter(s=>!/(limited-time|don't miss|link the brand|product link)/i.test(s)),reordered=body.length>2?[body[1],body[0],...body.slice(2)]:body,bridges=["Here is why I kept looking into it.","The part that matters to me is what it actually is and why people use it.","What I wanted was a simple explanation without all the hype."],cta=pick(["I'll link the one I've been using so you can check the product page and decide for yourself.","If you want to look at the exact one I've been using, I'll put it in the product link.","I'll link the product so you can read the details and see whether it makes sense for you."]);return clean([pick(hookPool),pick(bridges),...reordered,cta].join(' '));}
+function voiceSuggestCheck(text){
+  if(!voiceSuggestion)return;
+  if(!window.DoneRiteVoiceSuggestion||!String(text||'').trim()){voiceSuggestion.style.display='none';return;}
+  const vs=window.DoneRiteVoiceSuggestion.suggestForScript(text);
+  voiceSuggestion.innerHTML='🎤 <b>Suggested narration voice for this project: '+vs.voice+'</b> — '+vs.toneLabel.toLowerCase()+' ('+vs.voiceDescription+'). Alternate: '+vs.alternateVoice+'.<br><span style="color:#9aa7b6;font-weight:500">'+vs.howToGenerate+'</span>';
+  voiceSuggestion.style.display='block';
+}
 function complianceCheck(text,selectedMode){const flags=[],t=String(text||'');if(/\b(cure|treat|prevent|heal|fix)\b/i.test(t))flags.push('medical treatment/cure wording');if(/\b(works|guaranteed|100%|instantly)\b/i.test(t))flags.push('absolute or efficacy wording');if(/limited[- ]time|don't miss out|last chance|only today/i.test(t))flags.push('scarcity/offer wording — verify it is currently true');if(/NMN|supplement|vitamin|NAD\b/i.test(t))flags.push('supplement/health content — use careful support language and avoid disease/treatment claims');compliance.className=flags.length?'warning':'ok';compliance.textContent=flags.length?(selectedMode==='exact'?'Original wording restored. Compliance flags: ':'Compliance flags: ')+flags.join(' • '):'Compliance check: no obvious high-risk wording detected by the local checker.';}
-function apply(nextMode){mode=nextMode;const raw=source.value;if(!raw.trim()){status.textContent='Paste a script first.';return;}let out=raw;if(mode==='light'){const previous=result.value;let tries=0;do{out=lightRewrite(raw);tries++;}while(out===previous&&tries<6);if(out===previous){const prefixes=["Quick version: ","Here's the quick version: ","A slightly different take: ","Fresh wording: "];const prefix=prefixes.find(item=>!previous.startsWith(item))||"Another version: ";out=prefix+clean(raw);}}if(mode==='heavy')out=heavyRewrite(raw);result.value=out;status.textContent=mode==='exact'?'ORIGINAL restored — word-for-word copy of the script you pasted.':mode==='light'?'RANDOMIZE A LITTLE — same structure and message with visible wording changes.':'RANDOMIZE A LOT — larger rewrite with a new hook/flow/CTA.';complianceCheck(out,mode);save();}
+function apply(nextMode){mode=nextMode;const raw=source.value;if(!raw.trim()){status.textContent='Paste a script first.';return;}let out=raw;if(mode==='light'){const previous=result.value;let tries=0;do{out=lightRewrite(raw);tries++;}while(out===previous&&tries<6);if(out===previous){const prefixes=["Quick version: ","Here's the quick version: ","A slightly different take: ","Fresh wording: "];const prefix=prefixes.find(item=>!previous.startsWith(item))||"Another version: ";out=prefix+clean(raw);}}if(mode==='heavy')out=heavyRewrite(raw);result.value=out;status.textContent=mode==='exact'?'ORIGINAL restored — word-for-word copy of the script you pasted.':mode==='light'?'RANDOMIZE A LITTLE — same structure and message with visible wording changes.':'RANDOMIZE A LOT — larger rewrite with a new hook/flow/CTA.';complianceCheck(out,mode);voiceSuggestCheck(out);save();}
 function targetUrl(includeScript){const url=targetObject(),text=mode==='exact'?(result.value||source.value):clean(result.value||source.value);if(includeScript){url.searchParams.set('script',text);url.searchParams.set('text',text);}else{url.searchParams.delete('script');url.searchParams.delete('text');}url.searchParams.set('session','1');url.searchParams.set('scriptmode',mode);url.searchParams.set('return',returnUrl());url.searchParams.set('back',location.href);return url.toString();}
 $('exactBtn').onclick=()=>apply('exact');$('lightBtn').onclick=()=>apply('light');$('heavyBtn').onclick=()=>apply('heavy');$('rerollBtn').onclick=()=>apply(mode==='exact'?'light':mode);$('copyBtn').onclick=async()=>{const text=result.value||source.value;try{await navigator.clipboard.writeText(text);status.textContent='Script copied.';}catch(e){result.focus();result.select();status.textContent='Script selected — tap Copy.';}};
 $('sendBtn').onclick=()=>{const text=result.value||source.value;if(!text.trim()){status.textContent='Paste or create a script first.';return;}save();location.href=targetUrl(true);};
 $('manualBtn').onclick=()=>{save();location.href=targetUrl(false);};
 $('backBtn').onclick=()=>{save();try{if(history.length>1){history.back();return;}}catch(e){}location.href=returnUrl();};
 $('oneClickBtn').onclick=()=>{save();location.href=returnUrl();};
-source.addEventListener('input',save);result.addEventListener('input',()=>{complianceCheck(result.value,mode);save();});window.addEventListener('pagehide',save);load();if(source.value&&!result.value)apply('exact');else if(result.value)complianceCheck(result.value,mode);
+source.addEventListener('input',save);result.addEventListener('input',()=>{complianceCheck(result.value,mode);voiceSuggestCheck(result.value);save();});window.addEventListener('pagehide',save);load();if(source.value&&!result.value)apply('exact');else if(result.value){complianceCheck(result.value,mode);voiceSuggestCheck(result.value);}
 })();
 </script>
 </body>

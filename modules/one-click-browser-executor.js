@@ -1,9 +1,10 @@
-/* DONE RITE Creator OS — One-Click Browser Executor v1.3
+/* DONE RITE Creator OS — One-Click Browser Executor v1.4
    iPhone-safe local preview, persistent manual trim, multi-source timed render,
    and attached voiceover mixing at original gain.
    Originals are never overwritten.
 
-   v1.3 keeps the v0.10 trim fixes and restores the v1.2 voiceover render path:
+   v1.4 keeps the v1.3 audio/trim fixes and reads the canonical saved project
+   clip list used by the picker, remove control, restore flow and renderer:
    1. Manual trims persist on this device and survive leaving the page.
    2. A manual trim overrides only its own source. Untouched clips still render.
    3. A cut can no longer render silently. If Safari blocks audio, the render stops
@@ -12,10 +13,11 @@
       the duration late.
    5. Attached voiceover is mixed independently at gain 1 with no normalization,
       compression, pitch change, or speed change.
+   6. Trim navigation follows appended, removed and restored project clips.
 */
 (function(){
 'use strict';
-const VERSION='1.3';
+const VERSION='1.4';
 const TRIM_KEY='done-rite-one-click-trims:v1';
 const TRIM_LIMIT=300;
 const manualTrims=new Map();
@@ -96,7 +98,7 @@ async function ensureFrameReady(video,targetTime){
 function makeCanvasForVideo(video,maxLongEdge){const vw=video.videoWidth||1080,vh=video.videoHeight||1920,maxEdge=Math.max(vw,vh),limit=Math.max(360,Number(maxLongEdge||1280)),scale=maxEdge>limit?limit/maxEdge:1;const canvas=document.createElement('canvas');canvas.width=Math.max(2,Math.round(vw*scale));canvas.height=Math.max(2,Math.round(vh*scale));return canvas;}
 function fitContain(ctx,video,w,h){const vw=video.videoWidth||w,vh=video.videoHeight||h,scale=Math.min(w/vw,h/vh),dw=vw*scale,dh=vh*scale,x=(w-dw)/2,y=(h-dh)/2;ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);if(video.readyState>=2)ctx.drawImage(video,x,y,dw,dh);}
 function wrapText(ctx,text,maxWidth){const words=String(text||'').trim().split(/\s+/),lines=[];let line='';for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=word;}else line=test;}if(line)lines.push(line);return lines.slice(0,3);}
-function drawOverlay(ctx,overlay,w,h){if(!overlay||!overlay.text)return;const fontSize=Math.max(26,Math.round(w*.058)),x=Math.round(w*.08),y=Math.round(h*.17),maxWidth=Math.round(w*.78);ctx.font='900 '+fontSize+'px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';ctx.textBaseline='top';ctx.lineJoin='round';const lines=wrapText(ctx,String(overlay.text).slice(0,100),maxWidth),gap=Math.round(fontSize*1.12);lines.forEach((line,i)=>{ctx.lineWidth=Math.max(3,Math.round(w*.005));ctx.strokeStyle='rgba(0,0,0,.92)';ctx.fillStyle='#fff';ctx.strokeText(line,x,y+i*gap);ctx.fillText(line,x,y+i*gap);});}
+function drawOverlay(ctx,overlay,w,h){if(!overlay||!overlay.text)return null;const fontSize=Math.max(26,Math.round(w*.054)),x=Math.round(w*.07),safeTop=Math.round(h*.14),safeBottom=Math.round(h*.75),maxWidth=Math.round(w*.65);ctx.font='900 '+fontSize+'px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';ctx.textBaseline='top';ctx.lineJoin='round';const lines=wrapText(ctx,String(overlay.text).slice(0,100),maxWidth),gap=Math.round(fontSize*1.12),height=lines.length*gap,y=Math.min(Math.max(safeTop,Math.round(h*.17)),safeBottom-height);lines.forEach((line,i)=>{ctx.lineWidth=Math.max(3,Math.round(w*.005));ctx.strokeStyle='rgba(0,0,0,.92)';ctx.fillStyle='#ff8a00';ctx.strokeText(line,x,y+i*gap);ctx.fillText(line,x,y+i*gap);});return {left:x,right:x+maxWidth,top:y,bottom:y+height,safe:y>=safeTop&&y+height<=safeBottom&&x+maxWidth<=w*.75};}
 function overlayForTime(recipe,t){const overlays=recipe&&Array.isArray(recipe.overlays)?recipe.overlays:[],d=Math.max(.1,Number(recipe&&recipe.outputDurationSeconds||0));if(!overlays.length)return null;if(overlays.length===1)return overlays[0];if(t<Math.min(2,d*.25))return overlays[0];if(overlays.length>2&&t>=Math.max(0,d-2.4))return overlays[overlays.length-1];if(overlays.length>1&&t>=d*.34&&t<=d*.72)return overlays[Math.min(1,overlays.length-1)];return null;}
 function drawUntil(video,ctx,canvas,cut,baseElapsed,recipe,onProgress){return new Promise((resolve,reject)=>{let stopped=false;function frame(){if(stopped)return;try{if(video.readyState>=2){fitContain(ctx,video,canvas.width,canvas.height);const elapsed=baseElapsed+Math.max(0,Math.min(cut.end,video.currentTime)-cut.start);drawOverlay(ctx,overlayForTime(recipe,elapsed),canvas.width,canvas.height);if(typeof onProgress==='function')onProgress(Math.min(1,elapsed/Math.max(.1,recipe.outputDurationSeconds||1)));}if(video.currentTime>=cut.end-.025||video.ended){stopped=true;resolve();return;}requestAnimationFrame(frame);}catch(err){stopped=true;reject(err);}}requestAnimationFrame(frame);});}
 async function previewFrame(file,recipe,options){options=options||{};if(!file)throw new Error('Missing source file.');const loaded=await loadPlayableVideo(file),video=loaded.video,url=loaded.url;try{const cuts=recipe&&Array.isArray(recipe.selectedCuts)?recipe.selectedCuts:[],first=cuts[0];const target=first?Math.min(first.end-.05,first.start+Math.min(.35,Math.max(.08,(first.end-first.start)*.15))):Math.min(.35,Math.max(.08,(video.duration||1)*.08));await ensureFrameReady(video,target);const canvas=makeCanvasForVideo(video,options.maxLongEdge||1280),ctx=canvas.getContext('2d');fitContain(ctx,video,canvas.width,canvas.height);drawOverlay(ctx,overlayForTime(recipe,0),canvas.width,canvas.height);return {canvas,dataUrl:canvas.toDataURL('image/jpeg',.9),sourceTime:target};}finally{video.pause();video.removeAttribute('src');video.load();release(url);}}
@@ -150,7 +152,7 @@ async function renderLocalBatch(files,recipe,options){
   const firstIndex=Math.max(0,Math.min(list.length-1,cuts[0].sourceIndex));
   const renderDuration=cuts.reduce((n,c)=>n+Math.max(0,c.end-c.start),0);
   const renderRecipe=Object.assign({},recipe,{outputDurationSeconds:renderDuration,selectedCuts:cuts});
-  const silentCuts=[],voiceSpec=attachedVoiceover();
+  const silentCuts=[],voiceSpec=options.includeAttachedVoiceover===false?null:attachedVoiceover();
   let audioCtx=null,canvasStream=null,combined=null,recorder=null,outputUrl='',video=null,currentUrl='',currentSourceIndex=-1,voice=null;
 
   try{
@@ -259,7 +261,7 @@ function installMultiClipReviewUI(){
   const counter=wrap.querySelector('#doneRiteClipCounter'),prev=wrap.querySelector('#doneRitePrevClip'),next=wrap.querySelector('#doneRiteNextClip');
   const track=wrap.querySelector('#doneRiteTrimTrack'),fill=wrap.querySelector('#doneRiteTrimFill'),startHandle=wrap.querySelector('#doneRiteStartHandle'),endHandle=wrap.querySelector('#doneRiteEndHandle');
   const startTime=wrap.querySelector('#doneRiteStartTime'),endTime=wrap.querySelector('#doneRiteEndTime'),durationText=wrap.querySelector('#doneRiteTrimDuration'),previewTrim=wrap.querySelector('#doneRitePreviewTrim'),resetTrim=wrap.querySelector('#doneRiteResetTrim');
-  function list(){return Array.from(input.files||[]);}
+  function list(){try{if(typeof window.DoneRiteOneClickProjectFiles==='function')return Array.from(window.DoneRiteOneClickProjectFiles()||[]);}catch(e){}return Array.from(input.files||[]);}
   function percent(t){return duration>0?Math.max(0,Math.min(100,t/duration*100)):0;}
   function updateTrimUI(){
     const ps=percent(start),pe=percent(end);startHandle.style.left=ps+'%';endHandle.style.left=pe+'%';fill.style.left=ps+'%';fill.style.width=Math.max(0,pe-ps)+'%';
@@ -308,7 +310,10 @@ function installMultiClipReviewUI(){
   }
   previewTrim.addEventListener('click',()=>{if(!duration)return;try{preview.pause();}catch(e){}preview.currentTime=Math.max(0,start);if(previewStopHandler)preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=()=>{if(preview.currentTime>=end-.03){preview.pause();preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=null;}};preview.addEventListener('timeupdate',previewStopHandler);preview.play().catch(()=>{});});
   resetTrim.addEventListener('click',()=>{if(!duration)return;const files=list();start=0;end=duration;if(files[index])forgetManualTrim(files[index]);updateTrimUI();try{preview.currentTime=0;}catch(e){}});
-  input.addEventListener('change',()=>setTimeout(()=>{loadToken++;detachMeta();const files=list();if(!files.length){wrap.style.display='none';duration=0;start=0;end=0;updateTrimUI();if(url){release(url);url='';}return;}wrap.style.display='block';show(0,false);},0));
+  function syncProjectFiles(previewIndex){loadToken++;detachMeta();const files=list();if(!files.length){wrap.style.display='none';duration=0;start=0;end=0;updateTrimUI();if(url){release(url);url='';}return;}wrap.style.display='block';show(Math.max(0,Math.min(files.length-1,Number(previewIndex)||0)),false);}
+  input.addEventListener('change',()=>setTimeout(()=>syncProjectFiles(0),0));
+  window.addEventListener('done-rite-one-click-project-files',event=>setTimeout(()=>syncProjectFiles(event&&event.detail&&event.detail.previewIndex),0));
+  setTimeout(()=>{if(list().length)syncProjectFiles(0);},0);
   prev.addEventListener('click',()=>show(index-1,false));next.addEventListener('click',()=>show(index+1,false));
   window.addEventListener('pagehide',()=>{loadToken++;detachMeta();if(url)release(url);});
 }
