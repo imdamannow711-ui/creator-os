@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v26-speech-safe-teleprompter";
+const CACHE_NAME = "done-rite-v27-plex-speech-safe";
 
 const FILES = [
   "./",
@@ -33,7 +33,10 @@ const FILES = [
   "./modules/one-click-gap-remover.js",
   "./modules/one-click-session-state.js",
   "./modules/one-click-creative-controls.js",
-  "./modules/one-click-creative-render.js"
+  "./modules/one-click-creative-render.js",
+  "./modules/one-click-builder-ui.js",
+  "./modules/voice-suggestion.js",
+  "./styles/one-click-builder.css"
 ];
 
 self.addEventListener("install", (event) => {
