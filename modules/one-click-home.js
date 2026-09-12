@@ -1,7 +1,7 @@
-/* DONE RITE Creator OS — Graphic One-Click launcher v0.1 */
+/* DONE RITE Creator OS — Graphic One-Click launcher v0.2 */
 (function(){
 'use strict';
-const VERSION='0.1';
+const VERSION='0.2';
 const STAGES=new Set(['create','upload','text','voiceover','trim','sfx','render','export']);
 
 function safeSameOrigin(path){
@@ -20,6 +20,7 @@ function editorUrl(stage){
   const url=safeSameOrigin('one-click-ad-dev.html');
   url.searchParams.set('stage',stage);
   url.searchParams.set('return',launcherReturn());
+  url.searchParams.set('build','20260912-long-clip-1');
   return url.href;
 }
 
