@@ -13,6 +13,8 @@ new vm.Script(js,{filename:'one-click-home.js'});
 assert(html.includes('assets/one-click/one-click-home.webp'),'Approved One-Click graphic is not loaded');
 assert(html.includes('styles/one-click-home.css'),'Launcher stylesheet is not loaded');
 assert(html.includes('modules/one-click-home.js'),'Launcher route controller is not loaded');
+assert(html.includes('modules/one-click-home.js?v=20260912-long-clip-1'),'Launcher route controller cache key was not refreshed for the long-clip fix');
+assert(js.includes("url.searchParams.set('build','20260912-long-clip-1')"),'Editor route is missing the long-clip cache key');
 for(const stage of ['create','upload','text','voiceover','trim','sfx','render','export']){
   const matches=html.match(new RegExp('data-stage="'+stage+'"','g'))||[];
   assert(matches.length===2,'Expected graphic and mobile control for '+stage);
