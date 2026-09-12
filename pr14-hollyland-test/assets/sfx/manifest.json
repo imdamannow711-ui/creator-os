@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "builtIn": [
+    {"id":"whoosh","label":"Whoosh","source":"generated"},
+    {"id":"click","label":"Click","source":"generated"},
+    {"id":"pop","label":"Pop","source":"generated"},
+    {"id":"snap","label":"Snap","source":"generated"}
+  ],
+  "custom": []
+}
