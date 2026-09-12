@@ -17,6 +17,7 @@ new vm.Script(builder,{filename:'one-click-builder-ui.js'});
 
 assert(html.includes('styles/one-click-builder.css'),'One-Click visual stylesheet is not loaded');
 assert(html.includes('modules/one-click-builder-ui.js'),'One-Click workflow controller is not loaded');
+assert(html.includes('modules/one-click-builder-ui.js?v=20260912-freeze-fix-1'),'One-Click workflow controller cache key was not refreshed after the freeze fix');
 assert(html.includes('window.DoneRiteOneClickProjectFiles=files'),'Canonical project-file provider is missing');
 assert(html.includes("done-rite-one-click-project-files"),'Project-file synchronization event is missing');
 assert(executor.includes("typeof window.DoneRiteOneClickProjectFiles==='function'"),'Trim UI does not read canonical project clips');
@@ -25,8 +26,10 @@ for(const stage of ['create','upload','text','voiceover','trim','sfx','render','
 assert(builder.includes("api.studioUrl"),'Text stage is not connected to Script Studio');
 assert(builder.includes("loadGapRemover"),'Voiceover stage is not connected');
 assert(builder.includes("loadCreativeControls"),'SFX stage is not connected');
+assert(builder.includes('function setText(el,value){if(el&&el.textContent!==value)'),'Status text writes must stay idempotent to prevent a MutationObserver loop');
+assert(builder.includes("button.classList.contains('is-ready')!==!!on"),'Ready-state class writes must stay idempotent to prevent a MutationObserver loop');
 assert(css.includes('.dr-workflow-rail'),'Workflow rail styling is missing');
 assert(sw.includes('styles/one-click-builder.css')&&sw.includes('modules/one-click-builder-ui.js'),'New One-Click assets are not cached for offline use');
-assert(sw.includes('done-rite-v27-plex-speech-safe'),'Service-worker cache was not refreshed');
+assert(sw.includes('done-rite-v28-one-click-freeze-fix'),'Service-worker cache was not refreshed after the One-Click freeze fix');
 
 console.log('ONE_CLICK_BUILDER_SMOKE_PASS');
