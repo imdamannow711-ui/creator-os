@@ -1,4 +1,4 @@
-/* DONE RITE Creator OS — One-Click Camera Handoff v0.8.2
+/* DONE RITE Creator OS — One-Click Camera Handoff v0.8.3
    Adds a real iPhone camera capture path to the Hook + CTA recording guide.
    Loads gap removal, autosave/resume, creative controls and creative render,
    routes ONE CLICK SCRIPT STUDIO into the One-Click Teleprompter wrapper,
@@ -6,10 +6,10 @@
 */
 (function(){
 'use strict';
-const VERSION='0.8.2';
+const VERSION='0.8.3';
 let lastPlan=null,capturedUrl='';
 function loadScriptOnce(selector,src,datasetKey,onload){const existing=document.querySelector(selector);if(existing){if(onload&&existing.dataset.loaded==='1')onload();return;}const s=document.createElement('script');s.src=src;s.async=false;s.dataset[datasetKey]='1';s.onload=()=>{s.dataset.loaded='1';if(onload)onload();};document.head.appendChild(s);}
-function loadGapRemover(){if(window.DoneRiteOneClickGapRemover)return;loadScriptOnce('script[data-done-rite-gap-remover]','modules/one-click-gap-remover.js?v=20260904-gap4','doneRiteGapRemover',()=>{try{window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.install();}catch(e){}});}
+function loadGapRemover(){if(window.DoneRiteOneClickGapRemover)return;loadScriptOnce('script[data-done-rite-gap-remover]','modules/one-click-gap-remover.js?v=20260912-selected-hook-1','doneRiteGapRemover',()=>{try{window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.install();}catch(e){}});}
 function loadSessionState(){if(window.DoneRiteOneClickSessionState)return;loadScriptOnce('script[data-done-rite-session-state]','modules/one-click-session-state.js?v=20260904-session1','doneRiteSessionState');}
 function loadCreativeRender(){if(window.DoneRiteOneClickCreativeRender){try{window.DoneRiteOneClickCreativeRender.boot();}catch(e){}return;}loadScriptOnce('script[data-done-rite-creative-render]','modules/one-click-creative-render.js?v=20260904-creative3','doneRiteCreativeRender',()=>{try{window.DoneRiteOneClickCreativeRender&&window.DoneRiteOneClickCreativeRender.boot();}catch(e){}});}
 function loadCreativeControls(){if(window.DoneRiteOneClickCreativeControls){try{window.DoneRiteOneClickCreativeControls.install();}catch(e){}loadCreativeRender();return;}loadScriptOnce('script[data-done-rite-creative-controls]','modules/one-click-creative-controls.js?v=20260904-creative1','doneRiteCreativeControls',()=>{try{window.DoneRiteOneClickCreativeControls&&window.DoneRiteOneClickCreativeControls.install();}catch(e){}loadCreativeRender();});}
