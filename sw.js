@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v29-long-clip-voiceover";
+const CACHE_NAME = "done-rite-v30-hollyland-ready-project";
 
 const FILES = [
   "./",
@@ -35,8 +35,10 @@ const FILES = [
   "./modules/one-click-creative-controls.js",
   "./modules/one-click-creative-render.js",
   "./modules/one-click-builder-ui.js",
+  "./modules/one-click-ready-project.js",
   "./modules/voice-suggestion.js",
-  "./styles/one-click-builder.css"
+  "./styles/one-click-builder.css",
+  "./assets/ready-projects/20260912_DONE_RITE_HOLLYLAND_LARK_A1_COMBO_KIT_COVER_V2.webp"
 ];
 
 self.addEventListener("install", (event) => {
