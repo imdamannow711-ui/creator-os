@@ -1,9 +1,9 @@
-/* DONE RITE Creator OS — One-Click Builder UI v0.1
+/* DONE RITE Creator OS — One-Click Builder UI v0.2
    Functional navigation shell inspired by the approved future-design concept.
 */
 (function(){
 'use strict';
-const VERSION='0.1';
+const VERSION='0.2';
 const STAGES=[
   {id:'create',icon:'✦',label:'CREATE'},
   {id:'upload',icon:'☁',label:'UPLOAD'},
@@ -21,6 +21,7 @@ function announce(message){let toast=id('drStageToast');if(!toast){toast=documen
 function scrollToElement(el){if(!el)return false;el.scrollIntoView({behavior:'smooth',block:'start'});const focusable=el.querySelector('input:not([disabled]),select:not([disabled]),button:not([disabled]),a[href]');if(focusable)setTimeout(()=>focusable.focus({preventScroll:true}),380);return true;}
 function loadAndFind(loaderName,targetId,message){const api=window.DoneRiteOneClickCameraHandoff;if(api&&typeof api[loaderName]==='function')api[loaderName]();let tries=0;const timer=setInterval(()=>{const target=id(targetId);if(target){clearInterval(timer);scrollToElement(target);update();return;}if(++tries>20){clearInterval(timer);announce(message);}},75);}
 function studioUrl(){const api=window.DoneRiteOneClickCameraHandoff;return api&&typeof api.studioUrl==='function'?api.studioUrl():'teleprompter-script-studio.html';}
+function requestedStage(){try{const value=new URLSearchParams(location.search).get('stage')||'';return STAGES.some(stage=>stage.id===value)?value:'';}catch(e){return'';}}
 function runStage(stage){
   document.querySelectorAll('.dr-stage-button').forEach(button=>button.removeAttribute('aria-current'));
   const active=document.querySelector('[data-dr-stage="'+stage+'"]');if(active)active.setAttribute('aria-current','step');
@@ -70,6 +71,7 @@ function install(){
   const observer=new MutationObserver(update);observer.observe(wrap,{subtree:true,childList:true,attributes:true,attributeFilter:['style','class']});
   document.addEventListener('change',update,true);window.addEventListener('done-rite-one-click-project-files',update);window.addEventListener('done-rite-one-click-plan',()=>setTimeout(update,0));
   update();
+  const requested=requestedStage();if(requested)setTimeout(()=>runStage(requested),180);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(install,40),{once:true});else setTimeout(install,40);
 window.DoneRiteOneClickBuilderUI={version:VERSION,install,runStage,update};
