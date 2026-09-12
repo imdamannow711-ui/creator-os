@@ -23,4 +23,28 @@ assert(css.includes('min-height: 82px'),'Mobile touch targets are not protected'
 assert(css.includes('@media (min-width: 760px)'),'Responsive graphic hotspot layout is missing');
 assert(image.slice(0,4).toString('ascii')==='RIFF'&&image.slice(8,12).toString('ascii')==='WEBP','Graphic is not WebP');
 
+const stages=['create','upload','text','voiceover','trim','sfx','render','export'];
+const links=stages.map(stage=>({
+  values:{'data-stage':stage},
+  getAttribute(name){return this.values[name]||null;},
+  setAttribute(name,value){this.values[name]=value;},
+  addEventListener(){}
+}));
+const status={className:'',textContent:''};
+const context={
+  URL,URLSearchParams,
+  location:{href:'https://example.test/creator-os/one-click-home-dev.html',origin:'https://example.test'},
+  document:{readyState:'complete',querySelectorAll:()=>links,getElementById:id=>id==='launcherStatus'?status:null},
+  window:{}
+};
+vm.runInNewContext(js,context,{filename:'one-click-home.js'});
+links.forEach((link,index)=>{
+  const route=new URL(link.values.href);
+  assert(route.origin==='https://example.test','Stage route left the Creator OS origin');
+  assert(route.pathname==='/creator-os/one-click-ad-dev.html','Stage route missed the One-Click editor');
+  assert(route.searchParams.get('stage')===stages[index],'Wrong stage route for '+stages[index]);
+  assert(route.searchParams.get('return')==='one-click-home-dev.html','Launcher return route is missing');
+});
+assert(status.className.includes('ready'),'Launcher did not reach ready state');
+
 console.log('ONE_CLICK_HOME_SMOKE_PASS');
