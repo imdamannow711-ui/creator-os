@@ -90,6 +90,7 @@
 <script src="modules/one-click-browser-executor.js?v=20260912-long-clip-1"></script>
 <script src="modules/one-click-camera-handoff.js?v=20260912-selected-hook-1"></script>
 <script src="modules/voice-suggestion.js?v=20260908-voice-suggest-1"></script>
+<script src="modules/one-click-ready-project.js?v=20260912-hollyland-1"></script>
 <script>
 (function(){
 'use strict';
@@ -102,6 +103,13 @@ let systemPassed=false,previewUrl='',renderedUrl='',currentRecipe=null,currentSe
 function modulesReady(){return !!(window.DoneRiteOneClickAdEditor&&window.DoneRiteOneClickMediaStage&&window.DoneRiteOneClickSceneScorer&&window.DoneRiteOneClickRenderStage&&window.DoneRiteOneClickBrowserExecutor);}
 function files(){return projectClips.map(item=>item.file);}
 window.DoneRiteOneClickProjectFiles=files;
+window.DoneRiteOneClickAppendFile=function(file){
+  if(!file)return {ok:false,reason:'No clip was supplied.'};
+  if(projectClips.length>=20)return {ok:false,reason:'This project already has 20 clips.'};
+  const signature=clipSignature(file);if(projectClips.some(item=>item.signature===signature))return {ok:true,count:projectClips.length,duplicate:true};
+  projectClips.push({id:'clip-'+Date.now()+'-'+(++clipSequence),signature,file});invalidateBuild();renderProjectClips(projectClips.length-1,'Ready-project clip added. '+projectClips.length+' total in this project.');persistLastSession();
+  return {ok:true,count:projectClips.length};
+};
 function notifyProjectFiles(previewIndex){try{window.dispatchEvent(new CustomEvent('done-rite-one-click-project-files',{detail:{files:files(),previewIndex:Number(previewIndex)||0}}));}catch(e){}}
 function clipSignature(file){return [file.name,file.size,file.lastModified,file.type].join('::');}
 function releasePreview(){if(previewUrl&&window.DoneRiteOneClickBrowserExecutor)window.DoneRiteOneClickBrowserExecutor.release(previewUrl);previewUrl='';}

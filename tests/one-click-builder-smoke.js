@@ -9,6 +9,9 @@ const executor=fs.readFileSync(path.join(root,'modules','one-click-browser-execu
 const mediaStage=fs.readFileSync(path.join(root,'modules','one-click-media-stage.js'),'utf8');
 const gapRemover=fs.readFileSync(path.join(root,'modules','one-click-gap-remover.js'),'utf8');
 const builder=fs.readFileSync(path.join(root,'modules','one-click-builder-ui.js'),'utf8');
+const readyProject=fs.readFileSync(path.join(root,'modules','one-click-ready-project.js'),'utf8');
+const readyVideoParts=Array.from({length:10},(_,index)=>fs.readFileSync(path.join(root,'assets','ready-projects','hollyland-lark-a1-combo-video.part'+String(index).padStart(2,'0'))));
+const readyCover=fs.readFileSync(path.join(root,'assets','ready-projects','20260912_DONE_RITE_HOLLYLAND_LARK_A1_COMBO_KIT_COVER_V2.webp'));
 const css=fs.readFileSync(path.join(root,'styles','one-click-builder.css'),'utf8');
 const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
 
@@ -18,10 +21,13 @@ new vm.Script(executor,{filename:'one-click-browser-executor.js'});
 new vm.Script(mediaStage,{filename:'one-click-media-stage.js'});
 new vm.Script(gapRemover,{filename:'one-click-gap-remover.js'});
 new vm.Script(builder,{filename:'one-click-builder-ui.js'});
+new vm.Script(readyProject,{filename:'one-click-ready-project.js'});
 
 assert(html.includes('styles/one-click-builder.css'),'One-Click visual stylesheet is not loaded');
 assert(html.includes('modules/one-click-builder-ui.js'),'One-Click workflow controller is not loaded');
 assert(html.includes('modules/one-click-builder-ui.js?v=20260912-freeze-fix-1'),'One-Click workflow controller cache key was not refreshed after the freeze fix');
+assert(html.includes('modules/one-click-ready-project.js?v=20260912-hollyland-1'),'Hollyland ready-project loader is not connected');
+assert(html.includes('window.DoneRiteOneClickAppendFile'),'Ready-project clips cannot enter the canonical One-Click project list');
 assert(html.includes('window.DoneRiteOneClickProjectFiles=files'),'Canonical project-file provider is missing');
 assert(html.includes("done-rite-one-click-project-files"),'Project-file synchronization event is missing');
 assert(executor.includes("typeof window.DoneRiteOneClickProjectFiles==='function'"),'Trim UI does not read canonical project clips');
@@ -43,6 +49,12 @@ assert(builder.includes('function setText(el,value){if(el&&el.textContent!==valu
 assert(builder.includes("button.classList.contains('is-ready')!==!!on"),'Ready-state class writes must stay idempotent to prevent a MutationObserver loop');
 assert(css.includes('.dr-workflow-rail'),'Workflow rail styling is missing');
 assert(sw.includes('styles/one-click-builder.css')&&sw.includes('modules/one-click-builder-ui.js'),'New One-Click assets are not cached for offline use');
-assert(sw.includes('done-rite-v29-long-clip-voiceover'),'Service-worker cache was not refreshed after the long-clip and voiceover fixes');
+assert(sw.includes('done-rite-v30-hollyland-ready-project'),'Service-worker cache was not refreshed for the ready project');
+assert(sw.includes('modules/one-click-ready-project.js'),'Ready-project loader is not available offline');
+assert(readyProject.includes("'hollyland-lark-a1-combo'"),'Hollyland project preset is missing');
+assert(readyProject.includes('#ad #HollylandLARKA1 #WirelessMicrophone #CreatorGear #ContentCreator'),'Hollyland hashtag set is missing or exceeds the approved five-tag package');
+assert(readyProject.includes("url.searchParams.set('script',project.voiceover)"),'Hollyland script is not connected to the Teleprompter');
+assert(readyVideoParts.reduce((sum,part)=>sum+part.length,0)>6000000&&readyVideoParts[0].subarray(4,8).toString('ascii')==='ftyp','Hollyland ready-project video parts are missing or invalid');
+assert(readyCover.length>50000&&readyCover.subarray(0,4).toString('ascii')==='RIFF'&&readyCover.subarray(8,12).toString('ascii')==='WEBP','Hollyland ready-project cover is missing or invalid');
 
 console.log('ONE_CLICK_BUILDER_SMOKE_PASS');
