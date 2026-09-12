@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#020611">
+<title>DONE RITE Creator OS — One-Click Launcher</title>
+<link rel="stylesheet" href="styles/one-click-home.css?v=20260912-1">
+</head>
+<body>
+<main class="launcher-shell">
+  <header class="launcher-topbar">
+    <a class="back-link" href="index.html" aria-label="Return to Creator OS">← CREATOR OS</a>
+    <span class="dev-label">ONE-CLICK DEVELOPMENT</span>
+  </header>
+
+  <section class="graphic-card" aria-labelledby="launcherTitle">
+    <h1 id="launcherTitle" class="sr-only">DONE RITE Creator OS One-Click Ad Builder</h1>
+    <div class="artwork-frame">
+      <img class="launcher-art" src="assets/one-click/one-click-home.webp" alt="DONE RITE Creator OS One-Click Ad Builder control-room graphic">
+      <nav class="desktop-hotspots" aria-label="One-Click workflow controls on graphic">
+        <a data-stage="create" style="--left:12.8%" aria-label="Create an ad project"></a>
+        <a data-stage="upload" style="--left:22.1%" aria-label="Upload raw video clips"></a>
+        <a data-stage="text" style="--left:31.6%" aria-label="Open script and teleprompter text tools"></a>
+        <a data-stage="voiceover" style="--left:41.0%" aria-label="Open voiceover tools"></a>
+        <a data-stage="trim" style="--left:50.5%" aria-label="Open automatic and manual trim tools"></a>
+        <a data-stage="sfx" style="--left:59.9%" aria-label="Open sound effects controls"></a>
+        <a data-stage="render" style="--left:69.4%" aria-label="Open render and preview"></a>
+        <a data-stage="export" style="--left:78.8%" aria-label="Open finished-video export"></a>
+      </nav>
+    </div>
+  </section>
+
+  <section class="mobile-controls" aria-labelledby="mobileControlsTitle">
+    <h2 id="mobileControlsTitle">Choose what you want to do</h2>
+    <p>Each button opens the matching part of your saved One-Click project.</p>
+    <nav class="control-grid" aria-label="One-Click workflow">
+      <a data-stage="create"><span aria-hidden="true">✦</span><b>CREATE</b><small>Start the project</small></a>
+      <a data-stage="upload"><span aria-hidden="true">☁</span><b>UPLOAD</b><small>Add raw clips</small></a>
+      <a data-stage="text"><span aria-hidden="true">T</span><b>TEXT</b><small>Script tools</small></a>
+      <a data-stage="voiceover"><span aria-hidden="true">●</span><b>VOICEOVER</b><small>Voice tools</small></a>
+      <a data-stage="trim"><span aria-hidden="true">✂</span><b>AUTO TRIM</b><small>Review cuts</small></a>
+      <a data-stage="sfx"><span aria-hidden="true">▥</span><b>SFX</b><small>Sound effects</small></a>
+      <a data-stage="render"><span aria-hidden="true">⚙</span><b>RENDER</b><small>Build preview</small></a>
+      <a data-stage="export"><span aria-hidden="true">⇧</span><b>EXPORT</b><small>Save or share</small></a>
+    </nav>
+  </section>
+
+  <div id="launcherStatus" class="launcher-status" role="status" aria-live="polite">Preparing your One-Click routes…</div>
+  <noscript><p class="launcher-status error">JavaScript is required to open the One-Click workflow.</p></noscript>
+</main>
+<script src="modules/one-click-home.js?v=20260912-long-clip-1"></script>
+</body>
+</html>

@@ -1,10 +1,10 @@
-/* DONE RITE Creator OS — One-Click Media Stage v0.4
+/* DONE RITE Creator OS — One-Click Media Stage v0.5
    Browser-local media inspection helpers. Originals are never overwritten.
    Preview navigation is owned exclusively by one-click-browser-executor.js.
 */
 (function(){
 'use strict';
-const VERSION='0.4';
+const VERSION='0.5';
 function inspectFile(file){
   if(!file) throw new Error('No media file selected.');
   const type=String(file.type||'');
@@ -13,15 +13,22 @@ function inspectFile(file){
 }
 function loadMetadata(file){
   return new Promise((resolve,reject)=>{
-    let url='';
+    let url='',timer=null,poll=null,settled=false,video=null;
+    function cleanup(){if(timer)clearTimeout(timer);if(poll)clearInterval(poll);if(video){video.onloadedmetadata=null;video.ondurationchange=null;video.onloadeddata=null;video.onerror=null;}try{if(url)URL.revokeObjectURL(url);}catch(e){}}
+    function finish(){
+      if(settled||!video)return;
+      const duration=Number(video.duration);if(!Number.isFinite(duration)||duration<=0)return;
+      settled=true;const data={duration,width:video.videoWidth||0,height:video.videoHeight||0,aspectRatio:video.videoWidth&&video.videoHeight?video.videoWidth/video.videoHeight:null,orientation:video.videoHeight>=video.videoWidth?'portrait':'landscape'};cleanup();resolve(data);
+    }
+    function fail(message){if(settled)return;settled=true;cleanup();reject(new Error(message));}
     try{
       url=URL.createObjectURL(file);
-      const video=document.createElement('video');
+      video=document.createElement('video');
       video.preload='metadata';video.muted=true;video.playsInline=true;
-      video.onloadedmetadata=()=>{const data={duration:video.duration||0,width:video.videoWidth||0,height:video.videoHeight||0,aspectRatio:video.videoWidth&&video.videoHeight?video.videoWidth/video.videoHeight:null,orientation:video.videoHeight>=video.videoWidth?'portrait':'landscape'};URL.revokeObjectURL(url);resolve(data);};
-      video.onerror=()=>{try{URL.revokeObjectURL(url);}catch(e){}reject(new Error('Could not read video metadata.'));};
-      video.src=url;
-    }catch(err){try{if(url)URL.revokeObjectURL(url);}catch(e){}reject(err);}
+      video.onloadedmetadata=finish;video.ondurationchange=finish;video.onloadeddata=finish;
+      video.onerror=()=>fail('Could not read video metadata.');
+      video.src=url;video.load();poll=setInterval(finish,250);timer=setTimeout(()=>fail('This clip took too long to open. Keep Creator OS visible and try selecting it again.'),45000);
+    }catch(err){fail(err&&err.message||'Could not read video metadata.');}
   });
 }
 function buildMediaAnalysis(metadata,targetSeconds){
