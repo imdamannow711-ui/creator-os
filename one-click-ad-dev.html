@@ -24,7 +24,8 @@
   <div id="uploadCard" class="card">
     <h2>2. Choose your raw clips</h2>
     <label class="label">Same ad shoot — add clips now or come back and add more later</label>
-    <input id="video" class="input" type="file" accept="video/*" multiple disabled aria-label="Add raw video clips to this project">
+    <button id="addClips" class="button secondary" type="button" disabled>ADD RAW CLIPS</button>
+    <input id="video" type="file" accept="video/*" multiple disabled hidden aria-label="Add raw video clips to this project">
     <video id="preview" class="preview" controls playsinline></video>
     <div id="media" class="help">No videos selected.</div>
     <div id="sessionSave" class="help" style="margin-top:6px">Last Session: checking saved project…</div>
@@ -60,6 +61,13 @@
     <div class="copybox"><b>Hashtags</b><div id="hashtags"></div></div>
     <div class="copybox"><b>Compliance review</b><div id="compliance"></div></div>
     <div id="voiceSuggestionBox" class="copybox" style="display:none"><b>🎤 Suggested narration voice</b><div id="voiceSuggestion"></div></div>
+    <div id="selectedVoiceoverBox" class="copybox" style="display:none">
+      <b>🎙 Voiceover for the selected hook</b>
+      <div id="selectedHookSource" class="help" style="margin-top:7px"></div>
+      <div id="selectedVoiceoverScript" style="margin-top:9px;line-height:1.5"></div>
+      <a id="selectedTeleprompter" class="button good" style="display:block;text-align:center;text-decoration:none;margin-top:10px">RECORD THIS IN TELEPROMPTER</a>
+      <button id="selectedVoiceTools" class="button secondary" type="button">OPEN VOICEOVER TOOLS</button>
+    </div>
     <p id="nextStep" class="help"></p>
     <button id="renderBtn" class="button good" style="display:none">RENDER FINISHED VIDEO</button>
     <div id="progress" class="progress"><span></span></div>
@@ -76,18 +84,20 @@
   </div>
 </div>
 <script src="modules/one-click-ad-editor.js?v=20260905-0631"></script>
-<script src="modules/one-click-media-stage.js?v=20260904-0527"></script>
+<script src="modules/one-click-media-stage.js?v=20260912-long-clip-1"></script>
 <script src="modules/one-click-scene-scorer.js?v=20260911-plex-safe-1"></script>
 <script src="modules/one-click-render-stage.js?v=20260904-0527"></script>
-<script src="modules/one-click-browser-executor.js?v=20260904-0527"></script>
-<script src="modules/one-click-camera-handoff.js?v=20260912-graphic-home-1"></script>
+<script src="modules/one-click-browser-executor.js?v=20260912-long-clip-1"></script>
+<script src="modules/one-click-camera-handoff.js?v=20260912-selected-hook-1"></script>
 <script src="modules/voice-suggestion.js?v=20260908-voice-suggest-1"></script>
 <script>
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
-const videoInput=$('video'),preview=$('preview'),media=$('media'),sessionSave=$('sessionSave'),fileList=$('fileList'),frame=$('frame'),go=$('go'),renderBtn=$('renderBtn');
+const videoInput=$('video'),addClipsButton=$('addClips'),preview=$('preview'),media=$('media'),sessionSave=$('sessionSave'),fileList=$('fileList'),frame=$('frame'),go=$('go'),renderBtn=$('renderBtn');
 const PROJECT_DB='done-rite-media',PROJECT_STORE='one-click-project-sessions',LAST_SESSION_ID='last-session';
+const MAX_SAVED_CLIP_BYTES=160*1024*1024;
+const SELECTED_VOICEOVER_KEY='done-rite-one-click-selected-voiceover:v1';
 let systemPassed=false,previewUrl='',renderedUrl='',currentRecipe=null,currentSession=null,currentPlan=null,currentSelection=null,currentRender=null,projectClips=[],clipSequence=0,saveTimer=null;
 function modulesReady(){return !!(window.DoneRiteOneClickAdEditor&&window.DoneRiteOneClickMediaStage&&window.DoneRiteOneClickSceneScorer&&window.DoneRiteOneClickRenderStage&&window.DoneRiteOneClickBrowserExecutor);}
 function files(){return projectClips.map(item=>item.file);}
@@ -97,6 +107,24 @@ function clipSignature(file){return [file.name,file.size,file.lastModified,file.
 function releasePreview(){if(previewUrl&&window.DoneRiteOneClickBrowserExecutor)window.DoneRiteOneClickBrowserExecutor.release(previewUrl);previewUrl='';}
 function releaseRendered(){if(renderedUrl&&window.DoneRiteOneClickBrowserExecutor)window.DoneRiteOneClickBrowserExecutor.release(renderedUrl);renderedUrl='';}
 function humanSize(bytes){return !bytes?'0 MB':(bytes/1024/1024).toFixed(1)+' MB';}
+function formatClipTime(sec){sec=Math.max(0,Number(sec||0));const min=Math.floor(sec/60),seconds=(sec-min*60).toFixed(1).padStart(4,'0');return min+':'+seconds;}
+function selectedTeleprompterUrl(plan){
+  const raw=new URL(window.DoneRiteOneClickAdEditor.teleprompterUrl(plan),location.href);raw.pathname=raw.pathname.replace(/teleprompter\.html$/,'teleprompter-one-click.html');raw.searchParams.set('return',location.href);raw.searchParams.set('back',location.href);return raw.toString();
+}
+function publishSelectedVoiceover(plan,selection,list){
+  const cuts=selection&&Array.isArray(selection.chosen)?selection.chosen:[],hookCut=cuts.reduce((best,cut)=>!best||Number(cut.score||0)>Number(best.score||0)?cut:best,null),guide=plan&&plan.recordingGuide||{},script=String(guide.voiceover||'').trim();
+  if(!hookCut||!script){$('selectedVoiceoverBox').style.display='none';return;}
+  const sourceIndex=Number.isInteger(hookCut.sourceIndex)?hookCut.sourceIndex:0,source=list[sourceIndex],payload={script,product:plan.product||'',hook:plan.hookExperiment&&plan.hookExperiment.text||'',sourceName:source&&source.name||hookCut.sourceName||'selected clip',start:Number(hookCut.start||0),end:Number(hookCut.end||0),updatedAt:new Date().toISOString()};
+  try{localStorage.setItem(SELECTED_VOICEOVER_KEY,JSON.stringify(payload));}catch(e){}
+  try{window.dispatchEvent(new CustomEvent('done-rite-selected-voiceover',{detail:payload}));}catch(e){}
+  if(window.DoneRiteOneClickGapRemover&&typeof window.DoneRiteOneClickGapRemover.setSelectedScript==='function')window.DoneRiteOneClickGapRemover.setSelectedScript(payload);
+  $('selectedHookSource').textContent='Selected hook footage: '+payload.sourceName+' • '+formatClipTime(payload.start)+' to '+formatClipTime(payload.end)+'. Record the words below in your normal voice.';
+  $('selectedVoiceoverScript').textContent=script;$('selectedTeleprompter').href=selectedTeleprompterUrl(plan);$('selectedVoiceoverBox').style.display='block';
+}
+function openSelectedVoiceTools(){
+  const api=window.DoneRiteOneClickCameraHandoff;if(api&&typeof api.loadGapRemover==='function')api.loadGapRemover();let tries=0;const timer=setInterval(()=>{const card=$('doneRiteGapRemover');if(card){clearInterval(timer);try{const payload=JSON.parse(localStorage.getItem(SELECTED_VOICEOVER_KEY)||'null');window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.setSelectedScript(payload);}catch(e){}card.scrollIntoView({behavior:'smooth',block:'start'});return;}if(++tries>30)clearInterval(timer);},100);
+}
+$('selectedVoiceTools').addEventListener('click',openSelectedVoiceTools);
 function openProjectDb(){
   return new Promise((resolve,reject)=>{
     const first=indexedDB.open(PROJECT_DB);
@@ -116,13 +144,15 @@ function openProjectDb(){
 async function writeLastSession(){
   const db=await openProjectDb();
   try{
+    const totalBytes=projectClips.reduce((sum,item)=>sum+Number(item.file&&item.file.size||0),0),saveClipBlobs=totalBytes<=MAX_SAVED_CLIP_BYTES;
     const snapshot={
       id:LAST_SESSION_ID,version:1,updatedAt:new Date().toISOString(),
       setup:{product:$('product').value,feature:$('feature').value,mode:$('mode').value,duration:$('duration').value},
-      clips:projectClips.map(item=>({id:item.id,signature:item.signature,name:item.file.name,type:item.file.type,size:item.file.size,lastModified:item.file.lastModified,blob:item.file}))
+      clips:projectClips.map(item=>({id:item.id,signature:item.signature,name:item.file.name,type:item.file.type,size:item.file.size,lastModified:item.file.lastModified,blob:saveClipBlobs?item.file:null})),
+      clipsNeedReselection:!saveClipBlobs&&projectClips.length>0
     };
     await new Promise((resolve,reject)=>{const tx=db.transaction(PROJECT_STORE,'readwrite');tx.objectStore(PROJECT_STORE).put(snapshot);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Save failed.'));tx.onabort=()=>reject(tx.error||new Error('Save was interrupted.'));});
-    sessionSave.className='help ok';sessionSave.textContent='Last Session Saved • '+projectClips.length+' clip'+(projectClips.length===1?'':'s')+' and setup';
+    sessionSave.className=saveClipBlobs?'help ok':'help';sessionSave.textContent=saveClipBlobs?'Last Session Saved • '+projectClips.length+' clip'+(projectClips.length===1?'':'s')+' and setup':'Large clips are ready to edit now. Setup and trim choices are saved; reselect the raw clips after closing or refreshing.';
   }finally{db.close();}
 }
 function persistLastSession(){
@@ -143,12 +173,13 @@ function restoredFile(row){
 async function restoreLastSession(){
   try{
     const saved=await readLastSession();
-    if(!saved||!Array.isArray(saved.clips)||!saved.clips.length){sessionSave.className='help';sessionSave.textContent='Last Session: nothing saved yet.';return;}
+    if(!saved){sessionSave.className='help';sessionSave.textContent='Last Session: nothing saved yet.';return;}
+    const setup=saved.setup||{};$('product').value=setup.product||'';$('feature').value=setup.feature||'';if(setup.mode)$('mode').value=setup.mode;if(setup.duration)$('duration').value=String(setup.duration);
+    if(!Array.isArray(saved.clips)||!saved.clips.length||saved.clipsNeedReselection){sessionSave.className='help';sessionSave.textContent=saved.clipsNeedReselection?'Your setup and trim choices were restored. Reselect the large raw clips to continue.':'Last Session: setup restored; no clips were saved.';return;}
     const restored=[],seen=new Set();
     saved.clips.slice(0,20).forEach(row=>{const file=restoredFile(row),signature=row.signature||(file&&clipSignature(file));if(!file||seen.has(signature))return;seen.add(signature);restored.push({id:row.id||('clip-restored-'+(++clipSequence)),signature,file});});
     if(!restored.length){sessionSave.className='help bad';sessionSave.textContent='Last Session was found, but its clips could not be restored.';return;}
     projectClips=restored;clipSequence=Math.max(clipSequence,restored.length);
-    const setup=saved.setup||{};$('product').value=setup.product||'';$('feature').value=setup.feature||'';if(setup.mode)$('mode').value=setup.mode;if(setup.duration)$('duration').value=String(setup.duration);
     renderProjectClips(0,'Last Session restored with '+projectClips.length+' clip'+(projectClips.length===1?'':'s')+'.');
     sessionSave.className='help ok';sessionSave.textContent='Last Session Restored • clips and setup returned';
   }catch(err){sessionSave.className='help bad';sessionSave.textContent='Last Session unavailable: '+err.message;}
@@ -158,7 +189,7 @@ function resetRender(){releaseRendered();currentRender=null;$('renderBox').style
 function invalidateBuild(){resetRender();frame.style.display='none';$('resultCard').style.display='none';currentRecipe=currentSession=currentPlan=currentSelection=null;}
 function renderProjectClips(previewIndex,message){
   fileList.innerHTML='';
-  if(!projectClips.length){releasePreview();preview.style.display='none';media.textContent=message||'No videos selected.';fileList.style.display='none';go.disabled=true;renderClipVoiceSuggestions([]);notifyProjectFiles(0);return;}
+  if(!projectClips.length){releasePreview();preview.style.display='none';media.textContent=message||'No videos selected.';fileList.style.display='none';go.disabled=true;addClipsButton.textContent='ADD RAW CLIPS';renderClipVoiceSuggestions([]);notifyProjectFiles(0);return;}
   projectClips.forEach((item,index)=>{
     const row=document.createElement('div');row.className='clip-row';
     const name=document.createElement('span');name.className='clip-name';name.textContent=(index+1)+'. '+item.file.name+' • '+humanSize(item.file.size);
@@ -167,14 +198,16 @@ function renderProjectClips(previewIndex,message){
     row.appendChild(name);row.appendChild(remove);fileList.appendChild(row);
   });
   fileList.style.display='block';go.disabled=!systemPassed;
+  addClipsButton.textContent='ADD MORE RAW CLIPS';
   media.textContent=message||(projectClips.length===1?'1 raw clip saved in this project. Add more anytime.':projectClips.length+' raw clips saved in this project. Add more anytime.');
   renderClipVoiceSuggestions(files());
   notifyProjectFiles(previewIndex);
 }
 $('check').addEventListener('click',()=>{
   if(!modulesReady()){setCheck(false,'System check failed: one or more editor modules did not load.');return;}
-  try{const caps=window.DoneRiteOneClickBrowserExecutor.supports(),mime=window.DoneRiteOneClickBrowserExecutor.pickMime();if(!caps.localExport||!mime||!/^video\/mp4/i.test(mime)){systemPassed=false;videoInput.disabled=true;go.disabled=true;setCheck(false,'System check blocked: this Safari build does not expose the required local MP4/AAC export path. Do not choose a video yet.');return;}systemPassed=true;videoInput.disabled=false;go.disabled=!projectClips.length;setCheck(true,'PASS — planner, local encoder, original-audio path, and MP4 export are available. You can choose a short raw video now. Encoder: '+mime);}catch(err){setCheck(false,'System check failed: '+err.message);}
+  try{const caps=window.DoneRiteOneClickBrowserExecutor.supports(),mime=window.DoneRiteOneClickBrowserExecutor.pickMime();if(!caps.localExport||!mime||!/^video\/mp4/i.test(mime)){systemPassed=false;videoInput.disabled=true;addClipsButton.disabled=true;go.disabled=true;setCheck(false,'System check blocked: this Safari build does not expose the required local MP4/AAC export path. Do not choose a video yet.');return;}systemPassed=true;videoInput.disabled=false;addClipsButton.disabled=false;go.disabled=!projectClips.length;setCheck(true,'PASS — planner, local encoder, original-audio path, and MP4 export are available. You can choose raw video now. Encoder: '+mime);}catch(err){setCheck(false,'System check failed: '+err.message);}
 });
+addClipsButton.addEventListener('click',()=>{if(!videoInput.disabled)videoInput.click();});
 function renderClipVoiceSuggestions(list){
   const box=$('clipVoiceSuggestions');if(!box)return;
   if(!window.DoneRiteVoiceSuggestion||!list.length){box.innerHTML='';return;}
@@ -290,10 +323,10 @@ go.addEventListener('click',async()=>{
       $('voiceSuggestionBox').style.display='block';
     }else{$('voiceSuggestionBox').style.display='none';}
     const usedFast=candidates.some(c=>c.scanMode==='FAST_LONG_CLIP');
-    $('nextStep').textContent=selection.speechSafe?(selection.keptOriginal?'No safe silent gap could reach the requested length, so Creator OS kept the full original clip and did not cut through speech.':'Creator OS removed '+Number(selection.removedSeconds||0).toFixed(1)+' seconds only from verified silent gaps. Speech stays intact.'):(usedFast?'Creator OS used the fast long-clip scan across the full source, then ranked the strongest measured sections.':'Creator OS compared measured motion, sharpness, lighting, and dead-space signals across the selected clips.');const renderReady=execution.status==='LOCAL_EXPORT_AVAILABLE';renderBtn.style.display='none';
+    $('nextStep').textContent=selection.speechSafe?(selection.keptOriginal?'No safe silent gap could reach the requested length, so Creator OS kept the full original clip and did not cut through speech.':'Creator OS removed '+Number(selection.removedSeconds||0).toFixed(1)+' seconds only from verified silent gaps. Speech stays intact.'):(usedFast?'Creator OS used the fast long-clip scan across the full source, then ranked the strongest measured sections.':'Creator OS compared measured motion, sharpness, lighting, and dead-space signals across the selected clips.');publishSelectedVoiceover(plan,selection,list);const renderReady=execution.status==='LOCAL_EXPORT_AVAILABLE';renderBtn.style.display='none';
     try{const firstCut=recipe.selectedCuts[0],sourceIndex=firstCut&&Number.isInteger(firstCut.sourceIndex)?firstCut.sourceIndex:0,p=await window.DoneRiteOneClickBrowserExecutor.previewFrame(list[sourceIndex],recipe);frame.src=p.dataUrl;frame.style.display='block';}catch(e){frame.style.display='none';}
     $('tech').textContent=JSON.stringify({sessionId:session.id,sourceCount:list.length,hook:plan.hookExperiment,cta:plan.ctaExperiment,candidates:candidates.length,scanMode:usedFast?'FAST_LONG_CLIP':'STANDARD',selection:{totalSeconds:selection.totalSeconds,complete:selection.complete,sourceCountUsed:selection.sourceCountUsed,cuts:selection.chosen.map(c=>({sourceIndex:c.sourceIndex,sourceName:c.sourceName,start:c.start,end:c.end,score:c.score}))},execution:{status:execution.status,recorderMime:execution.recorderMime},rollback:session.rollback},null,2);media.textContent=list.length+' raw clip'+(list.length===1?'':'s')+' ready.';if(renderReady)await renderFinishedVideo();else $('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(err){$('resultCard').style.display='block';$('status').className='status bad';$('status').textContent='EDIT PLAN FAILED';$('nextStep').textContent=err.message;$('tech').textContent=String(err&&err.stack||err);renderBtn.style.display='none';media.textContent='Analysis stopped.';$('voiceSuggestionBox').style.display='none';}
+  }catch(err){$('resultCard').style.display='block';$('status').className='status bad';$('status').textContent='EDIT PLAN FAILED';$('nextStep').textContent=err.message;$('tech').textContent=String(err&&err.stack||err);renderBtn.style.display='none';media.textContent='Analysis stopped.';$('voiceSuggestionBox').style.display='none';$('selectedVoiceoverBox').style.display='none';}
   finally{go.disabled=false;go.textContent='CREATE FINISHED VIDEO';}
 });
 async function renderFinishedVideo(){
