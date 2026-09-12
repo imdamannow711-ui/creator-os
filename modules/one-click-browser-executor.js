@@ -1,4 +1,4 @@
-/* DONE RITE Creator OS — One-Click Browser Executor v1.4
+/* DONE RITE Creator OS — One-Click Browser Executor v1.5
    iPhone-safe local preview, persistent manual trim, multi-source timed render,
    and attached voiceover mixing at original gain.
    Originals are never overwritten.
@@ -17,7 +17,7 @@
 */
 (function(){
 'use strict';
-const VERSION='1.4';
+const VERSION='1.5';
 const TRIM_KEY='done-rite-one-click-trims:v1';
 const TRIM_LIMIT=300;
 const manualTrims=new Map();
@@ -257,7 +257,7 @@ function installMultiClipReviewUI(){
     +'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button id="doneRitePrevClip" type="button" style="min-height:44px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#58a6ff;font-weight:900">◀ PREVIOUS CLIP</button><button id="doneRiteNextClip" type="button" style="min-height:44px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#58a6ff;font-weight:900">NEXT CLIP ▶</button></div>';
   preview.insertAdjacentElement('afterend',wrap);
-  let index=0,url='',duration=0,start=0,end=0,previewStopHandler=null,loadToken=0,metaHandler=null;
+  let index=0,url='',duration=0,start=0,end=0,previewStopHandler=null,loadToken=0,metaHandler=null,metaTimer=null,metaTimeout=null,syncTimer=null;
   const counter=wrap.querySelector('#doneRiteClipCounter'),prev=wrap.querySelector('#doneRitePrevClip'),next=wrap.querySelector('#doneRiteNextClip');
   const track=wrap.querySelector('#doneRiteTrimTrack'),fill=wrap.querySelector('#doneRiteTrimFill'),startHandle=wrap.querySelector('#doneRiteStartHandle'),endHandle=wrap.querySelector('#doneRiteEndHandle');
   const startTime=wrap.querySelector('#doneRiteStartTime'),endTime=wrap.querySelector('#doneRiteEndTime'),durationText=wrap.querySelector('#doneRiteTrimDuration'),previewTrim=wrap.querySelector('#doneRitePreviewTrim'),resetTrim=wrap.querySelector('#doneRiteResetTrim');
@@ -283,7 +283,11 @@ function installMultiClipReviewUI(){
     handle.addEventListener('pointerup',e=>{try{handle.releasePointerCapture(e.pointerId);}catch(x){}saveTrim();});
   }
   bindHandle(startHandle,'start');bindHandle(endHandle,'end');
-  function detachMeta(){if(!metaHandler)return;preview.removeEventListener('loadedmetadata',metaHandler);preview.removeEventListener('durationchange',metaHandler);metaHandler=null;}
+  function detachMeta(handler){
+    const active=handler||metaHandler;if(!active)return;
+    preview.removeEventListener('loadedmetadata',active);preview.removeEventListener('durationchange',active);preview.removeEventListener('loadeddata',active);
+    if(active===metaHandler){metaHandler=null;if(metaTimer){clearInterval(metaTimer);metaTimer=null;}if(metaTimeout){clearTimeout(metaTimeout);metaTimeout=null;}}
+  }
   function show(i,autoPlay){
     const files=list();if(!files.length)return;
     index=Math.max(0,Math.min(files.length-1,i));
@@ -291,31 +295,40 @@ function installMultiClipReviewUI(){
     try{preview.pause();}catch(e){}
     if(previewStopHandler){preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=null;}
     detachMeta();
-    if(url)release(url);
+    const oldUrl=url;url='';
+    preview.removeAttribute('src');preview.load();if(oldUrl)release(oldUrl);
     duration=0;start=0;end=0;updateTrimUI();
     counter.textContent='Clip '+(index+1)+' of '+files.length+' — '+files[index].name;
     prev.disabled=index===0;next.disabled=index===files.length-1;prev.style.opacity=prev.disabled?'.45':'1';next.style.opacity=next.disabled?'.45':'1';
-    metaHandler=()=>{
-      if(token!==loadToken){detachMeta();return;}
+    const onMetadata=()=>{
+      if(token!==loadToken){detachMeta(onMetadata);return;}
       const d=Number(preview.duration);
       if(!Number.isFinite(d)||d<=0)return;
-      detachMeta();duration=d;loadTrim();
+      detachMeta(onMetadata);duration=d;loadTrim();
       if(autoPlay)preview.play().catch(()=>{});
     };
+    metaHandler=onMetadata;
     preview.addEventListener('loadedmetadata',metaHandler);
     preview.addEventListener('durationchange',metaHandler);
+    preview.addEventListener('loadeddata',metaHandler);
     url=createPreviewUrl(files[index]);
-    preview.removeAttribute('src');preview.load();
-    preview.src=url;preview.style.display='block';preview.load();
+    preview.preload='metadata';preview.src=url;preview.style.display='block';
+    metaTimer=setInterval(()=>{
+      if(token!==loadToken){detachMeta(onMetadata);return;}
+      onMetadata();
+    },250);
+    metaTimeout=setTimeout(()=>{if(token!==loadToken||duration)return;detachMeta(onMetadata);durationText.textContent='This clip did not finish opening. Keep Creator OS visible and select the clip again.';},45000);
+    preview.load();onMetadata();
   }
   previewTrim.addEventListener('click',()=>{if(!duration)return;try{preview.pause();}catch(e){}preview.currentTime=Math.max(0,start);if(previewStopHandler)preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=()=>{if(preview.currentTime>=end-.03){preview.pause();preview.removeEventListener('timeupdate',previewStopHandler);previewStopHandler=null;}};preview.addEventListener('timeupdate',previewStopHandler);preview.play().catch(()=>{});});
   resetTrim.addEventListener('click',()=>{if(!duration)return;const files=list();start=0;end=duration;if(files[index])forgetManualTrim(files[index]);updateTrimUI();try{preview.currentTime=0;}catch(e){}});
   function syncProjectFiles(previewIndex){loadToken++;detachMeta();const files=list();if(!files.length){wrap.style.display='none';duration=0;start=0;end=0;updateTrimUI();if(url){release(url);url='';}return;}wrap.style.display='block';show(Math.max(0,Math.min(files.length-1,Number(previewIndex)||0)),false);}
-  input.addEventListener('change',()=>setTimeout(()=>syncProjectFiles(0),0));
-  window.addEventListener('done-rite-one-click-project-files',event=>setTimeout(()=>syncProjectFiles(event&&event.detail&&event.detail.previewIndex),0));
+  function requestSync(previewIndex){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncProjectFiles(previewIndex),60);}
+  input.addEventListener('change',()=>{if(typeof window.DoneRiteOneClickProjectFiles!=='function')requestSync(0);});
+  window.addEventListener('done-rite-one-click-project-files',event=>requestSync(event&&event.detail&&event.detail.previewIndex));
   setTimeout(()=>{if(list().length)syncProjectFiles(0);},0);
   prev.addEventListener('click',()=>show(index-1,false));next.addEventListener('click',()=>show(index+1,false));
-  window.addEventListener('pagehide',()=>{loadToken++;detachMeta();if(url)release(url);});
+  window.addEventListener('pagehide',()=>{loadToken++;clearTimeout(syncTimer);detachMeta();if(url)release(url);});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installMultiClipReviewUI,{once:true});else setTimeout(installMultiClipReviewUI,0);
 
