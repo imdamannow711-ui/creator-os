@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v28-one-click-freeze-fix";
+const CACHE_NAME = "done-rite-v29-long-clip-voiceover";
 
 const FILES = [
   "./",
