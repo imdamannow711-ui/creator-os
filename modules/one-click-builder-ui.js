@@ -1,9 +1,9 @@
-/* DONE RITE Creator OS — One-Click Builder UI v0.1
+/* DONE RITE Creator OS — One-Click Builder UI v0.2
    Functional navigation shell inspired by the approved future-design concept.
 */
 (function(){
 'use strict';
-const VERSION='0.1';
+const VERSION='0.2';
 const STAGES=[
   {id:'create',icon:'✦',label:'CREATE'},
   {id:'upload',icon:'☁',label:'UPLOAD'},
@@ -21,6 +21,7 @@ function announce(message){let toast=id('drStageToast');if(!toast){toast=documen
 function scrollToElement(el){if(!el)return false;el.scrollIntoView({behavior:'smooth',block:'start'});const focusable=el.querySelector('input:not([disabled]),select:not([disabled]),button:not([disabled]),a[href]');if(focusable)setTimeout(()=>focusable.focus({preventScroll:true}),380);return true;}
 function loadAndFind(loaderName,targetId,message){const api=window.DoneRiteOneClickCameraHandoff;if(api&&typeof api[loaderName]==='function')api[loaderName]();let tries=0;const timer=setInterval(()=>{const target=id(targetId);if(target){clearInterval(timer);scrollToElement(target);update();return;}if(++tries>20){clearInterval(timer);announce(message);}},75);}
 function studioUrl(){const api=window.DoneRiteOneClickCameraHandoff;return api&&typeof api.studioUrl==='function'?api.studioUrl():'teleprompter-script-studio.html';}
+function requestedStage(){try{const value=new URLSearchParams(location.search).get('stage')||'';return STAGES.some(stage=>stage.id===value)?value:'';}catch(e){return'';}}
 function runStage(stage){
   document.querySelectorAll('.dr-stage-button').forEach(button=>button.removeAttribute('aria-current'));
   const active=document.querySelector('[data-dr-stage="'+stage+'"]');if(active)active.setAttribute('aria-current','step');
@@ -53,12 +54,14 @@ function runStage(stage){
 function makeHero(){const hero=document.createElement('section');hero.className='dr-builder-hero';hero.innerHTML='<div class="dr-builder-kicker">DONE RITE CREATOR OS</div><h1>One‑Click <strong>Ad Builder</strong></h1><p class="dr-builder-tagline">Ideas to impact—in one connected workflow.</p>';return hero;}
 function makeRail(){const rail=document.createElement('nav');rail.className='dr-workflow-rail';rail.setAttribute('aria-label','One-Click workflow');STAGES.forEach(stage=>{const button=document.createElement('button');button.type='button';button.className='dr-stage-button';button.dataset.drStage=stage.id;button.innerHTML='<span class="dr-stage-icon" aria-hidden="true">'+stage.icon+'</span>'+stage.label;button.addEventListener('click',()=>runStage(stage.id));rail.appendChild(button);});return rail;}
 function makeStatus(){const status=document.createElement('div');status.className='dr-builder-status';status.innerHTML='<div class="dr-status-chip"><span>PROJECT<br><b id="drUiClipCount">0 clips</b></span></div><div class="dr-status-chip"><span>VOICE<br><b>Original preserved</b></span></div><div class="dr-status-chip"><span>SESSION<br><b id="drUiSaveState">Local save ready</b></span></div>';return status;}
+function setText(el,value){if(el&&el.textContent!==value)el.textContent=value;}
+function setReady(button,on){if(button&&button.classList.contains('is-ready')!==!!on)button.classList.toggle('is-ready',!!on);}
 function update(){
-  const count=files().length,countEl=id('drUiClipCount');if(countEl)countEl.textContent=count+' clip'+(count===1?'':'s');
-  const save=id('sessionSave'),saveEl=id('drUiSaveState');if(saveEl)saveEl.textContent=save&&/saved|restored/i.test(save.textContent||'')?'Saved locally':'Local save ready';
+  const count=files().length,countEl=id('drUiClipCount');setText(countEl,count+' clip'+(count===1?'':'s'));
+  const save=id('sessionSave'),saveEl=id('drUiSaveState');setText(saveEl,save&&/saved|restored/i.test(save.textContent||'')?'Saved locally':'Local save ready');
   const result=id('resultCard'),renderBox=id('renderBox');
   const ready={upload:count>0,trim:count>0,render:!!result&&result.style.display!=='none',export:!!renderBox&&renderBox.style.display!=='none',voiceover:!!id('doneRiteGapRemover'),sfx:!!id('doneRiteCreativeControls')};
-  Object.keys(ready).forEach(key=>{const button=document.querySelector('[data-dr-stage="'+key+'"]');if(button)button.classList.toggle('is-ready',ready[key]);});
+  Object.keys(ready).forEach(key=>{setReady(document.querySelector('[data-dr-stage="'+key+'"]'),ready[key]);});
 }
 function install(){
   if(id('drOneClickBuilderHero'))return;
@@ -70,6 +73,7 @@ function install(){
   const observer=new MutationObserver(update);observer.observe(wrap,{subtree:true,childList:true,attributes:true,attributeFilter:['style','class']});
   document.addEventListener('change',update,true);window.addEventListener('done-rite-one-click-project-files',update);window.addEventListener('done-rite-one-click-plan',()=>setTimeout(update,0));
   update();
+  const requested=requestedStage();if(requested)setTimeout(()=>runStage(requested),180);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(install,40),{once:true});else setTimeout(install,40);
 window.DoneRiteOneClickBuilderUI={version:VERSION,install,runStage,update};

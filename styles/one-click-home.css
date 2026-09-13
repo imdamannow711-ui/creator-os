@@ -1,0 +1,177 @@
+:root {
+  color-scheme: dark;
+  --blue: #38b7ff;
+  --blue-bright: #9ce4ff;
+  --line: rgba(62, 178, 255, 0.58);
+  --panel: rgba(5, 16, 36, 0.96);
+  --text: #f4f9ff;
+  --muted: #a9bfd5;
+}
+
+* { box-sizing: border-box; }
+html { background: #020611; }
+body {
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 50% 0, rgba(0, 126, 255, 0.3), transparent 34rem),
+    linear-gradient(145deg, #01030a, #071631 55%, #01030a);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.launcher-shell {
+  width: min(100%, 1600px);
+  margin: 0 auto;
+  padding: max(10px, env(safe-area-inset-top)) 10px calc(22px + env(safe-area-inset-bottom));
+}
+
+.launcher-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  margin-bottom: 8px;
+}
+
+.back-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(5, 16, 36, 0.94);
+  color: var(--blue-bright);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.dev-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+}
+
+.graphic-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #020611;
+  box-shadow: 0 0 28px rgba(0, 132, 255, 0.28);
+}
+
+.artwork-frame { position: relative; }
+.launcher-art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.desktop-hotspots { display: none; }
+
+.mobile-controls {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(8, 30, 65, 0.97), var(--panel));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34);
+}
+.mobile-controls h2 { margin: 0; font-size: 18px; }
+.mobile-controls > p { margin: 5px 0 12px; color: var(--muted); font-size: 13px; }
+
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.control-grid a {
+  min-height: 82px;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  grid-template-rows: auto auto;
+  align-content: center;
+  column-gap: 7px;
+  padding: 10px;
+  border: 1px solid #59c3ff;
+  border-radius: 14px;
+  background: linear-gradient(155deg, #1468c8, #071b42 70%);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: inset 0 0 16px rgba(93, 205, 255, 0.18), 0 0 13px rgba(0, 128, 255, 0.2);
+  touch-action: manipulation;
+}
+.control-grid a span {
+  grid-row: 1 / 3;
+  align-self: center;
+  color: var(--blue-bright);
+  font-size: 25px;
+  font-weight: 950;
+  text-align: center;
+}
+.control-grid a b { align-self: end; font-size: 14px; }
+.control-grid a small { align-self: start; color: #c7e9ff; font-size: 11px; }
+
+.control-grid a:active { transform: scale(0.98); filter: brightness(1.2); }
+.back-link:focus-visible,
+.control-grid a:focus-visible,
+.desktop-hotspots a:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.launcher-status {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(3, 12, 28, 0.9);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+.launcher-status.ready { color: #7fffc0; }
+.launcher-status.error { color: #ff9ca6; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (min-width: 760px) {
+  .launcher-shell { padding-inline: 18px; }
+  .desktop-hotspots { display: block; position: absolute; inset: 0; }
+  .desktop-hotspots a {
+    position: absolute;
+    left: var(--left);
+    top: 16.3%;
+    width: 8.7%;
+    height: 14.7%;
+    border: 2px solid transparent;
+    border-radius: 9%;
+    background: transparent;
+    cursor: pointer;
+  }
+  .desktop-hotspots a:hover,
+  .desktop-hotspots a:focus-visible {
+    border-color: rgba(255, 255, 255, 0.92);
+    background: rgba(60, 184, 255, 0.16);
+    box-shadow: 0 0 24px rgba(53, 187, 255, 0.9);
+  }
+  .mobile-controls { max-width: 900px; margin-inline: auto; }
+  .control-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+}
