@@ -18,6 +18,30 @@ One-Click editor: `https://imdamannow711-ui.github.io/creator-os/one-click-ad-de
 
 ---
 
+## LATEST SHARED PROJECT UPDATE — HOLLYLAND LARK A1 READY PROJECT
+
+Prepared on 2026-09-12 as an isolated change based on PR #12 head
+`01260e922ca1b7a0dfcc66eb80815a26b8580ea4`. Nothing was merged to live.
+
+- Added a Hollyland LARK A1 Combo Kit ready-project loader for One-Click.
+- The project route preloads the edited 6.8-second vertical MP4, exact product fields,
+  connected Teleprompter voiceover, caption, five hashtags including `#ad`, cover,
+  file names, and the electrical/battery-powered compliance note.
+- Added a canonical same-origin file append path so the bundled ready clip enters the
+  existing Plex project list without replacing earlier selected clips.
+- Preserved the PR #12 launcher, long-clip fixes, selected-hook voiceover work,
+  Teleprompter speech controls, original audio gain, and Back paths.
+- Added the loader and cover to the service-worker cache. The 6.8 MB video remains
+  network-loaded on first use and is then eligible for the existing saved-project flow.
+- Code checks passed: One-Click builder smoke test, launcher smoke test, JavaScript
+  syntax, media probe (1080x1920 H.264/AAC), and diff whitespace check.
+- Still unverified: real iPhone 13 Safari load, Teleprompter recording, return to
+  One-Click, and final render with the newly recorded voiceover.
+
+Rollback point: PR #12 head `01260e922ca1b7a0dfcc66eb80815a26b8580ea4`.
+
+---
+
 ## LATEST SHARED PROJECT UPDATE — SCRIPT STUDIO RANDOMIZE FIX
 
 User tested Script Studio on iPhone and reported:
