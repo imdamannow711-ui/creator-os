@@ -14,15 +14,20 @@ html,body{margin:0;min-height:100%;background:#05070b;color:#eef7ff;font-family:
 <script>
 (async()=>{
   try{
+    const query=new URLSearchParams(location.search),HANDOFF_KEY='done-rite-one-click-teleprompter-handoff:v1';let handoff={};
+    if(query.get('handoff')==='1'){try{handoff=JSON.parse(localStorage.getItem(HANDOFF_KEY)||'{}')||{};}catch(e){handoff={};}if(!String(handoff.script||'').trim())throw new Error('The connected script was not found. Return to One-Click and tap Open Script in Teleprompter again.');}
     const response=await fetch('teleprompter.html',{cache:'no-store'});
     if(!response.ok)throw new Error('Teleprompter source returned '+response.status);
     let html=await response.text();
+    const oldSession="function applyRecordingSession(){const p=new URLSearchParams(location.search),sessionScript=p.get('script')||p.get('text')||'',";
+    const newSession="function applyRecordingSession(){const queryParams=new URLSearchParams(location.search),handoff=window.DoneRiteTeleprompterHandoff||{},p={get:key=>queryParams.get(key)??handoff[key]??null},sessionScript=p.get('script')||p.get('text')||'',";
+    if(query.get('handoff')==='1'){if(!html.includes(oldSession))throw new Error('The Teleprompter session bridge needs an update.');html=html.replace(oldSession,newSession);const encoded=JSON.stringify(handoff).replace(/</g,'\\u003c');html=html.replace('<script>\\nconst BUILD=','<script>window.DoneRiteTeleprompterHandoff='+encoded+';<\\/script><script>\\nconst BUILD=');}
     const oldConstraints='echoCancellation:true,noiseSuppression:true,autoGainControl:true';
     const rawConstraints='echoCancellation:false,noiseSuppression:false,autoGainControl:false';
     if(!html.includes(oldConstraints))throw new Error('Expected Teleprompter microphone settings were not found. The wrapper stopped rather than changing unknown code.');
     html=html.replace(oldConstraints,rawConstraints);
     const bridge=`<script>(function(){
-      const p=new URLSearchParams(location.search),ret=p.get('return')||'',back=p.get('back')||'';
+      const p=new URLSearchParams(location.search),handoff=window.DoneRiteTeleprompterHandoff||{},ret=p.get('return')||handoff.return||'',back=p.get('back')||handoff.back||'';
       const safe=(raw)=>{try{const u=new URL(raw,location.href);return u.origin===location.origin?u.href:'';}catch(e){return'';}};
       const safeReturn=safe(ret),safeBack=safe(back)||safeReturn;
       const applyNav=()=>{
