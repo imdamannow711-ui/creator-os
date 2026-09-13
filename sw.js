@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v30-hollyland-ready-project";
+const CACHE_NAME = "done-rite-v31-hollyland-teleprompter-handoff";
 
 const FILES = [
   "./",
