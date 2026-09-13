@@ -27,6 +27,16 @@ const HOOK_LIBRARY = [
   { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook"], make: (p, f) => `Can I show you something? This is ${f} on ${p}.` },
   { angle: "Conversation", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts"], make: (p, f) => `I was not expecting this from ${p}: ${f}.` },
 
+  // --- Purchase reason (manual choice only)
+  // Use these first-person hooks only when the creator personally bought and
+  // has the product in hand. They stay out of automatic hook rotation so a
+  // sample or borrowed product is never described as a purchase by mistake.
+  { angle: "Purchase reason (bought item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `I bought ${p} because I was tired of missing ${f}.` },
+  { angle: "Purchase reason (bought item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `I bought ${p} specifically for the days when ${f} matters most.` },
+  { angle: "Purchase reason (bought item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `I bought ${p} after looking for one with ${f}.` },
+  { angle: "Purchase reason (bought item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `I bought ${p} for one very specific reason: ${f}.` },
+  { angle: "Purchase reason (bought item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `I bought ${p} because I needed something designed around ${f} without extra steps.` },
+
   // --- Problem first
   { angle: "Problem", platforms: ["TikTok Shop", "Facebook", "YouTube Shorts"], make: (p, f) => `Tired of dealing with this the hard way? ${p} was built for it.` },
   { angle: "Problem", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `If this keeps happening to you, ${f} is the part to look at.` },
@@ -196,8 +206,9 @@ function pickHooks(product, feature, platform, winners, spin) {
     .slice(0, 2)
     .map((w) => w.text);
 
-  const pool = HOOK_LIBRARY.filter((h) => h.platforms.indexOf(platform) !== -1);
-  const usable = pool.length ? pool : HOOK_LIBRARY;
+  const automaticHooks = HOOK_LIBRARY.filter((h) => !h.manualOnly);
+  const pool = automaticHooks.filter((h) => h.platforms.indexOf(platform) !== -1);
+  const usable = pool.length ? pool : automaticHooks;
 
   const byAngle = {};
   usable.forEach((h) => {
