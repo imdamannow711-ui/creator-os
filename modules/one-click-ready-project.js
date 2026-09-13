@@ -4,7 +4,7 @@
 */
 (function(){
 'use strict';
-const VERSION='0.1';
+const VERSION='0.2';
 const PROJECTS={
   'hollyland-lark-a1-combo':{
     title:'Hollyland LARK A1 Combo Kit',
@@ -24,19 +24,16 @@ const PROJECTS={
     compliance:'Electrical/battery-powered product: show normal use only. No price, discount, charging-speed, range, battery-life, or absolute performance claims.'
   }
 };
-const SCRIPT_KEY='done-rite-one-click-selected-voiceover:v1';
+const SCRIPT_KEY='done-rite-one-click-selected-voiceover:v1',HANDOFF_KEY='done-rite-one-click-teleprompter-handoff:v1';
 let current=null;
 function id(value){return document.getElementById(value);}
 function requested(){try{return new URLSearchParams(location.search).get('project')||'';}catch(e){return'';}}
 function setField(name,value){const el=id(name);if(!el)return;el.value=value;el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));}
 function teleprompterUrl(project){
-  const url=new URL('teleprompter-one-click.html',location.href),returnUrl=location.href;
-  url.searchParams.set('session','1');url.searchParams.set('return',returnUrl);url.searchParams.set('back',returnUrl);
-  url.searchParams.set('product',project.product);url.searchParams.set('seconds',project.duration);url.searchParams.set('type','full');url.searchParams.set('tone','confident');
-  url.searchParams.set('script',project.voiceover);url.searchParams.set('direction',project.direction);url.searchParams.set('angle','Product reveal');
-  url.searchParams.set('format','Vertical 9:16 · TikTok Shop · hands/product focused');url.searchParams.set('shots','Use the supplied edited clip: closed case hook, opening reveal, steady open-case close.');
-  url.searchParams.set('onscreen',project.onScreen);url.searchParams.set('sfx',project.sfx);url.searchParams.set('caption',project.caption);url.searchParams.set('hashtags',project.hashtags);url.searchParams.set('cover','HOLLYLAND LARK A1 — COMBO KIT');url.searchParams.set('compliance',project.compliance);
-  return url.toString();
+  const returnUrl=new URL('one-click-ad-dev.html',location.href);returnUrl.searchParams.set('project','hollyland-lark-a1-combo');
+  const payload={session:'1',return:returnUrl.toString(),back:returnUrl.toString(),product:project.product,seconds:project.duration,type:'full',tone:'confident',script:project.voiceover,direction:project.direction,angle:'Product reveal',format:'Vertical 9:16 · TikTok Shop · hands/product focused',shots:'Use the supplied edited clip: closed case hook, opening reveal, steady open-case close.',onscreen:project.onScreen,sfx:project.sfx,caption:project.caption,hashtags:project.hashtags,cover:'HOLLYLAND LARK A1 — COMBO KIT',compliance:project.compliance,updatedAt:new Date().toISOString()};
+  try{localStorage.setItem(HANDOFF_KEY,JSON.stringify(payload));}catch(e){throw new Error('Safari could not save the Teleprompter handoff. Check that website storage is allowed.');}
+  const url=new URL('teleprompter-one-click.html',location.href);url.searchParams.set('session','1');url.searchParams.set('handoff','1');return url.toString();
 }
 function publishScript(project){
   const payload={script:project.voiceover,product:project.product,hook:'Two mics, two receivers, one case.',sourceName:project.videoName,start:0,end:6.8,updatedAt:new Date().toISOString()};
@@ -50,7 +47,7 @@ async function loadProject(project,status,button){
     setField('product',project.product);setField('feature',project.feature);setField('mode',project.mode);setField('duration',project.duration);
     const check=id('check');if(check)check.click();
     const responses=await Promise.all(project.videoParts.map(part=>fetch(part,{cache:'no-store'})));if(responses.some(response=>!response.ok))throw new Error('Edited clip could not be downloaded.');
-    const buffers=await Promise.all(responses.map(response=>response.arrayBuffer())),blob=new Blob(buffers,{type:'video/mp4'}),file=new File([blob],project.videoName,{type:'video/mp4',lastModified:Date.now()});
+    const buffers=await Promise.all(responses.map(response=>response.arrayBuffer())),blob=new Blob(buffers,{type:'video/mp4'}),file=new File([blob],project.videoName,{type:'video/mp4',lastModified:Date.parse('2026-09-12T00:00:00Z')});
     const api=window.DoneRiteOneClickCameraHandoff,result=typeof window.DoneRiteOneClickAppendFile==='function'?window.DoneRiteOneClickAppendFile(file):(api&&typeof api.appendCapturedFile==='function'?api.appendCapturedFile(file):{ok:false,reason:'Clip handoff is not ready.'});
     if(!result.ok)throw new Error(result.reason||'Safari did not add the edited clip.');
     current=project;publishScript(project);status.className='help ok';status.textContent='READY — edited clip and complete ad package are loaded. Open the Teleprompter and read the connected script.';
@@ -58,7 +55,7 @@ async function loadProject(project,status,button){
   }catch(err){status.className='help bad';status.textContent='Could not load the ready project: '+err.message;button.disabled=false;button.textContent='TRY LOADING READY PROJECT AGAIN';}
 }
 function install(project){
-  if(id('drReadyProject')||!project)return;
+  if(id('drReadyProject')||!project)return;current=project;
   const card=document.createElement('section');card.id='drReadyProject';card.className='card';card.style.cssText='border-color:#2bd97c;background:linear-gradient(145deg,#0d1a15,#0b1522)';
   card.innerHTML='<div class="pill" style="color:#56ec9c;border-color:#2bd97c">READY PROJECT</div><h2>'+project.title+'</h2><img id="drReadyCover" src="'+project.cover+'" alt="Hollyland LARK A1 Combo Kit cover" style="display:none;width:100%;max-height:440px;object-fit:cover;object-position:center;border-radius:14px;margin:10px 0"><button id="drLoadReadyProject" class="button good" type="button">LOAD EDITED VIDEO + COMPLETE AD PACKAGE</button><div id="drReadyStatus" class="help" style="margin-top:9px">One tap loads the edited clip, exact script, caption, hashtags, cover, and compliance note.</div><a id="drReadyTeleprompter" class="button good" style="display:none;text-align:center;text-decoration:none">OPEN SCRIPT IN TELEPROMPTER →</a><details id="drReadyDetails"><summary>Voiceover, caption, hashtags, and file names</summary><div class="copybox"><b>VOICEOVER</b><div style="margin-top:6px">'+project.voiceover+'</div></div><div class="copybox"><b>CAPTION</b><div style="margin-top:6px">'+project.caption+'</div></div><div class="copybox"><b>HASHTAGS</b><div style="margin-top:6px">'+project.hashtags+'</div></div><div class="copybox"><b>VIDEO FILE</b><div style="margin-top:6px">'+project.videoName+'</div></div><div class="copybox"><b>COVER FILE</b><div style="margin-top:6px">'+project.coverName+'</div></div><div class="copybox"><b>COMPLIANCE</b><div style="margin-top:6px">'+project.compliance+'</div></div><a class="button secondary" style="display:block;text-align:center;text-decoration:none" href="'+project.cover+'" download="'+project.coverName+'">DOWNLOAD COVER IMAGE</a></details>';
   const wrap=document.querySelector('.wrap')||document.body,target=id('systemCard');target?wrap.insertBefore(card,target):wrap.appendChild(card);
