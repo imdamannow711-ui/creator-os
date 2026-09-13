@@ -312,7 +312,7 @@ function installMultiClipReviewUI(){
     preview.addEventListener('durationchange',metaHandler);
     preview.addEventListener('loadeddata',metaHandler);
     url=createPreviewUrl(files[index]);
-    preview.preload='metadata';preview.src=url;preview.style.display='block';
+    preview.preload='metadata';preview.volume=1;preview.muted=false;preview.src=url;preview.style.display='block';
     metaTimer=setInterval(()=>{
       if(token!==loadToken){detachMeta(onMetadata);return;}
       onMetadata();
