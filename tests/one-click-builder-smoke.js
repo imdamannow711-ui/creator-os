@@ -27,6 +27,7 @@ new vm.Script(readyProject,{filename:'one-click-ready-project.js'});
 assert(html.includes('styles/one-click-builder.css'),'One-Click visual stylesheet is not loaded');
 assert(html.includes('modules/one-click-builder-ui.js'),'One-Click workflow controller is not loaded');
 assert(html.includes('modules/one-click-builder-ui.js?v=20260912-freeze-fix-1'),'One-Click workflow controller cache key was not refreshed after the freeze fix');
+assert(html.includes('modules/one-click-camera-handoff.js?v=20260913-original-restore-1'),'Gap-remover repair cache key was not refreshed');
 assert(html.includes('modules/one-click-ready-project.js?v=20260913-hollyland-handoff-1'),'Hollyland ready-project loader is not connected');
 assert(html.includes('window.DoneRiteOneClickAppendFile'),'Ready-project clips cannot enter the canonical One-Click project list');
 assert(html.includes('window.DoneRiteOneClickProjectFiles=files'),'Canonical project-file provider is missing');
@@ -42,6 +43,10 @@ assert(html.includes('id="selectedVoiceoverBox"'),'Selected-hook voiceover panel
 assert(html.includes('publishSelectedVoiceover(plan,selection,list)'),'Selected-hook voiceover is not connected to the chosen edit');
 assert(gapRemover.includes('setSelectedScript'),'Selected-hook script is not connected to Voiceover tools');
 assert(gapRemover.includes('done-rite-selected-voiceover'),'Voiceover tools do not react to the selected-hook script');
+assert(gapRemover.includes('RETURN TO ORIGINAL VOICEOVER'),'Original voiceover restore control is missing');
+assert(gapRemover.includes('USE CLEANED VOICEOVER FOR RENDER'),'Cleaned preview requires an explicit choice');
+assert(gapRemover.includes("speechSafe:{label:'Speech Safe'"),'Speech Safe preset is missing');
+assert(!gapRemover.includes("setRenderVoiceover(r.blob,r.fileName"),'Gap removal must not automatically replace the original render voiceover');
 for(const stage of ['create','upload','text','voiceover','trim','sfx','render','export'])assert(builder.includes("id:'"+stage+"'"),'Missing workflow stage: '+stage);
 assert(builder.includes("api.studioUrl"),'Text stage is not connected to Script Studio');
 assert(builder.includes("loadGapRemover"),'Voiceover stage is not connected');
@@ -50,7 +55,7 @@ assert(builder.includes('function setText(el,value){if(el&&el.textContent!==valu
 assert(builder.includes("button.classList.contains('is-ready')!==!!on"),'Ready-state class writes must stay idempotent to prevent a MutationObserver loop');
 assert(css.includes('.dr-workflow-rail'),'Workflow rail styling is missing');
 assert(sw.includes('styles/one-click-builder.css')&&sw.includes('modules/one-click-builder-ui.js'),'New One-Click assets are not cached for offline use');
-assert(sw.includes('done-rite-v31-hollyland-teleprompter-handoff'),'Service-worker cache was not refreshed for the ready project');
+assert(sw.includes('done-rite-v32-original-voiceover-restore'),'Service-worker cache was not refreshed for the original-voiceover restore');
 assert(sw.includes('modules/one-click-ready-project.js'),'Ready-project loader is not available offline');
 assert(readyProject.includes("'hollyland-lark-a1-combo'"),'Hollyland project preset is missing');
 assert(readyProject.includes('#ad #HollylandLARKA1 #WirelessMicrophone #CreatorGear #ContentCreator'),'Hollyland hashtag set is missing or exceeds the approved five-tag package');
