@@ -77,7 +77,7 @@ assert(builder.includes('function setText(el,value){if(el&&el.textContent!==valu
 assert(builder.includes("button.classList.contains('is-ready')!==!!on"),'Ready-state class writes must stay idempotent to prevent a MutationObserver loop');
 assert(css.includes('.dr-workflow-rail'),'Workflow rail styling is missing');
 assert(sw.includes('styles/one-click-builder.css')&&sw.includes('modules/one-click-builder-ui.js'),'New One-Click assets are not cached for offline use');
-assert(sw.includes('done-rite-v33-iphone-promotion-fixes'),'Service-worker cache was not refreshed for the iPhone promotion fixes');
+assert(sw.includes('done-rite-v34-teleprompter-session-precedence'),'Service-worker cache was not refreshed for the Teleprompter precedence fix');
 assert(sw.includes('modules/one-click-ready-project.js'),'Ready-project loader is not available offline');
 assert(readyProject.includes("'hollyland-lark-a1-combo'"),'Hollyland project preset is missing');
 assert(readyProject.includes('#ad #HollylandLARKA1 #WirelessMicrophone #CreatorGear #ContentCreator'),'Hollyland hashtag set is missing or exceeds the approved five-tag package');
@@ -87,6 +87,8 @@ assert(!readyProject.includes("url.searchParams.set('shots',payload.shots)")&&!r
 assert(readyProject.includes("url.searchParams.set('handoff','1')"),'Hollyland Teleprompter link does not use the short handoff route');
 assert(teleprompterBridge.includes('window.DoneRiteTeleprompterHandoff'),'Teleprompter does not restore the locally stored handoff');
 assert(teleprompterBridge.includes('const buildScript=/<script>\\s*const BUILD=/'),'Teleprompter handoff injection does not match the real source markup');
+assert(teleprompterBridge.includes("['script','product','seconds','type','tone','return','back'].forEach"),'Teleprompter query fallback does not override stale saved values');
+assert(teleprompterBridge.includes("if(typeof window.setBothScripts==='function')window.setBothScripts(script,false,false)"),'Teleprompter does not force the connected script after saved settings load');
 assert(teleprompterBridge.includes("b.textContent='← BACK TO ONE-CLICK'"),'Teleprompter Back is not explicit');
 assert(!teleprompterBridge.includes('history.back()'),'Teleprompter Back can return to Script Studio instead of One-Click');
 assert(gapRemover.includes('attachLatestConnectedVoiceover'),'Latest connected Teleprompter recording is not restored after Back');

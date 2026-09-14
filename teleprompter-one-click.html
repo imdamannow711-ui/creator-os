@@ -15,7 +15,11 @@ html,body{margin:0;min-height:100%;background:#05070b;color:#eef7ff;font-family:
 (async()=>{
   try{
     const query=new URLSearchParams(location.search),HANDOFF_KEY='done-rite-one-click-teleprompter-handoff:v1';let handoff={};
-    if(query.get('handoff')==='1'){try{handoff=JSON.parse(localStorage.getItem(HANDOFF_KEY)||'{}')||{};}catch(e){handoff={};}if(!String(handoff.script||'').trim())throw new Error('The connected script was not found. Return to One-Click and tap Open Script in Teleprompter again.');}
+    if(query.get('handoff')==='1'){
+      try{handoff=JSON.parse(localStorage.getItem(HANDOFF_KEY)||'{}')||{};}catch(e){handoff={};}
+      ['script','product','seconds','type','tone','return','back'].forEach(key=>{const value=query.get(key);if(value!=null&&value!=='')handoff[key]=value;});
+      if(!String(handoff.script||'').trim())throw new Error('The connected script was not found. Return to One-Click and tap Open Script in Teleprompter again.');
+    }
     const response=await fetch('teleprompter.html',{cache:'no-store'});
     if(!response.ok)throw new Error('Teleprompter source returned '+response.status);
     let html=await response.text();
@@ -37,7 +41,16 @@ html,body{margin:0;min-height:100%;background:#05070b;color:#eef7ff;font-family:
       const p=new URLSearchParams(location.search),handoff=window.DoneRiteTeleprompterHandoff||{},ret=p.get('return')||handoff.return||'',back=p.get('back')||handoff.back||'';
       const safe=(raw)=>{try{const u=new URL(raw,location.href);return u.origin===location.origin?u.href:'';}catch(e){return'';}};
       const safeReturn=safe(ret),safeBack=safe(back)||safeReturn;
+      const applyConnectedSession=()=>{
+        if(p.get('handoff')!=='1')return;
+        const script=String(p.get('script')||'').trim(),product=String(p.get('product')||'').trim(),seconds=String(p.get('seconds')||'7'),type=String(p.get('type')||'full'),tone=String(p.get('tone')||'confident');
+        if(script){if(typeof window.setBothScripts==='function')window.setBothScripts(script,false,false);else{const scriptBox=document.getElementById('script'),coachBox=document.getElementById('coachLine');if(scriptBox)scriptBox.value=script;if(coachBox)coachBox.value=script;}}
+        const productBox=document.getElementById('voiceProduct'),durationBox=document.getElementById('voiceDuration'),typeBox=document.getElementById('clipType'),toneBox=document.getElementById('tone');
+        if(productBox)productBox.value=product;if(durationBox)durationBox.value=seconds;if(typeBox)typeBox.value=type;if(toneBox)toneBox.value=tone;
+        if(typeof window.updateTone==='function')window.updateTone();if(typeof window.updateReadouts==='function')window.updateReadouts();if(typeof window.showNextName==='function')window.showNextName();if(typeof window.save==='function')window.save();
+      };
       const applyNav=()=>{
+        applyConnectedSession();
         if(!document.getElementById('doneRiteTeleBack')){
           const b=document.createElement('button');b.id='doneRiteTeleBack';b.type='button';b.textContent='← BACK TO ONE-CLICK';b.setAttribute('aria-label','Back to One-Click');b.style.cssText='position:fixed;top:calc(8px + env(safe-area-inset-top));left:10px;z-index:99999;min-height:42px;padding:9px 13px;border:1px solid #344457;border-radius:12px;background:rgba(23,29,39,.96);color:#cfe7ff;font:900 14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.35)';b.onclick=()=>{if(safeBack){location.href=safeBack;return;}location.href='index.html';};document.body.appendChild(b);
         }
