@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v33-iphone-promotion-fixes";
+const CACHE_NAME = "done-rite-v34-teleprompter-session-precedence";
 
 const FILES = [
   "./",
