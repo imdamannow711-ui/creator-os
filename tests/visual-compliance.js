@@ -19,5 +19,7 @@ assert(risky.flags.some(flag=>flag.includes('“iphone”')),'iPhone reference w
 assert(risky.flags.some(flag=>flag.includes('“dupe”')),'Dupe wording was not flagged');
 assert(risky.flags.some(flag=>flag.includes('“guaranteed”')),'Guaranteed wording was not flagged');
 const exactBrand=language.review('iPhone protective case',{productName:'iPhone protective case'});
-assert(!exactBrand.flags.some(flag=>flag.includes('“iphone”')),'The exact verified product brand was incorrectly blocked');
+assert(exactBrand.flags.some(flag=>flag.includes('“iphone”')),'A device-brand term was incorrectly excused by the product title');
+const explicitlyVerifiedBrand=language.review('iPhone protective case',{allowedBrandNames:['iPhone']});
+assert(!explicitlyVerifiedBrand.flags.some(flag=>flag.includes('“iphone”')),'An explicitly verified brand could not be approved');
 console.log('VISUAL_COMPLIANCE_PASS');
