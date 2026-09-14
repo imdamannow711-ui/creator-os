@@ -1,47 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">DONE RITE cross crest</title>
-  <desc id="desc">A radiant gold and white cross inside a chrome shield with electric blue accents.</desc>
+  <desc id="desc">A strong luminous cross rising through smoked glass, framed by chrome and electric blue.</desc>
   <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset=".48" stop-color="#e9f7ff"/>
-      <stop offset="1" stop-color="#b9e2ff"/>
-    </linearGradient>
-    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset=".28" stop-color="#9eb0c5"/>
-      <stop offset=".5" stop-color="#ffffff"/>
-      <stop offset=".76" stop-color="#788ba4"/>
-      <stop offset="1" stop-color="#eaf4ff"/>
-    </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fffbe4"/>
-      <stop offset=".4" stop-color="#f7d675"/>
-      <stop offset=".68" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#d99f28"/>
-    </linearGradient>
-    <filter id="blueGlow" x="-80%" y="-80%" width="260%" height="260%">
-      <feGaussianBlur stdDeviation="8" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <filter id="goldGlow" x="-80%" y="-80%" width="260%" height="260%">
-      <feGaussianBlur stdDeviation="5" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+    <radialGradient id="smoke"><stop stop-color="#213540"/><stop offset=".54" stop-color="#0a141a"/><stop offset="1" stop-color="#020507"/></radialGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f8fdff"/><stop offset=".25" stop-color="#617580"/><stop offset=".5" stop-color="#dff5ff"/><stop offset=".76" stop-color="#344650"/><stop offset="1" stop-color="#bceaff"/></linearGradient>
+    <linearGradient id="cross" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".28" stop-color="#fff2bd"/><stop offset=".58" stop-color="#e5b94e"/><stop offset=".78" stop-color="#fff"/><stop offset="1" stop-color="#c98e1e"/></linearGradient>
+    <radialGradient id="drop" cx="30%" cy="25%"><stop stop-color="#fff" stop-opacity=".8"/><stop offset=".25" stop-color="#c8efff" stop-opacity=".22"/><stop offset="1" stop-color="#65badd" stop-opacity=".04"/></radialGradient>
+    <filter id="goldGlow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="blueGlow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
-  <circle cx="128" cy="128" r="116" fill="#ffffff" stroke="url(#chrome)" stroke-width="9"/>
-  <path d="M128 28 218 62v60c0 57-35 91-90 110-55-19-90-53-90-110V62z" fill="url(#sky)" stroke="#157ee8" stroke-width="5"/>
-  <path d="M128 38 206 68v51c0 48-28 78-78 97-50-19-78-49-78-97V68z" fill="none" stroke="#ffffff" stroke-opacity=".9" stroke-width="3"/>
-  <g opacity=".8" stroke="#ffffff" stroke-linecap="round">
-    <path d="M128 48v38" stroke-width="5"/>
-    <path d="m91 61 19 33" stroke-width="4"/>
-    <path d="m165 61-19 33" stroke-width="4"/>
-    <path d="m65 86 32 20" stroke-width="3"/>
-    <path d="m191 86-32 20" stroke-width="3"/>
-  </g>
-  <path d="m70 121 17-17-7 28 19-6-31 39 9-29-18 6z" fill="#168cff" filter="url(#blueGlow)"/>
-  <path d="m186 121-17-17 7 28-19-6 31 39-9-29 18 6z" fill="#168cff" filter="url(#blueGlow)"/>
-  <path d="M112 72h32v39h40v32h-40v65h-32v-65H72v-32h40z" fill="#fff8d9" stroke="#ffffff" stroke-width="10" filter="url(#goldGlow)"/>
-  <path d="M112 72h32v39h40v32h-40v65h-32v-65H72v-32h40z" fill="url(#gold)" stroke="#dca93d" stroke-width="3"/>
-  <path d="M119 79h11v121h-11z" fill="#ffffff" opacity=".72"/>
+  <circle cx="128" cy="128" r="119" fill="#020507" stroke="url(#chrome)" stroke-width="8"/>
+  <path d="M128 22 224 58v66c0 61-38 97-96 118-58-21-96-57-96-118V58z" fill="url(#smoke)" stroke="#4fc8ff" stroke-width="5"/>
+  <path d="M128 33 212 65v57c0 52-31 83-84 103-53-20-84-51-84-103V65z" fill="none" stroke="#d8f4ff" stroke-opacity=".28" stroke-width="2"/>
+  <path d="M128 32v40M91 47l21 35M165 47l-21 35M61 74l36 22M195 74l-36 22" stroke="#ffeab0" stroke-opacity=".48" stroke-linecap="round" stroke-width="4"/>
+  <path d="m58 131 24-25-8 35 22-8-37 52 12-39-23 9zm140 0-24-25 8 35-22-8 37 52-12-39 23 9z" fill="#43c2ff" filter="url(#blueGlow)"/>
+  <path d="M107 61h42v52h52v42h-52v83h-42v-83H55v-42h52z" fill="#fff3b5" stroke="#fff" stroke-width="12" filter="url(#goldGlow)"/>
+  <path d="M107 61h42v52h52v42h-52v83h-42v-83H55v-42h52z" fill="url(#cross)" stroke="#e6b84c" stroke-width="3"/>
+  <path d="M116 69h13v160h-13z" fill="#fff" opacity=".56"/>
+  <g fill="url(#drop)" stroke="#dff6ff" stroke-opacity=".25"><ellipse cx="66" cy="73" rx="9" ry="13"/><ellipse cx="187" cy="53" rx="6" ry="9"/><ellipse cx="202" cy="191" rx="10" ry="14"/><ellipse cx="66" cy="206" rx="5" ry="8"/></g>
 </svg>

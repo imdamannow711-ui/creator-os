@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v36-visual-compliance";
+const CACHE_NAME = "done-rite-v37-smoked-glass-touch";
 
 const FILES = [
   "./",
@@ -13,10 +13,12 @@ const FILES = [
   "./app.js",
   "./modules/creator-content-libraries.js",
   "./styles/dashboard.css",
+  "./styles/smoked-glass-theme.css",
   "./assets/brand/done-rite-cross-crest.svg",
   "./assets/brand/done-rite-network-logo.svg",
   "./assets/brand/divine-bolts.svg",
-  "./assets/one-click/one-click-home-righteous-light.svg",
+  "./assets/brand/smoked-glass-droplets.svg",
+  "./assets/one-click/one-click-home-smoked-glass.svg",
   "./vendor/react-offline.js",
   "./teleprompter.html",
   "./teleprompter-one-click.html",
@@ -29,6 +31,7 @@ const FILES = [
   "./icon-192.png",
   "./icon-512.png",
   "./assets/sfx/manifest.json",
+  "./modules/ui-touch-feedback.js",
   "./modules/one-click-ad-editor.js",
   "./modules/still-image-compliance.js",
   "./modules/content-language-compliance.js",

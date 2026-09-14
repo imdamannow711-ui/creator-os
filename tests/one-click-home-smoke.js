@@ -7,10 +7,10 @@ const root=path.join(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'one-click-home-dev.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'styles','one-click-home.css'),'utf8');
 const js=fs.readFileSync(path.join(root,'modules','one-click-home.js'),'utf8');
-const image=fs.readFileSync(path.join(root,'assets','one-click','one-click-home-righteous-light.svg'),'utf8');
+const image=fs.readFileSync(path.join(root,'assets','one-click','one-click-home-smoked-glass.svg'),'utf8');
 
 new vm.Script(js,{filename:'one-click-home.js'});
-assert(html.includes('assets/one-click/one-click-home-righteous-light.svg'),'Approved bright One-Click graphic is not loaded');
+assert(html.includes('assets/one-click/one-click-home-smoked-glass.svg'),'Approved smoked-glass One-Click graphic is not loaded');
 assert(html.includes('styles/one-click-home.css'),'Launcher stylesheet is not loaded');
 assert(html.includes('modules/one-click-home.js'),'Launcher route controller is not loaded');
 assert(html.includes('modules/one-click-home.js?v=20260912-long-clip-1'),'Launcher route controller cache key was not refreshed for the long-clip fix');
@@ -23,7 +23,7 @@ assert(js.includes("url.searchParams.set('return',launcherReturn())"),'Editor re
 assert(js.includes("url.searchParams.set('stage',stage)"),'Stage route is missing');
 assert(css.includes('min-height: 82px'),'Mobile touch targets are not protected');
 assert(css.includes('@media (min-width: 760px)'),'Responsive graphic hotspot layout is missing');
-assert(image.includes('<svg')&&image.includes('CREATE WITH PURPOSE'),'Bright launcher graphic is not a valid branded SVG');
+assert(image.includes('<svg')&&image.includes('CREATE WITH PURPOSE')&&image.includes('wet smoked-glass'),'Smoked-glass launcher graphic is not a valid branded SVG');
 
 const stages=['create','upload','text','voiceover','trim','sfx','render','export'];
 const links=stages.map(stage=>({
