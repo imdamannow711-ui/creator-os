@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v35-righteous-light-theme";
+const CACHE_NAME = "done-rite-v36-visual-compliance";
 
 const FILES = [
   "./",
@@ -30,6 +30,8 @@ const FILES = [
   "./icon-512.png",
   "./assets/sfx/manifest.json",
   "./modules/one-click-ad-editor.js",
+  "./modules/still-image-compliance.js",
+  "./modules/content-language-compliance.js",
   "./modules/one-click-media-stage.js",
   "./modules/one-click-scene-scorer.js",
   "./modules/one-click-render-stage.js",

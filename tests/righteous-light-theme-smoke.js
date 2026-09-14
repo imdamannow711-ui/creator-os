@@ -35,7 +35,7 @@ requireText(home, 'one-click-home-righteous-light.svg', 'launcher art');
 requireText(app, 'done-rite-cross-crest.svg', 'dashboard crest');
 requireText(app, 'Faith \\u2022 Integrity \\u2022 Service \\u2022 Excellence', 'dashboard brand values');
 if (manifest.theme_color !== '#eef8ff' || manifest.background_color !== '#eef8ff') throw new Error('manifest is not using the bright install theme');
-requireText(sw, 'done-rite-v35-righteous-light-theme', 'cache version');
+requireText(sw, 'done-rite-v36-visual-compliance', 'cache version');
 ['done-rite-cross-crest.svg','done-rite-network-logo.svg','divine-bolts.svg','one-click-home-righteous-light.svg'].forEach(asset => requireText(sw, asset, 'offline asset'));
 for (const file of ['icon-192.png','icon-512.png']) {
   const bytes = fs.readFileSync(path.join(root, file));

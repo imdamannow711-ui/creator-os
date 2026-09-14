@@ -1,0 +1,23 @@
+const fs=require('fs');
+const path=require('path');
+const vm=require('vm');
+function assert(value,message){if(!value)throw new Error(message);}
+const root=path.join(__dirname,'..'),window={};
+vm.runInNewContext(fs.readFileSync(path.join(root,'modules','still-image-compliance.js'),'utf8'),{window,console},{filename:'still-image-compliance.js'});
+vm.runInNewContext(fs.readFileSync(path.join(root,'modules','content-language-compliance.js'),'utf8'),{window,console},{filename:'content-language-compliance.js'});
+const still=window.DoneRiteStillImageCompliance,language=window.DoneRiteContentLanguageCompliance;
+assert(still&&still.version==='1.0','Still-image compliance module did not load');
+assert(still.affiliateStillImageRules.length>=10,'Affiliate still-image rules are incomplete');
+assert(still.unrealisticExpectationRules.length>=8,'Unrealistic-expectation rules are incomplete');
+assert(still.listingFirstImageRules.every(rule=>rule.includes('first listing image only')),'Listing-image rules are not clearly separated from affiliate-video rules');
+const visual=still.review({productName:'Example Gadget',feature:'miracle overnight results'});
+assert(visual.status==='FIX_BEFORE_RECORDING'&&visual.automaticFlags.length,'Unrealistic results were not flagged');
+assert(visual.teleprompterText.includes('Avoid a static-only slideshow'),'Still-frame quality rule is missing from the Teleprompter handoff');
+assert(language&&language.version==='1.0','Language compliance module did not load');
+const risky=language.review('This iPhone dupe is guaranteed to work instantly',{productName:'Charging Cable'});
+assert(risky.flags.some(flag=>flag.includes('“iphone”')),'iPhone reference was not flagged');
+assert(risky.flags.some(flag=>flag.includes('“dupe”')),'Dupe wording was not flagged');
+assert(risky.flags.some(flag=>flag.includes('“guaranteed”')),'Guaranteed wording was not flagged');
+const exactBrand=language.review('iPhone protective case',{productName:'iPhone protective case'});
+assert(!exactBrand.flags.some(flag=>flag.includes('“iphone”')),'The exact verified product brand was incorrectly blocked');
+console.log('VISUAL_COMPLIANCE_PASS');
