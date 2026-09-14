@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">DONE RITE Creator OS One-Click Ad Builder</title>
+  <desc id="desc">A bright white, sky blue, chrome, and gold Creator OS control room beneath rays of light and blue lightning.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#dff5ff"/><stop offset=".58" stop-color="#f9fcff"/><stop offset="1" stop-color="#d5eaff"/></linearGradient>
+    <linearGradient id="chrome"><stop stop-color="#fff"/><stop offset=".35" stop-color="#91a6bc"/><stop offset=".53" stop-color="#fff"/><stop offset="1" stop-color="#7790aa"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#5cc6ff"/><stop offset="1" stop-color="#0872dc"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff6c3"/><stop offset=".5" stop-color="#e7b638"/><stop offset=".7" stop-color="#fff"/><stop offset="1" stop-color="#c88b14"/></linearGradient>
+    <radialGradient id="light" cx="50%" cy="0" r="70%"><stop stop-color="#fffef1"/><stop offset=".35" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <rect width="1600" height="700" fill="url(#light)"/>
+  <path d="M515 0 330 650h250L690 0zM790 0 690 690h230L900 0zM1040 0 990 650h230L1150 0z" fill="#fff" opacity=".42"/>
+  <g fill="none" stroke="#168cff" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"><path d="M170 0 145 63l28 31-55 65 23 42-66 98" stroke-width="7"/><path d="M1430 0 1460 74l-29 43 49 54-39 61 42 63-55 91" stroke-width="7"/></g>
+  <g stroke="#fff" stroke-width="2" fill="none"><path d="M170 0 145 63l28 31-55 65 23 42-66 98"/><path d="M1430 0 1460 74l-29 43 49 54-39 61 42 63-55 91"/></g>
+  <rect x="55" y="52" width="1490" height="796" rx="44" fill="#ffffff" fill-opacity=".54" stroke="url(#chrome)" stroke-width="8"/>
+  <text x="800" y="88" text-anchor="middle" fill="#597089" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="800" letter-spacing="10">FAITH • INTEGRITY • SERVICE • EXCELLENCE</text>
+  <text x="800" y="142" text-anchor="middle" fill="#102a4c" font-family="Arial Black,Arial,sans-serif" font-size="52" font-weight="900" letter-spacing="5">DONE RITE CREATOR OS</text>
+  <text x="800" y="190" text-anchor="middle" fill="#137fef" font-family="Arial,Helvetica,sans-serif" font-size="29" font-weight="800" letter-spacing="8">ONE-CLICK AD BUILDER</text>
+  <g aria-label="workflow buttons" font-family="Arial,Helvetica,sans-serif" text-anchor="middle">
+    <g transform="translate(205 218)"><rect width="139" height="132" rx="18" fill="url(#blue)" stroke="#fff" stroke-width="5"/><text x="69.5" y="48" fill="#fff8cf" font-size="31">✚</text><text x="69.5" y="88" fill="#fff" font-size="18" font-weight="900">CREATE</text><text x="69.5" y="110" fill="#dff5ff" font-size="11">BEGIN HERE</text></g>
+    <g transform="translate(354 218)"><rect width="139" height="132" rx="18" fill="#fff" stroke="#168cff" stroke-width="4"/><text x="69.5" y="48" fill="#168cff" font-size="31">☁</text><text x="69.5" y="88" fill="#102a4c" font-size="18" font-weight="900">UPLOAD</text><text x="69.5" y="110" fill="#64809c" font-size="11">RAW CLIPS</text></g>
+    <g transform="translate(506 218)"><rect width="139" height="132" rx="18" fill="#fff" stroke="#168cff" stroke-width="4"/><text x="69.5" y="49" fill="#168cff" font-size="32" font-weight="900">T</text><text x="69.5" y="88" fill="#102a4c" font-size="18" font-weight="900">TEXT</text><text x="69.5" y="110" fill="#64809c" font-size="11">SCRIPT TOOLS</text></g>
+    <g transform="translate(656 218)"><rect width="139" height="132" rx="18" fill="#fff" stroke="#168cff" stroke-width="4"/><circle cx="69.5" cy="43" r="19" fill="#168cff"/><rect x="64" y="57" width="11" height="17" rx="5" fill="#168cff"/><text x="69.5" y="88" fill="#102a4c" font-size="15" font-weight="900">VOICEOVER</text><text x="69.5" y="110" fill="#64809c" font-size="11">VOICE TOOLS</text></g>
+    <g transform="translate(808 218)"><rect width="139" height="132" rx="18" fill="#fff" stroke="#168cff" stroke-width="4"/><text x="69.5" y="50" fill="#168cff" font-size="34">✂</text><text x="69.5" y="88" fill="#102a4c" font-size="15" font-weight="900">AUTO TRIM</text><text x="69.5" y="110" fill="#64809c" font-size="11">REVIEW CUTS</text></g>
+    <g transform="translate(958 218)"><rect width="139" height="132" rx="18" fill="#fff" stroke="#168cff" stroke-width="4"/><text x="69.5" y="49" fill="#168cff" font-size="32">▥</text><text x="69.5" y="88" fill="#102a4c" font-size="18" font-weight="900">SFX</text><text x="69.5" y="110" fill="#64809c" font-size="11">SOUND</text></g>
+    <g transform="translate(1110 218)"><rect width="139" height="132" rx="18" fill="#fff" stroke="#168cff" stroke-width="4"/><text x="69.5" y="49" fill="#168cff" font-size="32">⚙</text><text x="69.5" y="88" fill="#102a4c" font-size="18" font-weight="900">RENDER</text><text x="69.5" y="110" fill="#64809c" font-size="11">BUILD VIDEO</text></g>
+    <g transform="translate(1262 218)"><rect width="139" height="132" rx="18" fill="url(#blue)" stroke="#fff" stroke-width="5"/><text x="69.5" y="49" fill="#fff8cf" font-size="34">⇧</text><text x="69.5" y="88" fill="#fff" font-size="18" font-weight="900">EXPORT</text><text x="69.5" y="110" fill="#dff5ff" font-size="11">SAVE &amp; SHARE</text></g>
+  </g>
+  <circle cx="800" cy="565" r="142" fill="#fff" stroke="url(#chrome)" stroke-width="8"/>
+  <path d="M800 425 918 470v76c0 74-46 116-118 142-72-26-118-68-118-142v-76z" fill="#dff2ff" stroke="#168cff" stroke-width="6"/>
+  <path d="M776 458h48v58h58v48h-58v96h-48v-96h-58v-48h58z" fill="url(#gold)" stroke="#fff" stroke-width="9" filter="url(#glow)"/>
+  <path d="m704 535 20-23-7 37 22-7-34 47 10-35-22 8zm192 0-20-23 7 37-22-7 34 47-10-35 22 8z" fill="#168cff"/>
+  <text x="800" y="752" text-anchor="middle" fill="#102a4c" font-family="Arial Black,Arial,sans-serif" font-size="34" font-weight="900" letter-spacing="4">CREATE WITH PURPOSE</text>
+  <text x="800" y="794" text-anchor="middle" fill="#5d7894" font-family="Arial,Helvetica,sans-serif" font-size="23" font-style="italic" letter-spacing="2">Real Reviews. Real Gadgets. Done Rite.</text>
+</svg>

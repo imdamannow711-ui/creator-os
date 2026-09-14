@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 360" role="img" aria-labelledby="title desc">
+  <title id="title">DONE RITE Network</title>
+  <desc id="desc">DONE RITE Network logo with a radiant cross crest and the values Faith, Integrity, Service, and Excellence.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ffffff"/>
+      <stop offset=".55" stop-color="#eef8ff"/>
+      <stop offset="1" stop-color="#d8eeff"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fff8cf"/><stop offset=".42" stop-color="#efc858"/><stop offset=".68" stop-color="#ffffff"/><stop offset="1" stop-color="#ce8d16"/>
+    </linearGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ffffff"/><stop offset=".28" stop-color="#8092aa"/><stop offset=".52" stop-color="#f9fcff"/><stop offset=".78" stop-color="#657890"/><stop offset="1" stop-color="#e7f2ff"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect x="8" y="8" width="1064" height="344" rx="72" fill="url(#bg)" stroke="url(#chrome)" stroke-width="12"/>
+  <path d="M190 42 302 84v75c0 70-44 113-112 137-68-24-112-67-112-137V84z" fill="#dff2ff" stroke="#168cff" stroke-width="7"/>
+  <g opacity=".82" stroke="#fff" stroke-linecap="round"><path d="M190 50v51" stroke-width="8"/><path d="m143 63 24 43" stroke-width="6"/><path d="m237 63-24 43" stroke-width="6"/></g>
+  <path d="m114 153 21-20-9 35 24-8-39 49 12-37-23 8z" fill="#168cff" filter="url(#glow)"/>
+  <path d="m266 153-21-20 9 35-24-8 39 49-12-37 23 8z" fill="#168cff" filter="url(#glow)"/>
+  <path d="M170 82h40v50h50v39h-50v82h-40v-82h-50v-39h50z" fill="url(#gold)" stroke="#fff" stroke-width="8" filter="url(#glow)"/>
+  <text x="350" y="145" fill="#102a4c" font-family="Arial Black,Arial,sans-serif" font-size="82" font-weight="900" letter-spacing="4">DONE RITE</text>
+  <text x="354" y="204" fill="#168cff" font-family="Arial,Helvetica,sans-serif" font-size="35" font-weight="800" letter-spacing="12">NETWORK</text>
+  <path d="M354 228h624" stroke="#d4a83d" stroke-width="4"/>
+  <text x="354" y="277" fill="#405874" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="700" letter-spacing="4">FAITH • INTEGRITY • SERVICE • EXCELLENCE</text>
+  <text x="354" y="316" fill="#687d94" font-family="Arial,Helvetica,sans-serif" font-size="20" font-style="italic" letter-spacing="2">Real Reviews. Real Gadgets. Done Rite.</text>
+</svg>

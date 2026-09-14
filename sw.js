@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v34-teleprompter-session-precedence";
+const CACHE_NAME = "done-rite-v35-righteous-light-theme";
 
 const FILES = [
   "./",
@@ -13,11 +13,16 @@ const FILES = [
   "./app.js",
   "./modules/creator-content-libraries.js",
   "./styles/dashboard.css",
+  "./assets/brand/done-rite-cross-crest.svg",
+  "./assets/brand/done-rite-network-logo.svg",
+  "./assets/brand/divine-bolts.svg",
+  "./assets/one-click/one-click-home-righteous-light.svg",
   "./vendor/react-offline.js",
   "./teleprompter.html",
   "./teleprompter-one-click.html",
   "./teleprompter-script-studio.html",
   "./one-click-ad-dev.html",
+  "./one-click-home-dev.html",
   "./video-upload.html",
   "./content-gap-import.html",
   "./manifest.json",

@@ -32,7 +32,7 @@ new vm.Script(readyProject,{filename:'one-click-ready-project.js'});
 
 assert(html.includes('styles/one-click-builder.css'),'One-Click visual stylesheet is not loaded');
 assert(html.includes('modules/one-click-builder-ui.js'),'One-Click workflow controller is not loaded');
-assert(html.includes('modules/one-click-builder-ui.js?v=20260912-freeze-fix-1'),'One-Click workflow controller cache key was not refreshed after the freeze fix');
+assert(html.includes('modules/one-click-builder-ui.js?v=20260914-righteous-light-1'),'One-Click workflow controller cache key was not refreshed for the righteous-light theme');
 assert(html.includes('modules/one-click-ad-editor.js?v=20260914-specific-story-1'),'Specific-story writing guardrail cache key was not refreshed');
 assert(html.includes('modules/one-click-browser-executor.js?v=20260914-audio-boundary-1'),'Audio-boundary repair cache key was not refreshed');
 assert(html.includes('modules/one-click-camera-handoff.js?v=20260914-iphone-fixes-1'),'iPhone repair cache key was not refreshed');
@@ -77,7 +77,7 @@ assert(builder.includes('function setText(el,value){if(el&&el.textContent!==valu
 assert(builder.includes("button.classList.contains('is-ready')!==!!on"),'Ready-state class writes must stay idempotent to prevent a MutationObserver loop');
 assert(css.includes('.dr-workflow-rail'),'Workflow rail styling is missing');
 assert(sw.includes('styles/one-click-builder.css')&&sw.includes('modules/one-click-builder-ui.js'),'New One-Click assets are not cached for offline use');
-assert(sw.includes('done-rite-v34-teleprompter-session-precedence'),'Service-worker cache was not refreshed for the Teleprompter precedence fix');
+assert(sw.includes('done-rite-v35-righteous-light-theme'),'Service-worker cache was not refreshed for the righteous-light theme');
 assert(sw.includes('modules/one-click-ready-project.js'),'Ready-project loader is not available offline');
 assert(readyProject.includes("'hollyland-lark-a1-combo'"),'Hollyland project preset is missing');
 assert(readyProject.includes('#ad #HollylandLARKA1 #WirelessMicrophone #CreatorGear #ContentCreator'),'Hollyland hashtag set is missing or exceeds the approved five-tag package');

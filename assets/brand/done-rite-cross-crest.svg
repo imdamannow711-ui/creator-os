@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">DONE RITE cross crest</title>
+  <desc id="desc">A radiant gold and white cross inside a chrome shield with electric blue accents.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".48" stop-color="#e9f7ff"/>
+      <stop offset="1" stop-color="#b9e2ff"/>
+    </linearGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".28" stop-color="#9eb0c5"/>
+      <stop offset=".5" stop-color="#ffffff"/>
+      <stop offset=".76" stop-color="#788ba4"/>
+      <stop offset="1" stop-color="#eaf4ff"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffbe4"/>
+      <stop offset=".4" stop-color="#f7d675"/>
+      <stop offset=".68" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d99f28"/>
+    </linearGradient>
+    <filter id="blueGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="goldGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="128" cy="128" r="116" fill="#ffffff" stroke="url(#chrome)" stroke-width="9"/>
+  <path d="M128 28 218 62v60c0 57-35 91-90 110-55-19-90-53-90-110V62z" fill="url(#sky)" stroke="#157ee8" stroke-width="5"/>
+  <path d="M128 38 206 68v51c0 48-28 78-78 97-50-19-78-49-78-97V68z" fill="none" stroke="#ffffff" stroke-opacity=".9" stroke-width="3"/>
+  <g opacity=".8" stroke="#ffffff" stroke-linecap="round">
+    <path d="M128 48v38" stroke-width="5"/>
+    <path d="m91 61 19 33" stroke-width="4"/>
+    <path d="m165 61-19 33" stroke-width="4"/>
+    <path d="m65 86 32 20" stroke-width="3"/>
+    <path d="m191 86-32 20" stroke-width="3"/>
+  </g>
+  <path d="m70 121 17-17-7 28 19-6-31 39 9-29-18 6z" fill="#168cff" filter="url(#blueGlow)"/>
+  <path d="m186 121-17-17 7 28-19-6 31 39-9-29 18 6z" fill="#168cff" filter="url(#blueGlow)"/>
+  <path d="M112 72h32v39h40v32h-40v65h-32v-65H72v-32h40z" fill="#fff8d9" stroke="#ffffff" stroke-width="10" filter="url(#goldGlow)"/>
+  <path d="M112 72h32v39h40v32h-40v65h-32v-65H72v-32h40z" fill="url(#gold)" stroke="#dca93d" stroke-width="3"/>
+  <path d="M119 79h11v121h-11z" fill="#ffffff" opacity=".72"/>
+</svg>
