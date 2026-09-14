@@ -1,4 +1,4 @@
-/* DONE RITE Creator OS — One-Click Browser Executor v1.5
+/* DONE RITE Creator OS — One-Click Browser Executor v1.6
    iPhone-safe local preview, persistent manual trim, multi-source timed render,
    and attached voiceover mixing at original gain.
    Originals are never overwritten.
@@ -17,7 +17,7 @@
 */
 (function(){
 'use strict';
-const VERSION='1.5';
+const VERSION='1.6';
 const TRIM_KEY='done-rite-one-click-trims:v1';
 const TRIM_LIMIT=300;
 const manualTrims=new Map();
@@ -189,6 +189,7 @@ async function renderLocalBatch(files,recipe,options){
     }
 
     async function startCutPlayback(cutNumber){
+      const now=audioCtx.currentTime;gain.gain.cancelScheduledValues(now);gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(1,now+.015);
       video.muted=false;
       try{await video.play();return;}catch(err){}
       try{if(audioCtx.state!=='running')await audioCtx.resume();}catch(e){}
@@ -198,6 +199,7 @@ async function renderLocalBatch(files,recipe,options){
       catch(err){throw new Error('Cut '+cutNumber+' would not start playing on this iPhone. Your original clips were not changed.');}
       silentCuts.push(cutNumber);
     }
+    async function finishCutPlayback(){const now=audioCtx.currentTime;gain.gain.cancelScheduledValues(now);gain.gain.setValueAtTime(gain.gain.value,now);gain.gain.linearRampToValueAtTime(0,now+.015);await new Promise(resolve=>setTimeout(resolve,18));video.pause();}
 
     await switchSource(firstIndex,cuts[0].start);
     fitContain(ctx,video,canvas.width,canvas.height);drawOverlay(ctx,overlayForTime(renderRecipe,0),canvas.width,canvas.height);
@@ -216,7 +218,7 @@ async function renderLocalBatch(files,recipe,options){
       }else await ensureFrameReady(video,cut.start);
       await startCutPlayback(i+1);
       await drawUntil(video,ctx,canvas,cut,baseElapsed,renderRecipe,options.onProgress);
-      video.pause();baseElapsed+=cut.end-cut.start;
+      await finishCutPlayback();baseElapsed+=cut.end-cut.start;
     }
 
     if(recorder.state!=='inactive')recorder.stop();await stopped;

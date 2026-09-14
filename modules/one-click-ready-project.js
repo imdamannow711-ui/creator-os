@@ -1,10 +1,10 @@
-/* DONE RITE Creator OS — Ready Project Loader v0.1
+/* DONE RITE Creator OS — Ready Project Loader v0.3
    Loads approved, same-origin project assets into One-Click without changing
    the existing Plex editor, Teleprompter, trim, or voiceover engines.
 */
 (function(){
 'use strict';
-const VERSION='0.2';
+const VERSION='0.3';
 const PROJECTS={
   'hollyland-lark-a1-combo':{
     title:'Hollyland LARK A1 Combo Kit',

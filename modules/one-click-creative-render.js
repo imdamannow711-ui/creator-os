@@ -1,10 +1,10 @@
-/* DONE RITE Creator OS — One-Click Creative Render v0.4
+/* DONE RITE Creator OS — One-Click Creative Render v0.5
    User-selected text styling, motion and synthesized SFX.
    Original clip audio and attached voiceover stay on independent gain-1 paths.
 */
 (function(){
 'use strict';
-const VERSION='0.4';
+const VERSION='0.5';
 function boot(){
   const base=window.DoneRiteOneClickBrowserExecutor,controls=window.DoneRiteOneClickCreativeControls;
   if(!base||!controls||base.__creativeRenderPatched)return;
@@ -34,12 +34,14 @@ function boot(){
       const canvas=canvasFor(video,options.maxLongEdge||1280),ctx=canvas.getContext('2d',{alpha:false}),dest=audioCtx.createMediaStreamDestination(),sourceNode=audioCtx.createMediaElementSource(video),gain=audioCtx.createGain();gain.gain.value=1;sourceNode.connect(gain);gain.connect(dest);voice=await setupVoiceover(audioCtx,dest,voiceSpec);
       canvasStream=canvas.captureStream(Number(options.fps||30));combined=new MediaStream([...canvasStream.getVideoTracks(),...dest.stream.getAudioTracks()]);const chunks=[];recorder=createRecorder(combined,mime,options);recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=e=>reject(e.error||new Error('MediaRecorder failed.'));});
       async function switchSource(sourceIndex,startTime){sourceIndex=Math.max(0,Math.min(list.length-1,Number(sourceIndex||0)));if(currentSourceIndex!==sourceIndex){try{video.pause();}catch(e){}release(currentUrl);currentUrl=URL.createObjectURL(list[sourceIndex]);video.src=currentUrl;video.load();if(video.readyState<1)await waitEvent(video,'loadedmetadata',20000);currentSourceIndex=sourceIndex;}await ensureFrameReady(video,startTime||0);}
+      function startSourceFade(){const now=audioCtx.currentTime;gain.gain.cancelScheduledValues(now);gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(1,now+.015);}
+      async function finishSourceFade(){const now=audioCtx.currentTime;gain.gain.cancelScheduledValues(now);gain.gain.setValueAtTime(gain.gain.value,now);gain.gain.linearRampToValueAtTime(0,now+.015);await new Promise(resolve=>setTimeout(resolve,18));video.pause();}
       await switchSource(firstIndex,cuts[0].start);fit(ctx,video,canvas.width,canvas.height);drawText(ctx,segment(renderRecipe,0),canvas.width,canvas.height,state);recorder.start(250);let baseElapsed=0;const fired=new Set();if(voice){voice.source.start(0);voice.started=true;}
       for(let i=0;i<cuts.length;i++){
         const cut=cuts[i];
         if(i>0){if(recorder.state==='recording'){recorder.pause();await waitUntil(()=>recorder.state==='paused',5000,'recorder pause');}if(voice&&audioCtx.state==='running')await audioCtx.suspend();await switchSource(cut.sourceIndex,cut.start);if(voice&&audioCtx.state!=='running')await audioCtx.resume();if(recorder.state==='paused'){recorder.resume();await waitUntil(()=>recorder.state==='recording',5000,'recorder resume');}}
-        video.muted=false;video.volume=1;try{await video.play();}catch(err){throw new Error('Safari blocked unmuted playback for a selected cut. Render stopped instead of silently removing the original voice.');}
-        await drawUntil(video,ctx,canvas,cut,baseElapsed,renderRecipe,options.onProgress,audioCtx,dest,state,fired);video.pause();baseElapsed+=cut.end-cut.start;
+        startSourceFade();video.muted=false;video.volume=1;try{await video.play();}catch(err){throw new Error('Safari blocked unmuted playback for a selected cut. Render stopped instead of silently removing the original voice.');}
+        await drawUntil(video,ctx,canvas,cut,baseElapsed,renderRecipe,options.onProgress,audioCtx,dest,state,fired);await finishSourceFade();baseElapsed+=cut.end-cut.start;
       }
       if(recorder.state!=='inactive')recorder.stop();await stopped;const blob=new Blob(chunks,{type:mime.split(';')[0]||'video/mp4'});if(!blob.size)throw new Error('The browser returned an empty rendered video.');outputUrl=URL.createObjectURL(blob);return {status:'RENDER_COMPLETE',blob,url:outputUrl,mimeType:blob.type||mime,fileName:recipe.export&&recipe.export.fileName||'done-rite-ad.mp4',durationSeconds:+baseElapsed.toFixed(2),width:canvas.width,height:canvas.height,sourceCount:new Set(cuts.map(c=>c.sourceIndex)).size,manualTrimUsed:cuts.some(c=>c.manualTrim),voiceoverAttached:!!voice,voiceoverName:voice&&voice.name||null,creativeRender:true,originalPreserved:true};
     }catch(err){if(outputUrl)release(outputUrl);throw err;}finally{try{if(video){video.pause();video.removeAttribute('src');video.load();}}catch(e){}try{if(voice&&voice.started)voice.source.stop();}catch(e){}release(currentUrl);try{if(recorder&&recorder.state!=='inactive')recorder.stop();}catch(e){}try{if(canvasStream)canvasStream.getTracks().forEach(t=>t.stop());}catch(e){}try{if(combined)combined.getTracks().forEach(t=>t.stop());}catch(e){}try{if(audioCtx)await audioCtx.close();}catch(e){}}
