@@ -36,7 +36,7 @@ assert(html.includes('modules/one-click-builder-ui.js?v=20260912-freeze-fix-1'),
 assert(html.includes('modules/one-click-ad-editor.js?v=20260914-specific-story-1'),'Specific-story writing guardrail cache key was not refreshed');
 assert(html.includes('modules/one-click-browser-executor.js?v=20260914-audio-boundary-1'),'Audio-boundary repair cache key was not refreshed');
 assert(html.includes('modules/one-click-camera-handoff.js?v=20260914-iphone-fixes-1'),'iPhone repair cache key was not refreshed');
-assert(html.includes('modules/one-click-ready-project.js?v=20260914-hollyland-handoff-2'),'Hollyland ready-project loader is not connected');
+assert(html.includes('modules/one-click-ready-project.js?v=20260914-hollyland-handoff-3'),'Hollyland ready-project loader is not connected');
 assert(html.includes('window.DoneRiteOneClickAppendFile'),'Ready-project clips cannot enter the canonical One-Click project list');
 assert(html.includes('window.DoneRiteOneClickProjectFiles=files'),'Canonical project-file provider is missing');
 assert(html.includes("done-rite-one-click-project-files"),'Project-file synchronization event is missing');
@@ -82,7 +82,8 @@ assert(sw.includes('modules/one-click-ready-project.js'),'Ready-project loader i
 assert(readyProject.includes("'hollyland-lark-a1-combo'"),'Hollyland project preset is missing');
 assert(readyProject.includes('#ad #HollylandLARKA1 #WirelessMicrophone #CreatorGear #ContentCreator'),'Hollyland hashtag set is missing or exceeds the approved five-tag package');
 assert(readyProject.includes("HANDOFF_KEY='done-rite-one-click-teleprompter-handoff:v1'"),'Hollyland Teleprompter handoff is not stored locally');
-assert(!readyProject.includes("url.searchParams.set('script',project.voiceover)"),'Hollyland script must not be placed in the request URL');
+assert(readyProject.includes("url.searchParams.set('script',project.voiceover)"),'Hollyland short link needs a core script fallback');
+assert(!readyProject.includes("url.searchParams.set('shots',payload.shots)")&&!readyProject.includes("url.searchParams.set('compliance',project.compliance)"),'Hollyland short link must keep the large guide and packaging out of the request URL');
 assert(readyProject.includes("url.searchParams.set('handoff','1')"),'Hollyland Teleprompter link does not use the short handoff route');
 assert(teleprompterBridge.includes('window.DoneRiteTeleprompterHandoff'),'Teleprompter does not restore the locally stored handoff');
 assert(teleprompterBridge.includes('const buildScript=/<script>\\s*const BUILD=/'),'Teleprompter handoff injection does not match the real source markup');
