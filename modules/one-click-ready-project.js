@@ -1,10 +1,10 @@
-/* DONE RITE Creator OS — Ready Project Loader v0.4
+/* DONE RITE Creator OS — Ready Project Loader v0.5
    Loads approved, same-origin project assets into One-Click without changing
    the existing Plex editor, Teleprompter, trim, or voiceover engines.
 */
 (function(){
 'use strict';
-const VERSION='0.4';
+const VERSION='0.5';
 const PROJECTS={
   'hollyland-lark-a1-combo':{
     title:'Hollyland LARK A1 Combo Kit',
@@ -31,7 +31,8 @@ function requested(){try{return new URLSearchParams(location.search).get('projec
 function setField(name,value){const el=id(name);if(!el)return;el.value=value;el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));}
 function teleprompterUrl(project){
   const returnUrl=new URL('one-click-ad-dev.html',location.href);returnUrl.searchParams.set('project','hollyland-lark-a1-combo');
-  const payload={session:'1',return:returnUrl.toString(),back:returnUrl.toString(),product:project.product,seconds:project.duration,type:'full',tone:'confident',script:project.voiceover,direction:project.direction,angle:'Product reveal',format:'Vertical 9:16 · TikTok Shop · hands/product focused',shots:'Use the supplied edited clip: closed case hook, opening reveal, steady open-case close.',onscreen:project.onScreen,sfx:project.sfx,caption:project.caption,hashtags:project.hashtags,cover:'HOLLYLAND LARK A1 — COMBO KIT',compliance:project.compliance,updatedAt:new Date().toISOString()};
+  const stillrules=window.DoneRiteStillImageCompliance?window.DoneRiteStillImageCompliance.review({productName:project.product,feature:project.feature,caption:project.caption,onScreenText:project.onScreen}).teleprompterText:'Still-image visual confirmation is required before posting.';
+  const payload={session:'1',return:returnUrl.toString(),back:returnUrl.toString(),product:project.product,seconds:project.duration,type:'full',tone:'confident',script:project.voiceover,direction:project.direction,angle:'Product reveal',format:'Vertical 9:16 · TikTok Shop · hands/product focused',shots:'Use the supplied edited clip: closed case hook, opening reveal, steady open-case close.',onscreen:project.onScreen,sfx:project.sfx,caption:project.caption,hashtags:project.hashtags,cover:'HOLLYLAND LARK A1 — COMBO KIT',compliance:project.compliance,stillrules,updatedAt:new Date().toISOString()};
   try{localStorage.setItem(HANDOFF_KEY,JSON.stringify(payload));}catch(e){throw new Error('Safari could not save the Teleprompter handoff. Check that website storage is allowed.');}
   const url=new URL('teleprompter-one-click.html',location.href);
   url.searchParams.set('session','1');url.searchParams.set('handoff','1');

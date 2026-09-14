@@ -61,6 +61,7 @@
     <div class="copybox"><b>Caption</b><div id="caption"></div></div>
     <div class="copybox"><b>Hashtags</b><div id="hashtags"></div></div>
     <div class="copybox"><b>Compliance review</b><div id="compliance"></div></div>
+    <div class="copybox"><b>Still Images &amp; Realistic Results</b><div id="stillImageCompliance"></div></div>
     <div id="voiceSuggestionBox" class="copybox" style="display:none"><b>🎤 Suggested narration voice</b><div id="voiceSuggestion"></div></div>
     <div id="selectedVoiceoverBox" class="copybox" style="display:none">
       <b>🎙 Voiceover for the selected hook</b>
@@ -84,14 +85,16 @@
     <details><summary>Technical details</summary><pre id="tech"></pre></details>
   </div>
 </div>
-<script src="modules/one-click-ad-editor.js?v=20260914-specific-story-1"></script>
+<script src="modules/still-image-compliance.js?v=20260914-still-image-1"></script>
+<script src="modules/content-language-compliance.js?v=20260914-language-1"></script>
+<script src="modules/one-click-ad-editor.js?v=20260914-compliance-gate-1"></script>
 <script src="modules/one-click-media-stage.js?v=20260912-long-clip-1"></script>
 <script src="modules/one-click-scene-scorer.js?v=20260911-plex-safe-1"></script>
 <script src="modules/one-click-render-stage.js?v=20260904-0527"></script>
 <script src="modules/one-click-browser-executor.js?v=20260914-audio-boundary-1"></script>
 <script src="modules/one-click-camera-handoff.js?v=20260914-iphone-fixes-1"></script>
 <script src="modules/voice-suggestion.js?v=20260908-voice-suggest-1"></script>
-<script src="modules/one-click-ready-project.js?v=20260914-hollyland-handoff-3"></script>
+<script src="modules/one-click-ready-project.js?v=20260914-visual-compliance-1"></script>
 <script>
 (function(){
 'use strict';
@@ -341,7 +344,7 @@ go.addEventListener('click',async()=>{
     const execution=window.DoneRiteOneClickBrowserExecutor.buildExecutionState(session,recipe);currentRecipe=recipe;currentSession=session;currentPlan=plan;currentSelection=selection;
     $('resultCard').style.display='block';$('status').className='status ok';$('status').textContent=list.length>1?'MULTI-CLIP EDIT PLAN BUILT':'EDIT PLAN BUILT';
     $('sourceInfo').textContent=list.length+' clip'+(list.length===1?'':'s')+' • '+totalSource.toFixed(1)+' sec';$('selectedInfo').textContent=(selection.sourceCountUsed||1)+' source'+((selection.sourceCountUsed||1)===1?'':'s');$('targetInfo').textContent=selection.totalSeconds.toFixed(1)+' sec final';
-    $('fileName').textContent=plan.packaging.videoFileName;$('caption').textContent=plan.packaging.caption;$('hashtags').textContent=plan.packaging.hashtags.join(' ');$('compliance').textContent=plan.packaging.compliance.flags.length?plan.packaging.compliance.flags.join(' • '):'No extra category flags.';
+    $('fileName').textContent=plan.packaging.videoFileName;$('caption').textContent=plan.packaging.caption;$('hashtags').textContent=plan.packaging.hashtags.join(' ');$('compliance').textContent=plan.packaging.compliance.flags.length?plan.packaging.compliance.flags.join(' • '):'No automatic wording flags. Visual confirmation is still required.';$('stillImageCompliance').textContent=plan.recordingGuide.stillImageRules;
     if(window.DoneRiteVoiceSuggestion&&plan.recordingGuide&&plan.recordingGuide.voiceover){
       const vs=window.DoneRiteVoiceSuggestion.suggestForScript(plan.recordingGuide.voiceover);
       $('voiceSuggestion').innerHTML='<b>'+vs.voice+'</b> — '+vs.toneLabel.toLowerCase()+' ('+vs.voiceDescription+')<br>Alternate: '+vs.alternateVoice+' ('+vs.alternateVoiceDescription+')<br><span style="color:#8793a1">'+vs.howToGenerate+'</span>';
