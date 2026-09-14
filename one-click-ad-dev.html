@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#eef8ff">
+<meta name="theme-color" content="#071116">
 <title>DONE RITE One-Click Ad Builder</title>
 <style>
 :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#080a0e;color:#eef3f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:760px;margin:auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom))}.card{background:#11151c;border:1px solid #2a3442;border-radius:18px;padding:16px;margin-bottom:12px}.button{width:100%;min-height:52px;border:1px solid #58a6ff;border-radius:14px;background:linear-gradient(135deg,#1e7bff,#0f4fa8);color:#fff;font-size:17px;font-weight:900;margin-top:8px}.button.secondary{background:#171c25;color:#58a6ff}.button.good{background:linear-gradient(135deg,#16864b,#0d5e35);border-color:#2bd97c}.button.tiktok{background:#fff;color:#000;border-color:#fff}.button:disabled{opacity:.45}.input,.select{width:100%;margin-top:7px;margin-bottom:12px;padding:13px;border-radius:12px;border:1px solid #2a3442;background:#171c25;color:#fff;font-size:16px}.label{font-size:12px;color:#c4ccd6;font-weight:900;letter-spacing:.07em;text-transform:uppercase}.help{color:#8793a1;font-size:13px;line-height:1.45}.preview{width:100%;border-radius:14px;background:#000;display:none;margin-top:10px}.preview-img{width:100%;border-radius:14px;background:#000;display:none;margin-top:10px}.pill{display:inline-flex;border:1px solid #2a3442;border-radius:999px;padding:5px 9px;color:#58a6ff;font-size:12px;margin-bottom:8px}.status{font-weight:900;font-size:18px;margin:6px 0}.ok{color:#2bd97c}.bad{color:#ff5d6c}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#171c25;border:1px solid #2a3442;border-radius:12px;padding:12px}.metric b{display:block;font-size:12px;color:#8793a1;text-transform:uppercase;margin-bottom:4px}.metric span{font-weight:800}.copybox,.filelist{background:#171c25;border:1px solid #2a3442;border-radius:12px;padding:12px;margin-top:8px;overflow-wrap:anywhere}.filelist .clip-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #222b36}.filelist .clip-row:last-child{border-bottom:0}.clip-name{flex:1;min-width:0;overflow-wrap:anywhere}.remove-clip{flex:0 0 auto;border:1px solid #ff5d6c;border-radius:10px;background:#171c25;color:#ff9aa5;font-weight:800;min-height:38px;padding:7px 10px}.progress{height:12px;border:1px solid #2a3442;background:#171c25;border-radius:999px;overflow:hidden;margin-top:12px;display:none}.progress span{display:block;height:100%;width:0;background:#2bd97c;transition:width .12s linear}.renderbox{display:none;margin-top:12px;padding-top:12px;border-top:1px solid #2a3442}details{margin-top:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;color:#8793a1;max-height:260px;overflow:auto}h1{font-size:23px;margin:8px 0 4px}h2{font-size:16px;margin:0 0 8px}@media(max-width:430px){.row{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="styles/one-click-builder.css?v=20260914-righteous-light-1">
+<link rel="stylesheet" href="styles/smoked-glass-theme.css?v=20260914-smoked-glass-1">
 </head>
 <body>
 <div class="wrap">
@@ -370,5 +371,6 @@ window.addEventListener('pagehide',()=>{persistLastSession();releasePreview();re
 })();
 </script>
 <script src="modules/one-click-builder-ui.js?v=20260914-righteous-light-1"></script>
+<script src="modules/ui-touch-feedback.js?v=20260914-smoked-glass-1"></script>
 </body>
 </html>
