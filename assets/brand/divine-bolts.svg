@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+  <defs>
+    <radialGradient id="heaven" cx="50%" cy="0" r="70%"><stop stop-color="#fffdf0" stop-opacity=".98"/><stop offset=".28" stop-color="#dff4ff" stop-opacity=".8"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="ray" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff" stop-opacity=".9"/><stop offset=".65" stop-color="#f7cf62" stop-opacity=".12"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+    <filter id="electric" x="-100%" y="-30%" width="300%" height="160%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1600" height="1100" fill="url(#heaven)"/>
+  <path d="M590 0 335 980h300L760 0z" fill="url(#ray)" opacity=".44"/>
+  <path d="M835 0 745 1020h300L975 0z" fill="url(#ray)" opacity=".56"/>
+  <path d="M1080 0 1005 940h270L1195 0z" fill="url(#ray)" opacity=".38"/>
+  <g fill="none" stroke="#168cff" stroke-linecap="round" stroke-linejoin="round" filter="url(#electric)">
+    <path d="M265 0 226 102l38 37-72 87 28 45-91 145" stroke-width="8" opacity=".45"/>
+    <path d="M1325 0 1361 83l-31 55 56 46-47 89 52 68-66 119" stroke-width="8" opacity=".5"/>
+    <path d="M800 0 778 67l30 25-42 67 21 47-48 84" stroke-width="6" opacity=".3"/>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round"><path d="M265 0 226 102l38 37-72 87 28 45-91 145" stroke-width="2"/><path d="M1325 0 1361 83l-31 55 56 46-47 89 52 68-66 119" stroke-width="2"/><path d="M800 0 778 67l30 25-42 67 21 47-48 84" stroke-width="2"/></g>
+</svg>
