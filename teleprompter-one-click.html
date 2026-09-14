@@ -21,7 +21,14 @@ html,body{margin:0;min-height:100%;background:#05070b;color:#eef7ff;font-family:
     let html=await response.text();
     const oldSession="function applyRecordingSession(){const p=new URLSearchParams(location.search),sessionScript=p.get('script')||p.get('text')||'',";
     const newSession="function applyRecordingSession(){const queryParams=new URLSearchParams(location.search),handoff=window.DoneRiteTeleprompterHandoff||{},p={get:key=>queryParams.get(key)??handoff[key]??null},sessionScript=p.get('script')||p.get('text')||'',";
-    if(query.get('handoff')==='1'){if(!html.includes(oldSession))throw new Error('The Teleprompter session bridge needs an update.');html=html.replace(oldSession,newSession);const encoded=JSON.stringify(handoff).replace(/</g,'\\u003c');html=html.replace('<script>\\nconst BUILD=','<script>window.DoneRiteTeleprompterHandoff='+encoded+';<\\/script><script>\\nconst BUILD=');}
+    if(query.get('handoff')==='1'){
+      if(!html.includes(oldSession))throw new Error('The Teleprompter session bridge needs an update.');
+      html=html.replace(oldSession,newSession);
+      const encoded=JSON.stringify(handoff).replace(/</g,'\\u003c');
+      const buildScript=/<script>\s*const BUILD=/;
+      if(!buildScript.test(html))throw new Error('The Teleprompter handoff could not be installed.');
+      html=html.replace(buildScript,'<script>window.DoneRiteTeleprompterHandoff='+encoded+';<\\/script><script>\nconst BUILD=');
+    }
     const oldConstraints='echoCancellation:true,noiseSuppression:true,autoGainControl:true';
     const rawConstraints='echoCancellation:false,noiseSuppression:false,autoGainControl:false';
     if(!html.includes(oldConstraints))throw new Error('Expected Teleprompter microphone settings were not found. The wrapper stopped rather than changing unknown code.');
@@ -32,7 +39,7 @@ html,body{margin:0;min-height:100%;background:#05070b;color:#eef7ff;font-family:
       const safeReturn=safe(ret),safeBack=safe(back)||safeReturn;
       const applyNav=()=>{
         if(!document.getElementById('doneRiteTeleBack')){
-          const b=document.createElement('button');b.id='doneRiteTeleBack';b.type='button';b.textContent='← BACK';b.setAttribute('aria-label','Back to previous page');b.style.cssText='position:fixed;top:calc(8px + env(safe-area-inset-top));left:10px;z-index:99999;min-height:42px;padding:9px 13px;border:1px solid #344457;border-radius:12px;background:rgba(23,29,39,.96);color:#cfe7ff;font:900 14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.35)';b.onclick=()=>{try{if(history.length>1){history.back();return;}}catch(e){}if(safeBack)location.href=safeBack;else location.href='index.html';};document.body.appendChild(b);
+          const b=document.createElement('button');b.id='doneRiteTeleBack';b.type='button';b.textContent='← BACK TO ONE-CLICK';b.setAttribute('aria-label','Back to One-Click');b.style.cssText='position:fixed;top:calc(8px + env(safe-area-inset-top));left:10px;z-index:99999;min-height:42px;padding:9px 13px;border:1px solid #344457;border-radius:12px;background:rgba(23,29,39,.96);color:#cfe7ff;font:900 14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.35)';b.onclick=()=>{if(safeBack){location.href=safeBack;return;}location.href='index.html';};document.body.appendChild(b);
         }
         if(safeReturn){
           const topLink=document.querySelector('.creator-os-float-return');

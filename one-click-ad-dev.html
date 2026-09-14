@@ -83,14 +83,14 @@
     <details><summary>Technical details</summary><pre id="tech"></pre></details>
   </div>
 </div>
-<script src="modules/one-click-ad-editor.js?v=20260905-0631"></script>
+<script src="modules/one-click-ad-editor.js?v=20260914-specific-story-1"></script>
 <script src="modules/one-click-media-stage.js?v=20260912-long-clip-1"></script>
 <script src="modules/one-click-scene-scorer.js?v=20260911-plex-safe-1"></script>
 <script src="modules/one-click-render-stage.js?v=20260904-0527"></script>
-<script src="modules/one-click-browser-executor.js?v=20260912-long-clip-1"></script>
-<script src="modules/one-click-camera-handoff.js?v=20260913-original-restore-1"></script>
+<script src="modules/one-click-browser-executor.js?v=20260914-audio-boundary-1"></script>
+<script src="modules/one-click-camera-handoff.js?v=20260914-iphone-fixes-1"></script>
 <script src="modules/voice-suggestion.js?v=20260908-voice-suggest-1"></script>
-<script src="modules/one-click-ready-project.js?v=20260913-hollyland-handoff-1"></script>
+<script src="modules/one-click-ready-project.js?v=20260914-hollyland-handoff-2"></script>
 <script>
 (function(){
 'use strict';
@@ -172,6 +172,22 @@ async function readLastSession(){
   try{return await new Promise((resolve,reject)=>{const tx=db.transaction(PROJECT_STORE,'readonly'),request=tx.objectStore(PROJECT_STORE).get(LAST_SESSION_ID);request.onsuccess=()=>resolve(request.result||null);request.onerror=()=>reject(request.error||new Error('Restore failed.'));});}
   finally{db.close();}
 }
+async function clearLastSession(){
+  clearTimeout(saveTimer);saveTimer=null;
+  const db=await openProjectDb();
+  try{await new Promise((resolve,reject)=>{const tx=db.transaction(PROJECT_STORE,'readwrite');tx.objectStore(PROJECT_STORE).delete(LAST_SESSION_ID);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Saved project could not be cleared.'));tx.onabort=()=>reject(tx.error||new Error('Saved project clear was interrupted.'));});}
+  finally{db.close();}
+  releasePreview();releaseRendered();projectClips=[];clipSequence=0;videoInput.value='';systemPassed=false;currentRecipe=currentSession=currentPlan=currentSelection=currentRender=null;
+  try{localStorage.removeItem(SELECTED_VOICEOVER_KEY);localStorage.removeItem('done-rite-one-click-teleprompter-handoff:v1');}catch(e){}
+  try{window.DoneRiteOneClickBrowserExecutor&&window.DoneRiteOneClickBrowserExecutor.clearManualTrims&&window.DoneRiteOneClickBrowserExecutor.clearManualTrims();}catch(e){}
+  try{window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.setRenderVoiceover(null);}catch(e){}
+  renderProjectClips(0,'Fresh project started. No clips or voiceover are loaded.');
+  sessionSave.className='help ok';sessionSave.textContent='Fresh project ready • saved clips and setup cleared';
+  setCheck(false,'Run the system check before choosing clips.');
+  try{window.dispatchEvent(new CustomEvent('done-rite-one-click-project-cleared'));}catch(e){}
+  return true;
+}
+window.DoneRiteOneClickClearProject=clearLastSession;
 function restoredFile(row){
   if(row.blob instanceof File)return row.blob;
   if(!(row.blob instanceof Blob))return null;

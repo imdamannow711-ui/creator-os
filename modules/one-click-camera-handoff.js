@@ -6,12 +6,12 @@
 */
 (function(){
 'use strict';
-const VERSION='0.8.4';
+const VERSION='0.8.5';
 let lastPlan=null,capturedUrl='';
 function loadScriptOnce(selector,src,datasetKey,onload){const existing=document.querySelector(selector);if(existing){if(onload&&existing.dataset.loaded==='1')onload();return;}const s=document.createElement('script');s.src=src;s.async=false;s.dataset[datasetKey]='1';s.onload=()=>{s.dataset.loaded='1';if(onload)onload();};document.head.appendChild(s);}
-function loadGapRemover(){if(window.DoneRiteOneClickGapRemover)return;loadScriptOnce('script[data-done-rite-gap-remover]','modules/one-click-gap-remover.js?v=20260913-original-restore-1','doneRiteGapRemover',()=>{try{window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.install();}catch(e){}});}
-function loadSessionState(){if(window.DoneRiteOneClickSessionState)return;loadScriptOnce('script[data-done-rite-session-state]','modules/one-click-session-state.js?v=20260904-session1','doneRiteSessionState');}
-function loadCreativeRender(){if(window.DoneRiteOneClickCreativeRender){try{window.DoneRiteOneClickCreativeRender.boot();}catch(e){}return;}loadScriptOnce('script[data-done-rite-creative-render]','modules/one-click-creative-render.js?v=20260904-creative3','doneRiteCreativeRender',()=>{try{window.DoneRiteOneClickCreativeRender&&window.DoneRiteOneClickCreativeRender.boot();}catch(e){}});}
+function loadGapRemover(){if(window.DoneRiteOneClickGapRemover)return;loadScriptOnce('script[data-done-rite-gap-remover]','modules/one-click-gap-remover.js?v=20260914-voice-safe-1','doneRiteGapRemover',()=>{try{window.DoneRiteOneClickGapRemover&&window.DoneRiteOneClickGapRemover.install();}catch(e){}});}
+function loadSessionState(){if(window.DoneRiteOneClickSessionState)return;loadScriptOnce('script[data-done-rite-session-state]','modules/one-click-session-state.js?v=20260914-fresh-project-1','doneRiteSessionState');}
+function loadCreativeRender(){if(window.DoneRiteOneClickCreativeRender){try{window.DoneRiteOneClickCreativeRender.boot();}catch(e){}return;}loadScriptOnce('script[data-done-rite-creative-render]','modules/one-click-creative-render.js?v=20260914-audio-boundary-1','doneRiteCreativeRender',()=>{try{window.DoneRiteOneClickCreativeRender&&window.DoneRiteOneClickCreativeRender.boot();}catch(e){}});}
 function loadCreativeControls(){if(window.DoneRiteOneClickCreativeControls){try{window.DoneRiteOneClickCreativeControls.install();}catch(e){}loadCreativeRender();return;}loadScriptOnce('script[data-done-rite-creative-controls]','modules/one-click-creative-controls.js?v=20260904-creative1','doneRiteCreativeControls',()=>{try{window.DoneRiteOneClickCreativeControls&&window.DoneRiteOneClickCreativeControls.install();}catch(e){}loadCreativeRender();});}
 function sameOriginUrl(raw,fallback){try{const u=new URL(raw||fallback||'./',location.href);return u.origin===location.origin?u.href:new URL(fallback||'./',location.href).href;}catch(e){return new URL(fallback||'./',location.href).href;}}
 function requestedLauncherReturn(){const raw=new URLSearchParams(location.search).get('return');return sameOriginUrl(raw,'index.html');}
