@@ -5,12 +5,9 @@ html, body { margin: 0; background: #edf7ff; }
 .dr-shell::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(90deg,rgba(255,255,255,.55),transparent 22%,transparent 78%,rgba(255,255,255,.55)); }
 .dr-wrap { width:min(820px,100%); margin:0 auto; padding:16px; }
 .dr-header { position:sticky; top:0; z-index:20; border-bottom:1px solid rgba(93,124,158,.3); background:rgba(255,255,255,.88); box-shadow:0 10px 32px rgba(61,111,154,.12); backdrop-filter:blur(18px); }
-.dr-brand { display:flex; align-items:center; gap:12px; min-height:76px; }
-.dr-cross-crest { width:52px; height:52px; flex:0 0 auto; filter:drop-shadow(0 7px 12px rgba(17,126,229,.25)); }
-.dr-brand-copy { min-width:0; }
-.dr-brand-values { margin:0 0 3px; color:#a76f05; font-size:9px; font-weight:900; letter-spacing:.13em; text-transform:uppercase; }
-.dr-title { margin:0; font-size:16px; color:#102a4c; letter-spacing:.13em; text-transform:uppercase; }
-.dr-tagline { margin:3px 0 0; color:#5f7690; font-size:12px; }
+.dr-brand { display:block; min-height:112px; padding-top:10px; padding-bottom:8px; }
+.dr-brand-banner { display:block; width:100%; height:auto; max-height:168px; object-fit:contain; border-radius:18px; filter:drop-shadow(0 8px 18px rgba(0,0,0,.46)) drop-shadow(0 0 12px rgba(68,190,255,.22)); }
+.dr-sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
 .dr-tabs { display:flex; gap:8px; overflow-x:auto; padding:10px 16px 12px; scrollbar-width:none; }.dr-tabs::-webkit-scrollbar{display:none}
 .dr-tab,.dr-button,.dr-copy,.dr-danger { min-height:44px; border-radius:12px; border:1px solid #b7d1e6; padding:10px 14px; font:inherit; font-weight:800; cursor:pointer; -webkit-tap-highlight-color:transparent; }
 .dr-tab { flex:0 0 auto; color:#34516f; background:rgba(255,255,255,.86); box-shadow:0 4px 12px rgba(64,105,140,.08); }
@@ -38,4 +35,4 @@ html, body { margin: 0; background: #edf7ff; }
 .dr-upload-box { border:1px dashed #168cff; border-radius:14px; padding:14px; background:rgba(255,255,255,.64); }.dr-progress{height:9px;overflow:hidden;border-radius:999px;background:#e5eff7;border:1px solid #bad1e3}.dr-progress>span{display:block;height:100%;background:linear-gradient(90deg,#168cff,#2bd97c);transition:width .18s ease}
 .dr-nav { position:fixed; left:0; right:0; bottom:0; z-index:25; border-top:1px solid rgba(122,160,194,.42); background:rgba(255,255,255,.94); box-shadow:0 -10px 30px rgba(42,93,136,.1); padding-bottom:env(safe-area-inset-bottom); backdrop-filter:blur(16px); }.dr-nav-inner{width:min(820px,100%);margin:0 auto;display:flex;overflow-x:auto}.dr-nav button{flex:1 0 74px;min-height:62px;border:0;background:transparent;color:#6b8197;font:inherit;font-size:11px;font-weight:800}.dr-nav button[aria-current="page"]{color:#0879e8}
 h2{margin:0 0 6px;font-size:22px}h3{margin:0;font-size:15px}
-@media(max-width:540px){.dr-grid{grid-template-columns:1fr 1fr}.dr-wrap{padding:12px}.dr-brand-values{letter-spacing:.08em;font-size:8px}.dr-title{font-size:14px}.dr-cross-crest{width:48px;height:48px}}
+@media(max-width:540px){.dr-grid{grid-template-columns:1fr 1fr}.dr-wrap{padding:12px}.dr-brand{min-height:104px;padding-top:8px;padding-bottom:6px}.dr-brand-banner{max-height:142px;border-radius:14px}}
