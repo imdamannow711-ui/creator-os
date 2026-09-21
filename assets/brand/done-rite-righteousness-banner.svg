@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480" role="img" aria-labelledby="title desc">
+  <title id="title">DONE RITE Creator OS righteousness banner</title>
+  <desc id="desc">DONE on the left, a luminous cross in the center, and RITE on the right, representing work done with righteousness in the eyes of God.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#07151d"/>
+      <stop offset=".46" stop-color="#0d252f"/>
+      <stop offset="1" stop-color="#020609"/>
+    </linearGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#ffffff"/>
+      <stop offset=".2" stop-color="#9dd8f2"/>
+      <stop offset=".45" stop-color="#304d5c"/>
+      <stop offset=".7" stop-color="#e9fbff"/>
+      <stop offset="1" stop-color="#5e7f90"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ffffff"/>
+      <stop offset=".22" stop-color="#fff3bd"/>
+      <stop offset=".52" stop-color="#e8b94d"/>
+      <stop offset=".76" stop-color="#fff8d8"/>
+      <stop offset="1" stop-color="#b97a10"/>
+    </linearGradient>
+    <radialGradient id="light" cx="50%" cy="35%" r="60%">
+      <stop stop-color="#fff6c8" stop-opacity=".42"/>
+      <stop offset=".36" stop-color="#57caff" stop-opacity=".15"/>
+      <stop offset="1" stop-color="#07151d" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="drop" cx="32%" cy="25%">
+      <stop stop-color="#ffffff" stop-opacity=".75"/>
+      <stop offset=".25" stop-color="#bcecff" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#52b6dc" stop-opacity=".03"/>
+    </radialGradient>
+    <filter id="goldGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="blueGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000000" flood-opacity=".82"/>
+    </filter>
+  </defs>
+
+  <rect x="10" y="10" width="1580" height="460" rx="48" fill="url(#bg)" stroke="url(#chrome)" stroke-width="7"/>
+  <rect x="25" y="25" width="1550" height="430" rx="38" fill="none" stroke="#50c8ff" stroke-opacity=".38" stroke-width="3"/>
+  <ellipse cx="800" cy="175" rx="430" ry="235" fill="url(#light)"/>
+
+  <path d="M800 24 690 190h72l-44 135 82-95 82 95-44-135h72z" fill="#fff2ae" opacity=".12"/>
+  <path d="m160 102 66-45-26 68 80-26-99 86 37-69-76 26zm1280 0-66-45 26 68-80-26 99 86-37-69 76 26z" fill="#45c5ff" opacity=".52" filter="url(#blueGlow)"/>
+
+  <g fill="url(#drop)" stroke="#dff7ff" stroke-opacity=".23">
+    <ellipse cx="84" cy="76" rx="15" ry="23"/>
+    <ellipse cx="270" cy="340" rx="10" ry="16"/>
+    <ellipse cx="1470" cy="78" rx="12" ry="19"/>
+    <ellipse cx="1335" cy="360" rx="17" ry="25"/>
+    <ellipse cx="520" cy="64" rx="8" ry="13"/>
+    <ellipse cx="1085" cy="70" rx="9" ry="14"/>
+  </g>
+
+  <g font-family="Arial Black, Impact, sans-serif" font-weight="900" text-anchor="middle" filter="url(#shadow)">
+    <text x="425" y="238" font-size="176" letter-spacing="14" fill="url(#chrome)" stroke="#61d2ff" stroke-width="4">DONE</text>
+    <text x="1175" y="238" font-size="176" letter-spacing="14" fill="url(#chrome)" stroke="#61d2ff" stroke-width="4">RITE</text>
+  </g>
+
+  <g filter="url(#goldGlow)">
+    <path d="M762 56h76v100h102v76H838v108h-76V232H660v-76h102z" fill="#fff8d2" stroke="#ffffff" stroke-width="16"/>
+  </g>
+  <path d="M762 56h76v100h102v76H838v108h-76V232H660v-76h102z" fill="url(#gold)" stroke="#e1ad3f" stroke-width="5"/>
+  <path d="M777 67h22v258h-22z" fill="#ffffff" opacity=".55"/>
+
+  <text x="800" y="378" text-anchor="middle" fill="#fff0b8" font-family="Arial, sans-serif" font-size="37" font-weight="900" letter-spacing="8">RIGHTEOUSNESS IN THE EYES OF GOD</text>
+  <text x="800" y="419" text-anchor="middle" fill="#bdeeff" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="7">FAITH • INTEGRITY • SERVICE • EXCELLENCE</text>
+  <text x="800" y="453" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="4">NOT ONLY DONE WELL. DONE RITE.</text>
+</svg>

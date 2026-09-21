@@ -5,7 +5,7 @@
    phone immediately. Navigation requests may fall back to index.html;
    scripts and other assets never receive HTML as a fallback. */
 
-const CACHE_NAME = "done-rite-v37-smoked-glass-touch";
+const CACHE_NAME = "done-rite-v38-righteousness-banner";
 
 const FILES = [
   "./",
@@ -15,6 +15,7 @@ const FILES = [
   "./styles/dashboard.css",
   "./styles/smoked-glass-theme.css",
   "./assets/brand/done-rite-cross-crest.svg",
+  "./assets/brand/done-rite-righteousness-banner.svg",
   "./assets/brand/done-rite-network-logo.svg",
   "./assets/brand/divine-bolts.svg",
   "./assets/brand/smoked-glass-droplets.svg",
