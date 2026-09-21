@@ -1219,7 +1219,7 @@ function DoneRiteCreatorOS() {
             React.createElement("div", { className: "dr-wrap dr-brand" },
                 React.createElement("img", {
                     className: "dr-brand-banner",
-                    src: "assets/brand/done-rite-righteousness-banner.svg",
+                    src: "assets/brand/done-rite-righteousness-banner.svg?v=20260921-optical-center-2",
                     alt: "DONE RITE — righteousness in the eyes of God. Faith, integrity, service, and excellence. Not only done well. Done RITE."
                 }),
                 React.createElement("h1", { className: "dr-sr-only" }, "DONE RITE Creator OS")),
