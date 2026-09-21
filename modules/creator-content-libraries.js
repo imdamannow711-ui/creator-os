@@ -36,6 +36,16 @@ const HOOK_LIBRARY = [
   { angle: "Purchase reason (bought item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `I bought ${p} for one very specific reason: ${f}.` },
   { angle: "Purchase reason (bought item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `I bought ${p} because I needed something designed around ${f} without extra steps.` },
 
+  // --- In-hand experience (manual choice only; added Sep 2026)
+  // These hooks describe the creator's own use. Keep them out of automatic
+  // rotation so they are selected only for products personally used in hand.
+  // Two source phrases were softened to avoid an absolute "solved/fix" claim.
+  { angle: "In-hand experience (in-hand item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `I did not think I would use ${p} as much as I do.` },
+  { angle: "In-hand experience (in-hand item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `I wish I had found ${p} sooner.` },
+  { angle: "In-hand experience (in-hand item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `This gave me a simpler way to handle a problem I kept running into: ${f} on ${p}.` },
+  { angle: "In-hand experience (in-hand item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `${p} became part of my daily routine because of ${f}.` },
+  { angle: "In-hand experience (in-hand item)", platforms: ["TikTok Shop", "Instagram Reels", "YouTube Shorts", "Facebook", "Pinterest"], manualOnly: true, make: (p, f) => `I finally stopped doing this the hard way. Here is ${f} on ${p}.` },
+
   // --- Problem first
   { angle: "Problem", platforms: ["TikTok Shop", "Facebook", "YouTube Shorts"], make: (p, f) => `Tired of dealing with this the hard way? ${p} was built for it.` },
   { angle: "Problem", platforms: ["TikTok Shop", "Facebook"], make: (p, f) => `If this keeps happening to you, ${f} is the part to look at.` },
