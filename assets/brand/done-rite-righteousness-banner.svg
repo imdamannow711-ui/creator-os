@@ -26,9 +26,9 @@
     <filter id="wordShadow" x="-30%" y="-30%" width="160%" height="180%">
       <feDropShadow dx="0" dy="11" stdDeviation="10" flood-color="#000000" flood-opacity=".84"/>
     </filter>
-    <filter id="sentenceShadow" x="-20%" y="-40%" width="140%" height="260%">
-      <feDropShadow dx="0" dy="31" stdDeviation="10" flood-color="#000000" flood-opacity=".98"/>
-      <feDropShadow dx="0" dy="15" stdDeviation="4" flood-color="#001018" flood-opacity=".92"/>
+    <filter id="sentenceShadow" x="-20%" y="-70%" width="140%" height="260%">
+      <feDropShadow dx="0" dy="28" stdDeviation="7" flood-color="#000000" flood-opacity=".98"/>
+      <feDropShadow dx="0" dy="13" stdDeviation="3" flood-color="#001018" flood-opacity=".9"/>
     </filter>
   </defs>
 
@@ -41,18 +41,18 @@
   </g>
 
   <g font-family="Arial Black, Impact, sans-serif" font-weight="900" text-anchor="middle" filter="url(#wordShadow)">
-    <text x="420" y="326" font-size="176" textLength="430" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#61d2ff" stroke-width="4">DONE</text>
-    <text x="1180" y="326" font-size="176" textLength="430" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#61d2ff" stroke-width="4">RITE</text>
+    <text x="390" y="340" font-size="188" textLength="520" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#61d2ff" stroke-width="4">DONE</text>
+    <text x="1210" y="340" font-size="188" textLength="520" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#61d2ff" stroke-width="4">RITE</text>
   </g>
 
   <g filter="url(#goldGlow)">
-    <path d="M762 138h76v88h102v74H838v112h-76V300H660v-74h102z" fill="#fff8d2" stroke="#ffffff" stroke-width="16"/>
+    <path d="M758 112h84v102h128v84H842v126h-84V298H630v-84h128z" fill="#fff8d2" stroke="#ffffff" stroke-width="16"/>
   </g>
-  <path d="M762 138h76v88h102v74H838v112h-76V300H660v-74h102z" fill="url(#gold)" stroke="#e1ad3f" stroke-width="5"/>
-  <path d="M790 148h20v250h-20z" fill="#ffffff" opacity=".55"/>
+  <path d="M758 112h84v102h128v84H842v126h-84V298H630v-84h128z" fill="url(#gold)" stroke="#e1ad3f" stroke-width="5"/>
+  <path d="M790 124h20v286h-20z" fill="#ffffff" opacity=".55"/>
 
   <g font-family="Arial Black, Impact, sans-serif" font-weight="900" text-anchor="middle" filter="url(#sentenceShadow)">
-    <text x="800" y="151" font-size="82" textLength="1410" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#ffffff" stroke-width="3">RIGHTEOUSNESS IN THE EYES OF GOD</text>
+    <text x="800" y="266" font-size="49" textLength="1160" lengthAdjust="spacingAndGlyphs" fill="#fff0b8" stroke="#ffffff" stroke-width="2">RIGHTEOUSNESS IN THE EYES OF GOD</text>
   </g>
 
   <text x="800" y="458" text-anchor="middle" fill="#bdeeff" font-family="Arial, sans-serif" font-size="29" font-weight="800" letter-spacing="7">FAITH • INTEGRITY • SERVICE • EXCELLENCE</text>
