@@ -102,9 +102,8 @@
 const $=id=>document.getElementById(id);
 const videoInput=$('video'),addClipsButton=$('addClips'),preview=$('preview'),media=$('media'),sessionSave=$('sessionSave'),fileList=$('fileList'),frame=$('frame'),go=$('go'),renderBtn=$('renderBtn');
 const PROJECT_DB='done-rite-media',PROJECT_STORE='one-click-project-sessions',LAST_SESSION_ID='last-session';
-const MAX_SAVED_CLIP_BYTES=160*1024*1024;
 const SELECTED_VOICEOVER_KEY='done-rite-one-click-selected-voiceover:v1';
-let systemPassed=false,previewUrl='',renderedUrl='',currentRecipe=null,currentSession=null,currentPlan=null,currentSelection=null,currentRender=null,projectClips=[],clipSequence=0,saveTimer=null;
+let systemPassed=false,previewUrl='',renderedUrl='',currentRecipe=null,currentSession=null,currentPlan=null,currentSelection=null,currentRender=null,projectClips=[],clipSequence=0,saveTimer=null,saveQueue=Promise.resolve();
 function modulesReady(){return !!(window.DoneRiteOneClickAdEditor&&window.DoneRiteOneClickMediaStage&&window.DoneRiteOneClickSceneScorer&&window.DoneRiteOneClickRenderStage&&window.DoneRiteOneClickBrowserExecutor);}
 function files(){return projectClips.map(item=>item.file);}
 window.DoneRiteOneClickProjectFiles=files;
@@ -154,23 +153,30 @@ function openProjectDb(){
     };
   });
 }
-async function writeLastSession(){
+function lastSessionSnapshot(){
+  return {
+    id:LAST_SESSION_ID,version:2,updatedAt:new Date().toISOString(),
+    setup:{product:$('product').value,feature:$('feature').value,mode:$('mode').value,duration:$('duration').value},
+    clips:projectClips.map(item=>({id:item.id,signature:item.signature,name:item.file.name,type:item.file.type,size:item.file.size,lastModified:item.file.lastModified,blob:item.file})),
+    clipsNeedReselection:false
+  };
+}
+async function writeLastSession(snapshot){
   const db=await openProjectDb();
   try{
-    const totalBytes=projectClips.reduce((sum,item)=>sum+Number(item.file&&item.file.size||0),0),saveClipBlobs=totalBytes<=MAX_SAVED_CLIP_BYTES;
-    const snapshot={
-      id:LAST_SESSION_ID,version:1,updatedAt:new Date().toISOString(),
-      setup:{product:$('product').value,feature:$('feature').value,mode:$('mode').value,duration:$('duration').value},
-      clips:projectClips.map(item=>({id:item.id,signature:item.signature,name:item.file.name,type:item.file.type,size:item.file.size,lastModified:item.file.lastModified,blob:saveClipBlobs?item.file:null})),
-      clipsNeedReselection:!saveClipBlobs&&projectClips.length>0
-    };
     await new Promise((resolve,reject)=>{const tx=db.transaction(PROJECT_STORE,'readwrite');tx.objectStore(PROJECT_STORE).put(snapshot);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Save failed.'));tx.onabort=()=>reject(tx.error||new Error('Save was interrupted.'));});
-    sessionSave.className=saveClipBlobs?'help ok':'help';sessionSave.textContent=saveClipBlobs?'Last Session Saved • '+projectClips.length+' clip'+(projectClips.length===1?'':'s')+' and setup':'Large clips are ready to edit now. Setup and trim choices are saved; reselect the raw clips after closing or refreshing.';
+    sessionSave.className='help ok';sessionSave.textContent='Last Session Saved • '+snapshot.clips.length+' clip'+(snapshot.clips.length===1?'':'s')+' and setup';
   }finally{db.close();}
 }
-function persistLastSession(){
-  clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{writeLastSession().catch(err=>{sessionSave.className='help bad';sessionSave.textContent='Last Session not saved: '+(err&&err.name==='QuotaExceededError'?'iPhone storage is full for this project.':err.message);});},120);
+function queueLastSessionWrite(){
+  const snapshot=lastSessionSnapshot();
+  saveQueue=saveQueue.catch(()=>{}).then(()=>writeLastSession(snapshot)).catch(err=>{sessionSave.className='help bad';sessionSave.textContent='Last Session not saved: '+(err&&err.name==='QuotaExceededError'?'iPhone storage could not hold every raw clip. Keep this page open or free storage before closing.':err.message);});
+  return saveQueue;
+}
+function persistLastSession(immediate){
+  clearTimeout(saveTimer);saveTimer=null;
+  if(immediate)return queueLastSessionWrite();
+  saveTimer=setTimeout(queueLastSessionWrite,120);
 }
 async function readLastSession(){
   const db=await openProjectDb();
@@ -207,6 +213,7 @@ async function restoreLastSession(){
     if(!Array.isArray(saved.clips)||!saved.clips.length||saved.clipsNeedReselection){sessionSave.className='help';sessionSave.textContent=saved.clipsNeedReselection?'Your setup and trim choices were restored. Reselect the large raw clips to continue.':'Last Session: setup restored; no clips were saved.';return;}
     const restored=[],seen=new Set();
     saved.clips.slice(0,20).forEach(row=>{const file=restoredFile(row),signature=row.signature||(file&&clipSignature(file));if(!file||seen.has(signature))return;seen.add(signature);restored.push({id:row.id||('clip-restored-'+(++clipSequence)),signature,file});});
+    projectClips.forEach(item=>{if(!item.file||seen.has(item.signature)||restored.length>=20)return;seen.add(item.signature);restored.push(item);});
     if(!restored.length){sessionSave.className='help bad';sessionSave.textContent='Last Session was found, but its clips could not be restored.';return;}
     projectClips=restored;clipSequence=Math.max(clipSequence,restored.length);
     renderProjectClips(0,'Last Session restored with '+projectClips.length+' clip'+(projectClips.length===1?'':'s')+'.');
@@ -367,7 +374,7 @@ function shareText(){if(!currentPlan)return'';return [currentPlan.packaging.capt
 $('tiktokBtn').addEventListener('click',async()=>{if(!currentRender)return;try{await window.DoneRiteOneClickBrowserExecutor.shareFile(currentRender.blob,currentRender.fileName,shareText());}catch(err){if(err&&err.name!=='AbortError')alert('TikTok handoff failed: '+err.message);}});
 $('shareBtn').addEventListener('click',async()=>{if(!currentRender)return;try{await window.DoneRiteOneClickBrowserExecutor.shareFile(currentRender.blob,currentRender.fileName,shareText());}catch(err){if(err&&err.name!=='AbortError')alert('Share failed: '+err.message);}});
 restoreLastSession();
-window.addEventListener('pagehide',()=>{persistLastSession();releasePreview();releaseRendered();});
+window.addEventListener('pagehide',()=>{persistLastSession(true);releasePreview();releaseRendered();});
 })();
 </script>
 <script src="modules/one-click-builder-ui.js?v=20260914-righteous-light-1"></script>
