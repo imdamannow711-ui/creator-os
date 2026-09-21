@@ -1217,11 +1217,12 @@ function DoneRiteCreatorOS() {
         React.createElement("style", null, CSS),
         React.createElement("header", { className: "dr-header" },
             React.createElement("div", { className: "dr-wrap dr-brand" },
-                React.createElement("img", { className: "dr-cross-crest", src: "assets/brand/done-rite-cross-crest.svg", alt: "" }),
-                React.createElement("div", { className: "dr-brand-copy" },
-                    React.createElement("p", { className: "dr-brand-values" }, "Faith \u2022 Integrity \u2022 Service \u2022 Excellence"),
-                    React.createElement("h1", { className: "dr-title" }, "DONE RITE Creator OS"),
-                    React.createElement("p", { className: "dr-tagline" }, "Real Reviews. Real Gadgets. Done Rite."))),
+                React.createElement("img", {
+                    className: "dr-brand-banner",
+                    src: "assets/brand/done-rite-righteousness-banner.svg",
+                    alt: "DONE RITE — righteousness in the eyes of God. Faith, integrity, service, and excellence. Not only done well. Done RITE."
+                }),
+                React.createElement("h1", { className: "dr-sr-only" }, "DONE RITE Creator OS")),
             React.createElement("div", { className: "dr-tabs", role: "tablist", "aria-label": "Creator OS sections" }, tabs.map(([id, label]) => (React.createElement("button", { key: id, className: "dr-tab", type: "button", role: "tab", "aria-selected": tab === id, onClick: () => setTab(id) }, label))))),
         React.createElement("main", { className: "dr-wrap" },
             React.createElement("div", { className: "dr-status", role: "status", "aria-live": "polite" }, copyStatus),
