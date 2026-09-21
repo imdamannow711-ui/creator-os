@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="title desc">
   <title id="title">DONE RITE Creator OS righteousness banner</title>
   <desc id="desc">DONE on the left, a luminous cross in the center, and RITE on the right, representing work done with righteousness in the eyes of God.</desc>
   <defs>
@@ -61,15 +61,15 @@
   </g>
 
   <g font-family="Arial Black, Impact, sans-serif" font-weight="900" text-anchor="middle" filter="url(#shadow)">
-    <text x="425" y="238" font-size="176" letter-spacing="14" fill="url(#chrome)" stroke="#61d2ff" stroke-width="4">DONE</text>
-    <text x="1175" y="238" font-size="176" letter-spacing="14" fill="url(#chrome)" stroke="#61d2ff" stroke-width="4">RITE</text>
+    <text x="420" y="238" font-size="176" textLength="430" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#61d2ff" stroke-width="4">DONE</text>
+    <text x="1180" y="238" font-size="176" textLength="430" lengthAdjust="spacingAndGlyphs" fill="url(#chrome)" stroke="#61d2ff" stroke-width="4">RITE</text>
   </g>
 
   <g filter="url(#goldGlow)">
     <path d="M762 56h76v100h102v76H838v108h-76V232H660v-76h102z" fill="#fff8d2" stroke="#ffffff" stroke-width="16"/>
   </g>
   <path d="M762 56h76v100h102v76H838v108h-76V232H660v-76h102z" fill="url(#gold)" stroke="#e1ad3f" stroke-width="5"/>
-  <path d="M777 67h22v258h-22z" fill="#ffffff" opacity=".55"/>
+  <path d="M790 67h20v258h-20z" fill="#ffffff" opacity=".55"/>
 
   <text x="800" y="378" text-anchor="middle" fill="#fff0b8" font-family="Arial, sans-serif" font-size="37" font-weight="900" letter-spacing="8">RIGHTEOUSNESS IN THE EYES OF GOD</text>
   <text x="800" y="419" text-anchor="middle" fill="#bdeeff" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="7">FAITH • INTEGRITY • SERVICE • EXCELLENCE</text>
